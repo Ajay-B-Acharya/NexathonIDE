@@ -24,10 +24,7 @@ class CollaborationManager {
     roomId: string,
     filePath: string,
     user: UserProfile,
-    initialContent: string,
-    onStatusChange?: (status: ConnectionStatus) => void,
-    onCollaboratorsChange?: (collaborators: CollaboratorPresence[]) => void,
-    onSyncChange?: (isSynced: boolean) => void
+    initialContent: string
   ): FileCollaborationSession {
     const normalizedPath = filePath.replace(/^\/+/, '');
     const docKey = `${roomId}:${normalizedPath}`;
@@ -35,8 +32,13 @@ class CollaborationManager {
     const existing = this.sessions.get(docKey);
     if (existing) {
       this.updateLocalAwareness(existing.provider, user, normalizedPath);
-      if (onSyncChange) {
-        onSyncChange(existing.provider.synced);
+      // If already connected and synced but buffer is still empty, seed content
+      if (existing.provider.synced && existing.ytext.length === 0 && initialContent.length > 0) {
+        existing.ydoc.transact(() => {
+          if (existing.ytext.length === 0) {
+            existing.ytext.insert(0, initialContent);
+          }
+        });
       }
       return existing;
     }
@@ -44,6 +46,8 @@ class CollaborationManager {
     const ydoc = new Y.Doc();
     const provider = new WebsocketProvider(YJS_WS_URL, docKey, ydoc, {
       connect: true,
+      // Keep resyncInterval disabled (-1) so text updates flow exclusively over WebSocket messages
+      resyncInterval: -1,
     });
     const ytext = ydoc.getText('monaco');
 
@@ -56,45 +60,10 @@ class CollaborationManager {
           }
         });
       }
-      if (onSyncChange) {
-        onSyncChange(isSynced);
-      }
     };
 
     provider.on('sync', handleSync);
-
-    provider.on('status', (event: { status: string }) => {
-      if (!onStatusChange) return;
-      if (event.status === 'connected') onStatusChange('connected');
-      else if (event.status === 'connecting') onStatusChange('connecting');
-      else onStatusChange('disconnected');
-    });
-
     this.updateLocalAwareness(provider, user, normalizedPath);
-
-    const handleAwarenessUpdate = () => {
-      if (!onCollaboratorsChange) return;
-      const states = provider.awareness.getStates();
-      const collaborators: CollaboratorPresence[] = [];
-
-      states.forEach((state, clientId) => {
-        if (state && state.user) {
-          collaborators.push({
-            clientId,
-            user: state.user as UserProfile,
-            activeFile: state.activeFile as string | undefined,
-            cursor: state.cursor as { lineNumber: number; column: number } | null | undefined,
-            isTyping: Boolean(state.isTyping),
-            lastActive: (state.lastActive as number) || Date.now(),
-          });
-        }
-      });
-
-      onCollaboratorsChange(collaborators);
-    };
-
-    provider.awareness.on('change', handleAwarenessUpdate);
-    handleAwarenessUpdate();
 
     const reservationsMap = ydoc.getMap<EditReservation>('edit_reservations');
 
@@ -105,7 +74,6 @@ class CollaborationManager {
       ytext,
       reservationsMap,
       destroy: () => {
-        provider.awareness.off('change', handleAwarenessUpdate);
         provider.off('sync', handleSync);
         provider.disconnect();
         provider.destroy();
@@ -159,4 +127,3 @@ class CollaborationManager {
 }
 
 export const collaborationClient = new CollaborationManager();
-
