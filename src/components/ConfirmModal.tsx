@@ -49,7 +49,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 <AlertTriangle className="h-4 w-4" />
               </div>
             ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500 ring-1 ring-purple-500/30">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 ring-1 ring-teal-500/30">
                 <Sparkles className="h-4 w-4" />
               </div>
             )}
@@ -71,7 +71,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           {diffPreview && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs theme-text-secondary font-mono">
-                <span>Target Document: <strong className="text-indigo-500 dark:text-indigo-300">{diffPreview.filePath}</strong></span>
+                <span>Target Document: <strong className="text-teal-600 dark:text-teal-400">{diffPreview.filePath}</strong></span>
                 <span className="rounded-full border theme-border theme-bg-surface-2 px-2.5 py-0.5 text-[10px]">
                   Side-by-Side CRDT Diff Verification
                 </span>
@@ -112,10 +112,10 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <button
             type="button"
             onClick={onConfirm}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-white transition cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-white transition cursor-pointer shadow-xs ${
               variant === 'danger'
-                ? 'bg-rose-600 hover:bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.35)]'
-                : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-[0_0_15px_rgba(168,85,247,0.35)]'
+                ? 'bg-rose-600 hover:bg-rose-500'
+                : 'bg-teal-600 hover:bg-teal-500'
             }`}
           >
             <Check className="h-3.5 w-3.5" />

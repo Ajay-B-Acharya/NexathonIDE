@@ -63,14 +63,14 @@ export const AIDebuggerPanel: React.FC<AIDebuggerPanelProps> = ({
 
   return (
     <div className="flex h-full flex-col theme-bg-root theme-text-primary overflow-hidden transition-colors">
-      {/* Gradient Diagnosis Header */}
+      {/* Professional Diagnosis Header */}
       <div className="flex items-center justify-between border-b theme-border theme-bg-surface-1 px-3.5 py-1.5">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5 text-purple-500 dark:text-purple-400" />
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-300">
+          <Sparkles className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider theme-text-secondary">
             AI Debugger & Diff Guard
           </span>
-          <span className="rounded border border-purple-500/30 bg-purple-500/10 px-2 py-0.2 text-[10px] font-mono text-purple-600 dark:text-purple-300">
+          <span className="rounded border theme-border theme-bg-surface-2 px-2 py-0.5 text-[10px] font-mono theme-text-primary">
             {activeFile.path}
           </span>
         </div>
@@ -84,12 +84,12 @@ export const AIDebuggerPanel: React.FC<AIDebuggerPanelProps> = ({
             value={errorContext}
             onChange={(e) => setErrorContext(e.target.value)}
             placeholder="Paste stack trace / stderr or describe unexpected behavior..."
-            className="flex-1 rounded-lg border theme-border theme-bg-surface-2 px-3.5 py-1.5 text-xs theme-text-primary placeholder-slate-400 focus:border-purple-500 focus:outline-none font-mono"
+            className="flex-1 rounded-lg border theme-border theme-bg-surface-2 px-3.5 py-1.5 text-xs theme-text-primary placeholder-slate-400 focus:border-teal-500 focus:outline-none font-mono"
           />
           <button
             type="submit"
             disabled={isLoading}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-1.5 text-xs font-semibold text-white shadow-[0_0_15px_rgba(168,85,247,0.35)] hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 transition shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50 transition shrink-0 cursor-pointer shadow-xs"
           >
             {isLoading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -102,9 +102,9 @@ export const AIDebuggerPanel: React.FC<AIDebuggerPanelProps> = ({
 
         {/* Animated Shimmer Loading Bar */}
         {isLoading && (
-          <div className="flex items-center gap-3 rounded-xl border border-purple-500/30 p-3.5 animate-shimmer">
-            <Cpu className="h-4 w-4 text-purple-500 dark:text-purple-400 animate-spin" />
-            <span className="text-xs font-medium text-purple-600 dark:text-purple-200">
+          <div className="flex items-center gap-3 rounded-xl border border-teal-500/30 p-3.5 animate-shimmer">
+            <Cpu className="h-4 w-4 text-teal-600 dark:text-teal-400 animate-spin" />
+            <span className="text-xs font-medium text-teal-700 dark:text-teal-300">
               Analyzing stack trace, syntax tree, and generating minimal diff patch...
             </span>
           </div>
@@ -120,29 +120,29 @@ export const AIDebuggerPanel: React.FC<AIDebuggerPanelProps> = ({
         {diagnosis && (
           <div className="space-y-3.5 rounded-xl border theme-border theme-bg-surface-1 p-3.5 text-xs shadow-xs">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Card 1: Violet Tint Diagnosis */}
-              <div className="rounded-xl border border-purple-500/25 bg-purple-500/10 p-3">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-1">
+              {/* Card 1: Technical Diagnosis */}
+              <div className="rounded-xl border theme-border theme-bg-surface-2 p-3.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300 mb-1.5">
                   Diagnosis & Root Cause
                 </div>
                 <p className="theme-text-primary leading-relaxed">{diagnosis.explanation}</p>
               </div>
 
-              {/* Card 2: Amber Tint Probable Explanation */}
-              <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
+              {/* Card 2: Probable Explanation */}
+              <div className="rounded-xl border theme-border theme-bg-surface-2 p-3.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1.5">
                   Probable Explanation
                 </div>
                 <p className="theme-text-primary leading-relaxed">{diagnosis.probableCause}</p>
               </div>
             </div>
 
-            {/* Diff Preview Toggle & Glowing Apply CTA */}
+            {/* Diff Preview Toggle & Apply CTA */}
             <div className="flex items-center justify-between pt-1">
               <button
                 type="button"
                 onClick={() => setShowInlineDiff((prev) => !prev)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
               >
                 <Eye className="h-3.5 w-3.5" />
                 <span>{showInlineDiff ? 'Hide Side-by-Side Diff' : 'Show Side-by-Side Diff'}</span>
@@ -151,7 +151,7 @@ export const AIDebuggerPanel: React.FC<AIDebuggerPanelProps> = ({
               <button
                 type="button"
                 onClick={() => setIsConfirmModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_0_15px_rgba(16,185,129,0.35)] hover:from-emerald-500 hover:to-teal-500 transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 px-3.5 py-1.5 text-xs font-semibold text-white transition cursor-pointer shadow-xs"
               >
                 <Check className="h-3.5 w-3.5" />
                 <span>✓ Review & Apply Fix to Shared Document</span>

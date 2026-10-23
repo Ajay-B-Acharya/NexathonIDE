@@ -62,9 +62,9 @@ const yjsServer = spawnProcess(
   { ...process.env, Y_WEBSOCKET_PORT: process.env.Y_WEBSOCKET_PORT || '1234' }
 );
 
-// 2. API Server
+// 2. API Server (with watch for hot reloading changes)
 const apiCmd = fs.existsSync(localTsx) ? nodeBin : npxCmd;
-const apiArgs = fs.existsSync(localTsx) ? [localTsx, apiScript] : ['tsx', apiScript];
+const apiArgs = fs.existsSync(localTsx) ? [localTsx, 'watch', apiScript] : ['tsx', 'watch', apiScript];
 const apiServer = spawnProcess(
   'API Server',
   apiCmd,

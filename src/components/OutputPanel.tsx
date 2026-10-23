@@ -21,7 +21,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
       <div className="flex items-center justify-between border-b theme-border theme-bg-surface-1 px-3.5 py-1.5 font-sans">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <Terminal className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" />
+            <Terminal className="h-3.5 w-3.5 text-slate-400" />
             <span className="text-[11px] font-semibold uppercase tracking-wider theme-text-secondary">
               WASM Sandbox (Pyodide & QuickJS)
             </span>
@@ -42,7 +42,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
               )}
 
               <span className="inline-flex items-center gap-1 rounded-full border theme-border theme-bg-surface-2 px-2.5 py-0.5 font-mono text-[11px] theme-text-secondary">
-                <Clock className="h-3 w-3 text-indigo-500 dark:text-indigo-400" />
+                <Clock className="h-3 w-3 text-slate-400" />
                 <span>⏱️ {result.executionTimeMs}ms</span>
               </span>
             </div>
@@ -54,9 +54,9 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             <button
               type="button"
               onClick={() => onSendErrorToAI(result.stderr)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-purple-400/40 bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-1 text-[11px] font-semibold text-white shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:from-purple-500 hover:to-indigo-500 transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-teal-500/40 bg-teal-500/10 px-3 py-1 text-[11px] font-semibold text-teal-700 dark:text-teal-300 hover:bg-teal-500/20 transition cursor-pointer shadow-xs"
             >
-              <Zap className="h-3.5 w-3.5 fill-current text-amber-300" />
+              <Zap className="h-3.5 w-3.5 text-amber-500" />
               <span>⚡ Send Error to AI Debugger</span>
             </button>
           )}
@@ -74,8 +74,8 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
       {/* Output Stream Content */}
       <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
         {isRunning && (
-          <div className="flex items-center gap-2.5 rounded-xl border border-indigo-500/30 theme-bg-surface-2 p-3 text-indigo-500 dark:text-indigo-300 animate-shimmer">
-            <Play className="h-4 w-4 animate-pulse text-indigo-500 dark:text-indigo-400" />
+          <div className="flex items-center gap-2.5 rounded-xl border border-teal-500/30 theme-bg-surface-2 p-3 text-teal-600 dark:text-teal-300 animate-shimmer">
+            <Play className="h-4 w-4 animate-pulse text-teal-600 dark:text-teal-400" />
             <span>Executing code in isolated WebAssembly runtime...</span>
           </div>
         )}
