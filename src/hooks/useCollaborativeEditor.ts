@@ -5,7 +5,6 @@ import { collaborationClient, FileCollaborationSession } from '../services/colla
 import {
   CollaboratorPresence,
   ConnectionStatus,
-  EditReservation,
   FollowState,
   UserProfile,
   WorkspaceFile,
@@ -21,15 +20,11 @@ interface UseCollaborativeEditorOptions {
   onFollowFileChange?: (targetFilePath: string) => void;
 }
 
-interface UseCollaborativeEditorReturn {
+export interface UseCollaborativeEditorReturn {
   connectionStatus: ConnectionStatus;
   isDocumentSynced: boolean;
   collaborators: CollaboratorPresence[];
-  reservations: EditReservation[];
-  activeConflictReservation: EditReservation | null;
   followState: FollowState | null;
-  reserveLines: (startLine: number, endLine: number, taskDescription?: string) => void;
-  releaseReservation: (reservationId: string) => void;
   startFollowing: (targetUserId: string, targetUserName: string, targetUserColor: string, targetFile?: string) => void;
   stopFollowing: () => void;
   reconcileSession: () => void;
@@ -89,104 +84,6 @@ function syncCollaboratorCursorStyles(collaborators: CollaboratorPresence[]) {
   styleEl.textContent = rules;
 }
 
-const DYNAMIC_RESERVATION_LINES = 10;
-
-/**
- * Calculates a 10-line dedicated workspace section centered around the user's cursor.
- * For files under 10 lines, reserves the exact active line.
- */
-function calculateDynamicWindow(
-  currentLine: number,
-  totalLines: number
-): { startLine: number; endLine: number } {
-  if (totalLines <= DYNAMIC_RESERVATION_LINES) {
-    return { startLine: currentLine, endLine: currentLine };
-  }
-
-  let start = Math.max(1, currentLine - 2);
-  let end = start + DYNAMIC_RESERVATION_LINES - 1;
-
-  if (end > totalLines) {
-    end = Math.max(totalLines, currentLine);
-    start = Math.max(1, end - DYNAMIC_RESERVATION_LINES + 1);
-  }
-
-  return { startLine: start, endLine: end };
-}
-
-/**
- * Dynamically injects CSS rules for each user's reserved 10-line window, active line,
- * and colored status tag to give every collaborator an unmistakable unique visual identity.
- */
-function syncCollaboratorReservationStyles(
-  reservations: EditReservation[],
-  currentUserId: string
-) {
-  const styleId = 'nexathon-dynamic-reservation-styles';
-  let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
-  if (!styleEl) {
-    styleEl = document.createElement('style');
-    styleEl.id = styleId;
-    document.head.appendChild(styleEl);
-  }
-
-  const rules = reservations
-    .map((r) => {
-      const isMine = r.ownerId === currentUserId;
-      const color = r.ownerColor || (isMine ? '#6366f1' : '#f59e0b');
-      const safeId = r.id.replace(/[^a-zA-Z0-9_-]/g, '_');
-      const safeName = (r.ownerName || 'Collaborator').replace(/"/g, '\\"');
-      const activeLineNum = r.activeLine || r.startLine;
-
-      return `
-        .res-window-${safeId} {
-          background-color: ${color}14 !important;
-          border-left: 3px solid ${color}88 !important;
-          position: relative;
-        }
-        .res-active-line-${safeId} {
-          background-color: ${color}28 !important;
-          border-left: 4px solid ${color} !important;
-          box-shadow: inset 0 0 12px ${color}20;
-          position: relative;
-        }
-        .res-active-line-${safeId}::after {
-          content: "👤 ${safeName} (Ln ${activeLineNum})";
-          position: absolute;
-          right: 14px;
-          top: 0;
-          bottom: 0;
-          margin: auto 0;
-          height: 18px;
-          line-height: 18px;
-          background-color: ${color};
-          color: #ffffff;
-          font-size: 10px;
-          font-family: 'JetBrains Mono', ui-sans-serif, system-ui, sans-serif;
-          font-weight: 600;
-          padding: 0 6px;
-          border-radius: 4px;
-          pointer-events: none;
-          opacity: 0.95;
-          z-index: 10;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.4);
-        }
-        .res-glyph-${safeId} {
-          background-color: ${color} !important;
-          border-radius: 50%;
-          width: 8px !important;
-          height: 8px !important;
-          margin-left: 4px;
-          margin-top: 5px;
-          box-shadow: 0 0 6px ${color};
-        }
-      `;
-    })
-    .join('\n');
-
-  styleEl.textContent = rules;
-}
-
 export function useCollaborativeEditor({
   roomId,
   activeFile,
@@ -199,14 +96,11 @@ export function useCollaborativeEditor({
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [isDocumentSynced, setIsDocumentSynced] = useState<boolean>(false);
   const [collaborators, setCollaborators] = useState<CollaboratorPresence[]>([]);
-  const [reservations, setReservations] = useState<EditReservation[]>([]);
-  const [activeConflictReservation, setActiveConflictReservation] = useState<EditReservation | null>(null);
   const [followState, setFollowState] = useState<FollowState | null>(null);
 
   const bindingRef = useRef<MonacoBinding | null>(null);
   const sessionRef = useRef<FileCollaborationSession | null>(null);
   const modelsMapRef = useRef<Map<string, Monaco.editor.ITextModel>>(new Map());
-  const decorationIdsRef = useRef<string[]>([]);
   const lastFollowedLineRef = useRef<number | null>(null);
 
   const onContentChangeRef = useRef(onContentChange);
@@ -294,24 +188,6 @@ export function useCollaborativeEditor({
     session.provider.awareness.on('change', handleAwareness);
     handleAwareness();
 
-    // Synchronize edit reservations from CRDT shared map
-    const updateReservationsFromMap = () => {
-      const now = Date.now();
-      const list: EditReservation[] = [];
-      session.reservationsMap.forEach((res) => {
-        if (res.expiresAt > now && res.filePath === activeFile.path) {
-          list.push(res);
-        }
-      });
-      setReservations(list);
-    };
-
-    updateReservationsFromMap();
-    const handleReservationsObserver = () => {
-      updateReservationsFromMap();
-    };
-    session.reservationsMap.observe(handleReservationsObserver);
-
     // Ensure model reflects current Y.Text before binding to prevent blank flash
     if (session.ytext.length > 0) {
       if (model.getValue() !== session.ytext.toString()) {
@@ -334,156 +210,26 @@ export function useCollaborativeEditor({
     };
     session.ytext.observe(handleYTextObserver);
 
-    // Track local cursor position in awareness and maintain dynamic 10-line reserved workspace section
+    // Track local cursor position in awareness
     const cursorDisposable = editorInstance.onDidChangeCursorPosition((e) => {
-      const currentLine = e.position.lineNumber;
-      const totalLines = editorInstance.getModel()?.getLineCount() || 1;
-
       collaborationClient.updateLocalAwareness(session.provider, user, activeFile.path, {
-        lineNumber: currentLine,
+        lineNumber: e.position.lineNumber,
         column: e.position.column,
       });
-
-      // Feature 1 & 2: Dynamically calculate and reserve a 10-line workspace block centered around user's line
-      const dynWindow = calculateDynamicWindow(currentLine, totalLines);
-      const autoResId = `auto_${user.id}_${activeFile.id}`;
-      const existing = session.reservationsMap.get(autoResId);
-
-      if (
-        !existing ||
-        existing.startLine !== dynWindow.startLine ||
-        existing.endLine !== dynWindow.endLine ||
-        existing.activeLine !== currentLine
-      ) {
-        session.reservationsMap.set(autoResId, {
-          id: autoResId,
-          roomId,
-          fileId: activeFile.id,
-          filePath: activeFile.path,
-          ownerId: user.id,
-          ownerName: user.name,
-          ownerColor: user.color,
-          startLine: dynWindow.startLine,
-          endLine: dynWindow.endLine,
-          activeLine: currentLine,
-          createdAt: existing?.createdAt || Date.now(),
-          expiresAt: Date.now() + 60_000,
-          isAutomatic: true,
-          taskDescription: `Active Workspace (Lines ${dynWindow.startLine}–${dynWindow.endLine})`,
-        });
-      }
-
-      const now = Date.now();
-      const conflict = reservations.find(
-        (r) =>
-          r.filePath === activeFile.path &&
-          r.ownerId !== user.id &&
-          r.expiresAt > now &&
-          currentLine >= r.startLine &&
-          currentLine <= r.endLine
-      );
-      setActiveConflictReservation(conflict || null);
     });
 
     return () => {
-      // Release automatic reservation when switching away from this file
-      const autoResId = `auto_${user.id}_${activeFile.id}`;
-      if (session.reservationsMap.has(autoResId)) {
-        session.reservationsMap.delete(autoResId);
-      }
-
       session.provider.off('status', handleStatus);
       session.provider.off('sync', handleSync);
       session.provider.awareness.off('change', handleAwareness);
       cursorDisposable.dispose();
       session.ytext.unobserve(handleYTextObserver);
-      session.reservationsMap.unobserve(handleReservationsObserver);
       if (bindingRef.current) {
         bindingRef.current.destroy();
         bindingRef.current = null;
       }
     };
   }, [roomId, activeFile?.id, activeFile?.path, activeFile?.language, editorInstance, monacoInstance, user.id]);
-
-  // Render Monaco visual decorations for active reservations (both 10-line window & active line)
-  useEffect(() => {
-    if (!editorInstance || !monacoInstance || !activeFile) return;
-
-    const now = Date.now();
-    const active = reservations.filter(
-      (r) => r.filePath === activeFile.path && r.expiresAt > now
-    );
-
-    const newDecorations: Monaco.editor.IModelDeltaDecoration[] = [];
-
-    active.forEach((r) => {
-      const isMine = r.ownerId === user.id;
-      const safeId = r.id.replace(/[^a-zA-Z0-9_-]/g, '_');
-      const activeLineNum = r.activeLine || r.startLine;
-
-      // 1. 10-line workspace window decoration
-      newDecorations.push({
-        range: new monacoInstance.Range(r.startLine, 1, r.endLine, 1),
-        options: {
-          isWholeLine: true,
-          className: `res-window-${safeId}`,
-          glyphMarginClassName: `res-glyph-${safeId}`,
-          glyphMarginHoverMessage: {
-            value: isMine
-              ? `🔒 **My Reserved 10-Line Workspace** (Lines ${r.startLine}–${r.endLine})\nActive editing Line ${activeLineNum}.`
-              : `🔒 **Reserved by ${r.ownerName}** (Lines ${r.startLine}–${r.endLine})\nCurrently editing Line ${activeLineNum}. Locked to prevent conflicts.`,
-          },
-          hoverMessage: {
-            value: isMine
-              ? `✨ **My Active 10-Line Workspace** (Lines ${r.startLine}–${r.endLine})`
-              : `🔒 **Reserved by ${r.ownerName}** (Lines ${r.startLine}–${r.endLine})\nEditing locked in this section until ${r.ownerName} leaves.`,
-          },
-        },
-      });
-
-      // 2. Exact current active line highlight with real-time presence tag
-      if (activeLineNum >= r.startLine && activeLineNum <= r.endLine) {
-        newDecorations.push({
-          range: new monacoInstance.Range(activeLineNum, 1, activeLineNum, 1),
-          options: {
-            isWholeLine: true,
-            className: `res-active-line-${safeId}`,
-          },
-        });
-      }
-    });
-
-    syncCollaboratorReservationStyles(active, user.id);
-
-    decorationIdsRef.current = editorInstance.deltaDecorations(
-      decorationIdsRef.current,
-      newDecorations
-    );
-  }, [reservations, editorInstance, monacoInstance, activeFile?.path, user.id]);
-
-  // Periodic Lease Auto-Renewal for owned reservations & expired reservation cleanup
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      const session = sessionRef.current;
-      if (!session) return;
-      const now = Date.now();
-
-      session.reservationsMap.forEach((res, key) => {
-        if (res.ownerId === user.id) {
-          // Auto-renew while owner is actively connected
-          session.reservationsMap.set(key, {
-            ...res,
-            expiresAt: now + 60_000,
-          });
-        } else if (res.expiresAt <= now) {
-          // Clean up expired peer lease
-          session.reservationsMap.delete(key);
-        }
-      });
-    }, 20_000);
-
-    return () => window.clearInterval(interval);
-  }, [user.id]);
 
   // Follow Mode: Smoothly scroll and reveal target collaborator's cursor
   useEffect(() => {
@@ -534,38 +280,6 @@ export function useCollaborativeEditor({
     };
   }, []);
 
-  const reserveLines = useCallback(
-    (startLine: number, endLine: number, taskDescription?: string) => {
-      const session = sessionRef.current;
-      if (!session || !activeFile) return;
-
-      const resId = `res_${Math.random().toString(36).substring(2, 9)}`;
-      const newRes: EditReservation = {
-        id: resId,
-        roomId,
-        fileId: activeFile.id,
-        filePath: activeFile.path,
-        ownerId: user.id,
-        ownerName: user.name,
-        ownerColor: user.color,
-        startLine: Math.min(startLine, endLine),
-        endLine: Math.max(startLine, endLine),
-        createdAt: Date.now(),
-        expiresAt: Date.now() + 60_000,
-        taskDescription,
-      };
-
-      session.reservationsMap.set(resId, newRes);
-    },
-    [roomId, activeFile, user]
-  );
-
-  const releaseReservation = useCallback((reservationId: string) => {
-    const session = sessionRef.current;
-    if (!session) return;
-    session.reservationsMap.delete(reservationId);
-  }, []);
-
   const startFollowing = useCallback(
     (targetUserId: string, targetUserName: string, targetUserColor: string, targetFile?: string) => {
       setFollowState({
@@ -612,11 +326,7 @@ export function useCollaborativeEditor({
     connectionStatus,
     isDocumentSynced,
     collaborators,
-    reservations,
-    activeConflictReservation,
     followState,
-    reserveLines,
-    releaseReservation,
     startFollowing,
     stopFollowing,
     reconcileSession,

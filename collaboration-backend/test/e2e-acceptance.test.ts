@@ -94,23 +94,15 @@ async function runEndToEndAcceptanceTest() {
   assert(textA.toString().includes('Alice online line'));
   console.log('   ✓ Reconnection safely merged offline and online edits without data loss.');
 
-  // Step 7: Shared Edit Reservations Map validation
-  console.log('7. Testing Edit Reservations shared map across peers...');
-  const resMapA = docA.getMap('edit_reservations');
-  const resMapB = docB.getMap('edit_reservations');
+  // Step 7: Natural simultaneous concurrent editing across peers without locks
+  console.log('7. Testing natural simultaneous concurrent editing across peers (no locks)...');
+  textA.insert(0, '// Concurrent Header from Alice\n');
+  textB.insert(textB.length, '\n// Concurrent Footer from Bob\n');
 
-  resMapA.set('res_1', {
-    id: 'res_1',
-    startLine: 1,
-    endLine: 5,
-    ownerId: 'usr_A',
-    ownerName: 'Alice',
-    expiresAt: Date.now() + 60000,
-  });
-
-  await waitFor(() => resMapB.has('res_1'), 2000, 'Bob received reservation');
-  assert.strictEqual((resMapB.get('res_1') as any).ownerName, 'Alice');
-  console.log('   ✓ Reservation synchronized to peer with correct ownership metadata.');
+  await waitFor(() => textA.toString() === textB.toString(), 4000, 'Simultaneous edits convergence');
+  assert(textA.toString().startsWith('// Concurrent Header from Alice\n'));
+  assert(textA.toString().endsWith('\n// Concurrent Footer from Bob\n'));
+  console.log('   ✓ Natural simultaneous edits converged seamlessly across both peers without locks.');
 
   // Step 8: Clean teardown
   provA.destroy();

@@ -10,7 +10,6 @@ import {
   LogOut,
   RotateCw,
   Check,
-  Shield,
   Eye,
   Share2,
   AlertCircle,
@@ -35,7 +34,6 @@ interface TopBarProps {
   isExplorerOpen: boolean;
   isRefreshing?: boolean;
   refreshStatus?: 'idle' | 'success' | 'error';
-  activeReservationsCount?: number;
   followState?: FollowState | null;
   onRefreshWorkspace?: () => void;
   onFollowCollaborator?: (userId: string, name: string, color: string, activeFile?: string) => void;
@@ -65,7 +63,6 @@ export const TopBar: React.FC<TopBarProps> = ({
   isExplorerOpen,
   isRefreshing = false,
   refreshStatus = 'idle',
-  activeReservationsCount = 0,
   followState,
   onRefreshWorkspace,
   onFollowCollaborator,
@@ -139,7 +136,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b theme-border theme-bg-glass px-3 backdrop-blur-md select-none z-20 transition-colors">
-      {/* Left: Explorer Toggle, Workspace Switcher, Sync Badge & Reservations Badge */}
+      {/* Left: Explorer Toggle, Workspace Switcher, Sync Badge */}
       <div className="flex items-center gap-2.5">
         <button
           type="button"
@@ -182,17 +179,6 @@ export const TopBar: React.FC<TopBarProps> = ({
           renderConnectionStatus()
         )}
 
-        {/* Edit Reservations Counter Pill */}
-        {activeReservationsCount > 0 && (
-          <div
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-950/40 px-2 py-0.5 text-[11px] font-medium text-teal-300"
-
-            title={`${activeReservationsCount} active code section reservation(s)`}
-          >
-            <Shield className="h-3 w-3 text-teal-400" />
-            <span>{activeReservationsCount} Reserved</span>
-          </div>
-        )}
 
         {/* Active Follow Mode Indicator */}
         {followState && (

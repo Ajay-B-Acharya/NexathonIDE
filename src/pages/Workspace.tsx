@@ -335,11 +335,7 @@ clearFileDraft(room.id, fileId);
     connectionStatus,
     isDocumentSynced,
     collaborators,
-    reservations,
-    activeConflictReservation,
     followState,
-    reserveLines,
-    releaseReservation,
     startFollowing,
     stopFollowing,
     reconcileSession,
@@ -524,7 +520,6 @@ clearFileDraft(room.id, fileId);
         isExplorerOpen={isExplorerOpen}
         isRefreshing={isRefreshing}
         refreshStatus={refreshStatus}
-        activeReservationsCount={reservations.length}
         followState={followState}
         onRefreshWorkspace={() => void handleRefreshWorkspace()}
         onFollowCollaborator={handleFollowCollaborator}
@@ -574,16 +569,12 @@ clearFileDraft(room.id, fileId);
             openFiles={openFiles}
             activeFile={activeFile}
             dirtyFileIds={dirtyFileIds}
-            reservations={reservations}
-            activeConflictReservation={activeConflictReservation}
             followState={followState}
             currentUserId={user.id}
             theme={theme}
             onSelectTab={(file) => handleSelectFile(file)}
             onCloseTab={handleCloseTab}
             onLanguageChange={handleLanguageChange}
-            onReserveSelection={reserveLines}
-            onReleaseReservation={releaseReservation}
             onStopFollowing={stopFollowing}
             onEditorReady={(editor, monaco) => {
               setEditorInstance(editor);

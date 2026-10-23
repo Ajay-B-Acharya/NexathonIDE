@@ -1,6 +1,6 @@
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
-import { EditReservation, UserProfile } from '../types';
+import { UserProfile } from '../types';
 
 import { getYjsWsUrl } from '../config/endpoints';
 
@@ -9,7 +9,6 @@ export interface FileCollaborationSession {
   ydoc: Y.Doc;
   provider: WebsocketProvider;
   ytext: Y.Text;
-  reservationsMap: Y.Map<EditReservation>;
   serverUrl: string;
   destroy: () => void;
 }
@@ -76,14 +75,11 @@ class CollaborationManager {
     provider.on('sync', handleSync);
     this.updateLocalAwareness(provider, user, normalizedPath);
 
-    const reservationsMap = ydoc.getMap<EditReservation>('edit_reservations');
-
     const session: FileCollaborationSession = {
       docKey,
       ydoc,
       provider,
       ytext,
-      reservationsMap,
       serverUrl: wsUrl,
       destroy: () => {
         provider.off('sync', handleSync);

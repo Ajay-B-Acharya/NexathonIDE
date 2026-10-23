@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
 import type * as Monaco from 'monaco-editor';
 import {
@@ -7,28 +7,21 @@ import {
   Command,
   Sparkles,
   ChevronRight,
-  Shield,
-  ShieldAlert,
-  Unlock,
   Eye,
 } from 'lucide-react';
-import { EditReservation, FollowState, SupportedLanguage, WorkspaceFile } from '../types';
+import { FollowState, SupportedLanguage, WorkspaceFile } from '../types';
 import { ThemeMode } from './ThemeToggle';
 
 interface EditorPaneProps {
   openFiles: WorkspaceFile[];
   activeFile: WorkspaceFile | null;
   dirtyFileIds: Set<string>;
-  reservations?: EditReservation[];
-  activeConflictReservation?: EditReservation | null;
   followState?: FollowState | null;
   currentUserId?: string;
   theme?: ThemeMode;
   onSelectTab: (file: WorkspaceFile) => void;
   onCloseTab: (fileId: string, e: React.MouseEvent) => void;
   onLanguageChange: (file: WorkspaceFile, language: SupportedLanguage) => void;
-  onReserveSelection?: (startLine: number, endLine: number) => void;
-  onReleaseReservation?: (reservationId: string) => void;
   onStopFollowing?: () => void;
   onEditorReady: (
     editor: Monaco.editor.IStandaloneCodeEditor,
@@ -50,40 +43,18 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   openFiles,
   activeFile,
   dirtyFileIds,
-  reservations = [],
-  activeConflictReservation = null,
   followState = null,
-  currentUserId = '',
+  currentUserId: _currentUserId = '',
   theme = 'dark',
   onSelectTab,
   onCloseTab,
   onLanguageChange,
-  onReserveSelection,
-  onReleaseReservation,
   onStopFollowing,
   onEditorReady,
 }) => {
-  const [selectedRange, setSelectedRange] = useState<{ startLine: number; endLine: number } | null>(null);
-  const [blockedNotice, setBlockedNotice] = useState<{
-    ownerName: string;
-    ownerColor: string;
-    startLine: number;
-    endLine: number;
-    activeLine: number;
-  } | null>(null);
-
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
-  const reservationsRef = useRef(reservations);
-  reservationsRef.current = reservations;
-  const activeFileRef = useRef(activeFile);
-  activeFileRef.current = activeFile;
-  const blockedNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isDark = theme !== 'light';
-
-  const myReservation = reservations.find(
-    (r) => r.ownerId === currentUserId && r.filePath === activeFile?.path
-  );
 
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -118,75 +89,6 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
     });
 
     monaco.editor.setTheme(isDark ? 'nexathon-obsidian' : 'nexathon-titanium');
-
-    // Track user selection for reserving line sections
-    editor.onDidChangeCursorSelection((e) => {
-      const sel = e.selection;
-      if (sel && sel.startLineNumber && sel.endLineNumber) {
-        setSelectedRange({
-          startLine: Math.min(sel.startLineNumber, sel.endLineNumber),
-          endLine: Math.max(sel.startLineNumber, sel.endLineNumber),
-        });
-      }
-    });
-
-    // Feature 1 & 2 Enforcement: Intercept keystrokes to prevent editing peer-reserved sections
-    editor.onKeyDown((e) => {
-      // Allow pure navigation & view keys
-      const isNav = [
-        monaco.KeyCode.UpArrow,
-        monaco.KeyCode.DownArrow,
-        monaco.KeyCode.LeftArrow,
-        monaco.KeyCode.RightArrow,
-        monaco.KeyCode.PageUp,
-        monaco.KeyCode.PageDown,
-        monaco.KeyCode.Home,
-        monaco.KeyCode.End,
-        monaco.KeyCode.Escape,
-      ].includes(e.keyCode);
-
-      if (isNav) return;
-
-      // Allow clipboard copy (Ctrl+C / Cmd+C)
-      if ((e.ctrlKey || e.metaKey) && e.keyCode === monaco.KeyCode.KeyC) {
-        return;
-      }
-
-      const pos = editor.getPosition();
-      const sel = editor.getSelection();
-      if (!pos) return;
-
-      const startLine = sel ? Math.min(sel.startLineNumber, sel.endLineNumber) : pos.lineNumber;
-      const endLine = sel ? Math.max(sel.startLineNumber, sel.endLineNumber) : pos.lineNumber;
-
-      const now = Date.now();
-      const peerLock = reservationsRef.current.find(
-        (r) =>
-          r.filePath === activeFileRef.current?.path &&
-          r.ownerId !== currentUserId &&
-          r.expiresAt > now &&
-          !(endLine < r.startLine || startLine > r.endLine)
-      );
-
-      if (peerLock) {
-        // Intercept & block modification in peer's reserved section!
-        e.preventDefault();
-        e.stopPropagation();
-
-        setBlockedNotice({
-          ownerName: peerLock.ownerName,
-          ownerColor: peerLock.ownerColor,
-          startLine: peerLock.startLine,
-          endLine: peerLock.endLine,
-          activeLine: peerLock.activeLine || peerLock.startLine,
-        });
-
-        if (blockedNoticeTimerRef.current) clearTimeout(blockedNoticeTimerRef.current);
-        blockedNoticeTimerRef.current = setTimeout(() => {
-          setBlockedNotice(null);
-        }, 3000);
-      }
-    });
 
     onEditorReady(editor, monaco);
   };
@@ -297,29 +199,6 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
 
         {/* File Path Breadcrumb & Actions */}
         <div className="flex items-center gap-2.5">
-          {/* Reservation Controls */}
-          {myReservation ? (
-            <button
-              type="button"
-              onClick={() => onReleaseReservation?.(myReservation.id)}
-              title="Click to release your edit reservation on this section"
-              className="inline-flex items-center gap-1.5 rounded-md border border-teal-500/40 bg-teal-950/50 px-2 py-0.5 text-[11px] font-medium text-teal-200 hover:bg-teal-900/60 transition cursor-pointer"
-            >
-              <Unlock className="h-3 w-3 text-teal-400" />
-              <span>Release Lines {myReservation.startLine}–{myReservation.endLine}</span>
-            </button>
-          ) : selectedRange && selectedRange.endLine >= selectedRange.startLine ? (
-            <button
-              type="button"
-              onClick={() => onReserveSelection?.(selectedRange.startLine, selectedRange.endLine)}
-              title={`Reserve lines ${selectedRange.startLine}–${selectedRange.endLine} for focused editing`}
-              className="inline-flex items-center gap-1 rounded-md border theme-border theme-bg-surface-2 px-2 py-0.5 text-[11px] font-medium theme-text-secondary hover:border-teal-500/40 hover:text-teal-400 transition cursor-pointer"
-            >
-              <Shield className="h-3 w-3 text-teal-400" />
-              <span>Reserve Lines {selectedRange.startLine}–{selectedRange.endLine}</span>
-            </button>
-          ) : null}
-
           <div className="hidden lg:flex items-center gap-1 text-[11px] font-mono theme-text-secondary truncate max-w-[200px]">
             {activeFile.path.split('/').map((segment, idx, arr) => (
               <React.Fragment key={`${segment}-${idx}`}>
@@ -349,74 +228,6 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
           </select>
         </div>
       </div>
-
-      {/* Blocked Edit Alert Banner (Features 1 & 2) */}
-      {blockedNotice && (
-        <div
-          className="flex items-center justify-between border-b px-3 py-1.5 text-xs animate-fadeIn font-medium text-white shadow-md"
-          style={{
-            backgroundColor: `${blockedNotice.ownerColor}22`,
-            borderColor: blockedNotice.ownerColor,
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <ShieldAlert
-              className="h-4 w-4 shrink-0 animate-bounce"
-              style={{ color: blockedNotice.ownerColor }}
-            />
-            <span>
-              <strong>Line Locked:</strong> Lines {blockedNotice.startLine}–{blockedNotice.endLine}{' '}
-              (active: line {blockedNotice.activeLine}) are currently reserved by{' '}
-              <span
-                className="px-1.5 py-0.5 rounded text-[11px] font-bold text-white shadow-sm inline-block"
-                style={{ backgroundColor: blockedNotice.ownerColor }}
-              >
-                {blockedNotice.ownerName}
-              </span>
-              . Keystrokes are locked to prevent conflicts until they move to another line or workspace section.
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setBlockedNotice(null)}
-            className="text-xs opacity-75 hover:opacity-100 px-1 cursor-pointer"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Advisory / Active Reservation Notice */}
-      {!blockedNotice && activeConflictReservation && (
-        <div
-          className="flex items-center justify-between border-b px-3 py-1.5 text-xs animate-fadeIn text-white/90"
-          style={{
-            backgroundColor: `${activeConflictReservation.ownerColor}18`,
-            borderColor: `${activeConflictReservation.ownerColor}55`,
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <ShieldAlert
-              className="h-4 w-4 shrink-0"
-              style={{ color: activeConflictReservation.ownerColor }}
-            />
-            <span>
-              <strong>Reserved Workspace:</strong> Lines{' '}
-              {activeConflictReservation.startLine}–{activeConflictReservation.endLine} are
-              reserved by{' '}
-              <span
-                className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-white inline-flex items-center gap-1 shadow-sm"
-                style={{ backgroundColor: activeConflictReservation.ownerColor }}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-white inline-block animate-ping" />
-                {activeConflictReservation.ownerName}
-              </span>
-              {activeConflictReservation.taskDescription ? ` (${activeConflictReservation.taskDescription})` : ''}
-              . This 10-line workspace window is locked to prevent collisions.
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Follow Mode Status Banner */}
       {followState && (
