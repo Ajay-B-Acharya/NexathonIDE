@@ -5,7 +5,7 @@ import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import Groq from 'groq-sdk';
 import { supabaseAdmin } from './supabase.js';
-import { WorkspaceService, getLanguageFromPath } from './services/workspaceService.js';
+import { WorkspaceService, getLanguageFromPath, isValidUUID } from './services/workspaceService.js';
 import type { AIDebugRequest, AIDebugResponse } from './types.js';
 import { createTerminalRouter, setupTerminalServer } from './terminal/terminalServer.js';
 import { sessionManager } from './terminal/sessionManager.js';
@@ -250,10 +250,13 @@ app.get('/api/rooms/:id', async (req: Request, res: Response) => {
     const token = getBearerToken(req);
     const id = String(req.params.id);
 
-    if (supabaseConnected) {
-      const room = await WorkspaceService.getRoom(id, token);
-      if (!room) return res.status(404).json({ error: 'Room not found' });
-      return res.json(room);
+    if (supabaseConnected && isValidUUID(id)) {
+      try {
+        const room = await WorkspaceService.getRoom(id, token);
+        if (room) return res.json(room);
+      } catch (dbErr: any) {
+        console.warn('Notice: Could not load room from DB, checking memory store:', dbErr?.message);
+      }
     }
 
     let room = memoryRooms.get(id);
@@ -274,9 +277,15 @@ const handleListFiles = async (req: Request, res: Response) => {
     const token = getBearerToken(req);
     const id = String(req.params.id || req.params.roomId);
 
-    if (supabaseConnected) {
-      const files = await WorkspaceService.listFiles(id, token);
-      return res.json(files);
+    if (supabaseConnected && isValidUUID(id)) {
+      try {
+        const files = await WorkspaceService.listFiles(id, token);
+        if (files && files.length > 0) {
+          return res.json(files);
+        }
+      } catch (dbErr: any) {
+        console.warn('Notice: Could not list files from DB, checking memory store:', dbErr?.message);
+      }
     }
 
     let files = Array.from(memoryFiles.values()).filter((f) => f.room_id === id || f.roomId === id);
@@ -310,10 +319,13 @@ const handleGetFile = async (req: Request, res: Response) => {
     const roomId = String(req.params.roomId);
     const filePath = String(req.params.filePath);
 
-    if (supabaseConnected) {
-      const file = await WorkspaceService.loadFile(roomId, filePath, token);
-      if (!file) return res.status(404).json({ error: 'File not found' });
-      return res.json(file);
+    if (supabaseConnected && isValidUUID(roomId)) {
+      try {
+        const file = await WorkspaceService.loadFile(roomId, filePath, token);
+        if (file) return res.json(file);
+      } catch (err: any) {
+        console.warn('Notice: Could not load file from DB, checking memory:', err?.message);
+      }
     }
 
     let file = memoryFiles.get(`${roomId}:${filePath}`);
@@ -353,16 +365,23 @@ const handleCreateFile = async (req: Request, res: Response) => {
     const filePath = String(rawPath);
     const determinedLang = language || getLanguageFromPath(filePath);
 
-    if (supabaseConnected) {
-      const savedFile = await WorkspaceService.saveFile({
-        roomId,
-        path: filePath,
-        content,
-        language: determinedLang,
-        expectedVersion,
-        userToken: token,
-      });
-      return res.status(201).json(savedFile);
+    if (supabaseConnected && isValidUUID(roomId)) {
+      try {
+        const savedFile = await WorkspaceService.saveFile({
+          roomId,
+          path: filePath,
+          content,
+          language: determinedLang,
+          expectedVersion,
+          userToken: token,
+        });
+        return res.status(201).json(savedFile);
+      } catch (dbErr: any) {
+        if (dbErr?.message?.includes('CONFLICT')) {
+          return res.status(409).json({ error: dbErr.message });
+        }
+        console.warn('Notice: Database save error, falling back to memory store:', dbErr?.message);
+      }
     }
 
     const key = `${roomId}:${filePath}`;
@@ -374,7 +393,7 @@ const handleCreateFile = async (req: Request, res: Response) => {
       path: filePath,
       content,
       language: determinedLang,
-      version: 1,
+      version: (existing?.version || 0) + 1,
       updated_at: new Date().toISOString(),
     };
     memoryFiles.set(key, file);
@@ -396,10 +415,13 @@ const handleUpdateFile = async (req: Request, res: Response) => {
     const fileIdentifier = String(req.params.filePath);
     const { content, path, language } = req.body;
 
-    if (supabaseConnected) {
-      const updated = await WorkspaceService.updateFileContent(roomId, fileIdentifier, content, path, language, token);
-      if (!updated) return res.status(404).json({ error: 'File not found' });
-      return res.json(updated);
+    if (supabaseConnected && isValidUUID(roomId)) {
+      try {
+        const updated = await WorkspaceService.updateFileContent(roomId, fileIdentifier, content, path, language, token);
+        if (updated) return res.json(updated);
+      } catch (err: any) {
+        console.warn('Notice: Could not update file in DB, checking memory:', err?.message);
+      }
     }
 
     let file = memoryFiles.get(`${roomId}:${fileIdentifier}`);
@@ -436,9 +458,13 @@ const handleDeleteFile = async (req: Request, res: Response) => {
     const roomId = String(req.params.roomId);
     const fileIdentifier = String(req.params.filePath);
 
-    if (supabaseConnected) {
-      await WorkspaceService.deleteFile(roomId, fileIdentifier, token);
-      return res.status(204).send();
+    if (supabaseConnected && isValidUUID(roomId)) {
+      try {
+        await WorkspaceService.deleteFile(roomId, fileIdentifier, token);
+        return res.status(204).send();
+      } catch (err: any) {
+        console.warn('Notice: Could not delete file from DB:', err?.message);
+      }
     }
 
     memoryFiles.delete(`${roomId}:${fileIdentifier}`);

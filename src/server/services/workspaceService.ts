@@ -58,6 +58,9 @@ export function formatFile(file: any) {
   };
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isValidUUID = (val: string) => UUID_REGEX.test(String(val || '').trim().replace(/^#/, ''));
+
 export class WorkspaceService {
   /**
    * Create or fetch user profile
@@ -97,7 +100,7 @@ export class WorkspaceService {
   /**
    * Create a new workspace / room
    */
-    static async createWorkspace({ name, ownerId, userId }: CreateWorkspaceDTO) {
+  static async createWorkspace({ name, ownerId, userId }: CreateWorkspaceDTO) {
     const effectiveOwnerId = ownerId || userId || 'default';
     if (!name || name.trim().length === 0) {
       throw new Error('Workspace name is required');
@@ -184,23 +187,22 @@ export class WorkspaceService {
     return (data || []).map(formatRoom);
   }
 
-
   /**
    * Get room by ID
    */
   static async getRoom(id: string, userToken?: string) {
-    const client = createScopedClient(userToken);
     const cleanId = id.trim().replace(/^#/, '');
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
-
-    let query = client.from('rooms').select('*');
-    if (isUUID) {
-      query = query.eq('id', cleanId);
-    } else {
-      query = query.ilike('id', `${cleanId}%`);
+    if (!isValidUUID(cleanId)) {
+      return null;
     }
 
-    const { data, error } = await query.maybeSingle();
+    const client = createScopedClient(userToken);
+    const { data, error } = await client
+      .from('rooms')
+      .select('*')
+      .eq('id', cleanId)
+      .maybeSingle();
+
     if (error || !data) return null;
     return formatRoom(data);
   }
@@ -209,6 +211,10 @@ export class WorkspaceService {
    * List files in a workspace
    */
   static async listFiles(roomId: string, userToken?: string) {
+    if (!isValidUUID(roomId)) {
+      return [];
+    }
+
     const client = createScopedClient(userToken);
     const { data, error } = await client
       .from('workspace_files')
@@ -224,11 +230,15 @@ export class WorkspaceService {
    * Load single file by id or path
    */
   static async loadFile(roomId: string, fileIdentifier: string, userToken?: string) {
+    if (!isValidUUID(roomId)) {
+      return null;
+    }
+
     const client = createScopedClient(userToken);
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fileIdentifier);
+    const isFileUUID = isValidUUID(fileIdentifier);
 
     let query = client.from('workspace_files').select('*').eq('room_id', roomId);
-    if (isUUID) {
+    if (isFileUUID) {
       query = query.or(`id.eq.${fileIdentifier},path.eq.${fileIdentifier}`);
     } else {
       query = query.eq('path', fileIdentifier);
@@ -243,6 +253,10 @@ export class WorkspaceService {
    * Save or upsert a file with Optimistic Concurrency Control (OCC)
    */
   static async saveFile({ roomId, path, content, language, expectedVersion, userToken }: SaveFileDTO) {
+    if (!isValidUUID(roomId)) {
+      throw new Error(`Cannot save file to database: roomId "${roomId}" is not a valid UUID`);
+    }
+
     const client = createScopedClient(userToken);
     const fileLanguage = language || getLanguageFromPath(path);
 
@@ -299,8 +313,12 @@ export class WorkspaceService {
     language?: string,
     userToken?: string
   ) {
+    if (!isValidUUID(roomId)) {
+      return null;
+    }
+
     const client = createScopedClient(userToken);
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fileIdentifier);
+    const isFileUUID = isValidUUID(fileIdentifier);
 
     const updatePayload: Record<string, any> = {
       updated_at: new Date().toISOString(),
@@ -310,7 +328,7 @@ export class WorkspaceService {
     if (language !== undefined) updatePayload.language = language;
 
     let query = client.from('workspace_files').update(updatePayload).eq('room_id', roomId);
-    if (isUUID) {
+    if (isFileUUID) {
       query = query.or(`id.eq.${fileIdentifier},path.eq.${fileIdentifier}`);
     } else {
       query = query.eq('path', fileIdentifier);
@@ -325,11 +343,15 @@ export class WorkspaceService {
    * Delete file by id or path
    */
   static async deleteFile(roomId: string, fileIdentifier: string, userToken?: string) {
+    if (!isValidUUID(roomId)) {
+      return true;
+    }
+
     const client = createScopedClient(userToken);
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fileIdentifier);
+    const isFileUUID = isValidUUID(fileIdentifier);
 
     let query = client.from('workspace_files').delete().eq('room_id', roomId);
-    if (isUUID) {
+    if (isFileUUID) {
       query = query.or(`id.eq.${fileIdentifier},path.eq.${fileIdentifier}`);
     } else {
       query = query.eq('path', fileIdentifier);
