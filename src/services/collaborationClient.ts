@@ -25,7 +25,8 @@ class CollaborationManager {
     user: UserProfile,
     initialContent: string,
     onStatusChange?: (status: ConnectionStatus) => void,
-    onCollaboratorsChange?: (collaborators: CollaboratorPresence[]) => void
+    onCollaboratorsChange?: (collaborators: CollaboratorPresence[]) => void,
+    onSyncChange?: (isSynced: boolean) => void
   ): FileCollaborationSession {
     const normalizedPath = filePath.replace(/^\/+/, '');
     const docKey = `${roomId}:${normalizedPath}`;
@@ -33,6 +34,9 @@ class CollaborationManager {
     const existing = this.sessions.get(docKey);
     if (existing) {
       this.updateLocalAwareness(existing.provider, user, normalizedPath);
+      if (onSyncChange) {
+        onSyncChange(existing.provider.synced);
+      }
       return existing;
     }
 
@@ -50,6 +54,9 @@ class CollaborationManager {
             ytext.insert(0, initialContent);
           }
         });
+      }
+      if (onSyncChange) {
+        onSyncChange(isSynced);
       }
     };
 
