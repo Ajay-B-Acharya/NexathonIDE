@@ -6,13 +6,14 @@
   "scripts": {
     "dev": "vite",
     "dev:all": "tsx src/server/index.ts",
-    "server:yjs": "tsx src/server/yjs-server.ts",
+    "dev:collab": "tsx collaboration-backend/server.ts",
+    "server:yjs": "tsx collaboration-backend/server.ts",
     "server:api": "tsx src/server/api-server.ts",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
     "db:init": "tsx src/server/init-db.ts",
-    "test:collab": "tsx test/collaboration.test.ts"
+    "test:collab": "tsx collaboration-backend/test/collaboration.test.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

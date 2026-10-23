@@ -14,7 +14,7 @@ const nodeBin = process.execPath;
 const localTsx = path.resolve(projectRoot, 'node_modules/tsx/dist/cli.mjs');
 const localVite = path.resolve(projectRoot, 'node_modules/vite/bin/vite.js');
 
-const yjsScript = path.resolve(__dirname, 'yjs-server.ts');
+const yjsScript = path.resolve(projectRoot, 'collaboration-backend/server.ts');
 const apiScript = path.resolve(__dirname, 'api-server.ts');
 
 function spawnProcess(
