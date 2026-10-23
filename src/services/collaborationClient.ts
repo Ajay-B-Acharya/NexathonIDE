@@ -1,6 +1,6 @@
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
-import { CollaboratorPresence, ConnectionStatus, UserProfile } from '../types';
+import { CollaboratorPresence, ConnectionStatus, EditReservation, UserProfile } from '../types';
 
 const YJS_WS_URL = (import.meta.env.VITE_YJS_WS_URL as string) || 'ws://localhost:1234';
 
@@ -9,6 +9,7 @@ export interface FileCollaborationSession {
   ydoc: Y.Doc;
   provider: WebsocketProvider;
   ytext: Y.Text;
+  reservationsMap: Y.Map<EditReservation>;
   destroy: () => void;
 }
 
@@ -95,11 +96,14 @@ class CollaborationManager {
     provider.awareness.on('change', handleAwarenessUpdate);
     handleAwarenessUpdate();
 
+    const reservationsMap = ydoc.getMap<EditReservation>('edit_reservations');
+
     const session: FileCollaborationSession = {
       docKey,
       ydoc,
       provider,
       ytext,
+      reservationsMap,
       destroy: () => {
         provider.awareness.off('change', handleAwarenessUpdate);
         provider.off('sync', handleSync);
@@ -112,6 +116,22 @@ class CollaborationManager {
 
     this.sessions.set(docKey, session);
     return session;
+  }
+
+  public getSession(roomId: string, filePath: string): FileCollaborationSession | undefined {
+    const normalizedPath = filePath.replace(/^\/+/, '');
+    const docKey = `${roomId}:${normalizedPath}`;
+    return this.sessions.get(docKey);
+  }
+
+  public reconnectSession(roomId: string, filePath: string): boolean {
+    const session = this.getSession(roomId, filePath);
+    if (!session) return false;
+    if (!session.provider.wsconnected) {
+      session.provider.connect();
+      return true;
+    }
+    return false;
   }
 
   public updateLocalAwareness(

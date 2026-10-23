@@ -9,8 +9,12 @@ import {
   FolderGit2,
   LogOut,
   ChevronRight,
+  RotateCw,
+  Check,
+  Shield,
+  Eye,
 } from 'lucide-react';
-import { CollaboratorPresence, ConnectionStatus, UserProfile } from '../types';
+import { CollaboratorPresence, ConnectionStatus, FollowState, UserProfile } from '../types';
 import { Collaborators } from './Collaborators';
 
 interface TopBarProps {
@@ -24,6 +28,13 @@ interface TopBarProps {
   isSaving: boolean;
   hasUnsavedChanges: boolean;
   isExplorerOpen: boolean;
+  isRefreshing?: boolean;
+  refreshStatus?: 'idle' | 'success' | 'error';
+  activeReservationsCount?: number;
+  followState?: FollowState | null;
+  onRefreshWorkspace?: () => void;
+  onFollowCollaborator?: (userId: string, name: string, color: string) => void;
+  onStopFollowing?: () => void;
   onToggleExplorer: () => void;
   onRunCode: () => void;
   onSaveFile: () => void;
@@ -43,6 +54,13 @@ export const TopBar: React.FC<TopBarProps> = ({
   isSaving,
   hasUnsavedChanges,
   isExplorerOpen,
+  isRefreshing = false,
+  refreshStatus = 'idle',
+  activeReservationsCount = 0,
+  followState,
+  onRefreshWorkspace,
+  onFollowCollaborator,
+  onStopFollowing,
   onToggleExplorer,
   onRunCode,
   onSaveFile,
@@ -103,7 +121,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 bg-[#090a0f]/85 px-3 backdrop-blur-md select-none z-20">
-      {/* Left: Explorer Toggle, Workspace Switcher & Radar Sync Badge */}
+      {/* Left: Explorer Toggle, Workspace Switcher, Sync Badge & Reservations Badge */}
       <div className="flex items-center gap-2.5">
         <button
           type="button"
@@ -138,10 +156,69 @@ export const TopBar: React.FC<TopBarProps> = ({
         </button>
 
         {renderSyncRadarBadge()}
+
+        {/* Edit Reservations Counter Pill */}
+        {activeReservationsCount > 0 && (
+          <div
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-950/40 px-2 py-0.5 text-[11px] font-medium text-indigo-300"
+            title={`${activeReservationsCount} active code section reservation(s)`}
+          >
+            <Shield className="h-3 w-3 text-indigo-400" />
+            <span>{activeReservationsCount} Reserved</span>
+          </div>
+        )}
+
+        {/* Follow Mode Indicator Pill */}
+        {followState && (
+          <div
+            className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/40 bg-cyan-950/40 px-2.5 py-0.5 text-[11px] font-medium text-cyan-300 animate-pulse"
+            title={`Following ${followState.targetUserName}`}
+          >
+            <Eye className="h-3 w-3 text-cyan-400" />
+            <span>Following {followState.targetUserName}</span>
+            <button
+              type="button"
+              onClick={onStopFollowing}
+              className="ml-1 text-cyan-400 hover:text-white underline text-[10px] cursor-pointer"
+            >
+              Stop
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Center: Command Bar Primary Actions */}
       <div className="flex items-center gap-2">
+        {/* Safe Targeted Refresh Button */}
+        <button
+          type="button"
+          onClick={onRefreshWorkspace}
+          disabled={isRefreshing}
+          title="Refresh Workspace Files & Reconcile Sync (Safe targeted refresh)"
+          className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition cursor-pointer disabled:opacity-50 ${
+            refreshStatus === 'success'
+              ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+              : refreshStatus === 'error'
+              ? 'border-rose-500/40 bg-rose-950/40 text-rose-300'
+              : 'border-white/10 bg-[#141824] text-slate-300 hover:border-white/20 hover:bg-[#1c2234] hover:text-white'
+          }`}
+        >
+          {isRefreshing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />
+          ) : refreshStatus === 'success' ? (
+            <Check className="h-3.5 w-3.5 text-emerald-400" />
+          ) : (
+            <RotateCw className="h-3.5 w-3.5 text-indigo-400" />
+          )}
+          <span>
+            {isRefreshing
+              ? 'Refreshing...'
+              : refreshStatus === 'success'
+              ? 'Refreshed'
+              : 'Refresh'}
+          </span>
+        </button>
+
         {/* Save Action Button */}
         <button
           type="button"
@@ -198,9 +275,15 @@ export const TopBar: React.FC<TopBarProps> = ({
         </button>
       </div>
 
-      {/* Right: Live Collaborator Avatars & Logout */}
+      {/* Right: Live Collaborator Avatars with Click-to-Follow & Logout */}
       <div className="flex items-center gap-3">
-        <Collaborators collaborators={collaborators} currentUserId={user.id} />
+        <Collaborators
+          collaborators={collaborators}
+          currentUserId={user.id}
+          followState={followState}
+          onFollowCollaborator={onFollowCollaborator}
+          onStopFollowing={onStopFollowing}
+        />
         <div className="h-5 w-px bg-white/10" />
         <button
           type="button"

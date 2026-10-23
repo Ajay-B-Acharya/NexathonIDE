@@ -1,16 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
 import type * as Monaco from 'monaco-editor';
-import { Code2, X, Command, Sparkles, ChevronRight } from 'lucide-react';
-import { SupportedLanguage, WorkspaceFile } from '../types';
+import {
+  Code2,
+  X,
+  Command,
+  Sparkles,
+  ChevronRight,
+  Shield,
+  ShieldAlert,
+  Unlock,
+  Eye,
+} from 'lucide-react';
+import { EditReservation, FollowState, SupportedLanguage, WorkspaceFile } from '../types';
 
 interface EditorPaneProps {
   openFiles: WorkspaceFile[];
   activeFile: WorkspaceFile | null;
   dirtyFileIds: Set<string>;
+  reservations?: EditReservation[];
+  activeConflictReservation?: EditReservation | null;
+  followState?: FollowState | null;
+  currentUserId?: string;
   onSelectTab: (file: WorkspaceFile) => void;
   onCloseTab: (fileId: string, e: React.MouseEvent) => void;
   onLanguageChange: (file: WorkspaceFile, language: SupportedLanguage) => void;
+  onReserveSelection?: (startLine: number, endLine: number) => void;
+  onReleaseReservation?: (reservationId: string) => void;
+  onStopFollowing?: () => void;
   onEditorReady: (
     editor: Monaco.editor.IStandaloneCodeEditor,
     monaco: typeof Monaco
@@ -31,12 +48,27 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   openFiles,
   activeFile,
   dirtyFileIds,
+  reservations = [],
+  activeConflictReservation = null,
+  followState = null,
+  currentUserId = '',
   onSelectTab,
   onCloseTab,
   onLanguageChange,
+  onReserveSelection,
+  onReleaseReservation,
+  onStopFollowing,
   onEditorReady,
 }) => {
+  const [selectedRange, setSelectedRange] = useState<{ startLine: number; endLine: number } | null>(null);
+  const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+
+  const myReservation = reservations.find(
+    (r) => r.ownerId === currentUserId && r.filePath === activeFile?.path
+  );
+
   const handleEditorMount: OnMount = (editor, monaco) => {
+    editorRef.current = editor;
     monaco.editor.defineTheme('nexathon-obsidian', {
       base: 'vs-dark',
       inherit: true,
@@ -52,6 +84,18 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
       },
     });
     monaco.editor.setTheme('nexathon-obsidian');
+
+    // Track user selection for reserving line sections
+    editor.onDidChangeCursorSelection((e) => {
+      const sel = e.selection;
+      if (sel && sel.startLineNumber && sel.endLineNumber) {
+        setSelectedRange({
+          startLine: Math.min(sel.startLineNumber, sel.endLineNumber),
+          endLine: Math.max(sel.startLineNumber, sel.endLineNumber),
+        });
+      }
+    });
+
     onEditorReady(editor, monaco);
   };
 
@@ -152,9 +196,32 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
           })}
         </div>
 
-        {/* File Path Breadcrumb & Language Selector */}
-        <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-1 text-[11px] font-mono text-slate-400 truncate max-w-[240px]">
+        {/* File Path Breadcrumb & Actions */}
+        <div className="flex items-center gap-2.5">
+          {/* Reservation Controls */}
+          {myReservation ? (
+            <button
+              type="button"
+              onClick={() => onReleaseReservation?.(myReservation.id)}
+              title="Click to release your edit reservation on this section"
+              className="inline-flex items-center gap-1.5 rounded-md border border-indigo-500/40 bg-indigo-950/50 px-2 py-0.5 text-[11px] font-medium text-indigo-200 hover:bg-indigo-900/60 transition cursor-pointer"
+            >
+              <Unlock className="h-3 w-3 text-indigo-400" />
+              <span>Release Lines {myReservation.startLine}–{myReservation.endLine}</span>
+            </button>
+          ) : selectedRange && selectedRange.endLine >= selectedRange.startLine ? (
+            <button
+              type="button"
+              onClick={() => onReserveSelection?.(selectedRange.startLine, selectedRange.endLine)}
+              title={`Reserve lines ${selectedRange.startLine}–${selectedRange.endLine} for focused editing`}
+              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-[#141824] px-2 py-0.5 text-[11px] font-medium text-slate-300 hover:border-indigo-500/40 hover:text-indigo-200 transition cursor-pointer"
+            >
+              <Shield className="h-3 w-3 text-indigo-400" />
+              <span>Reserve Lines {selectedRange.startLine}–{selectedRange.endLine}</span>
+            </button>
+          ) : null}
+
+          <div className="hidden lg:flex items-center gap-1 text-[11px] font-mono text-slate-400 truncate max-w-[180px]">
             {activeFile.path.split('/').map((segment, idx, arr) => (
               <React.Fragment key={`${segment}-${idx}`}>
                 <span className={idx === arr.length - 1 ? 'text-slate-200' : ''}>
@@ -173,7 +240,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
               onLanguageChange(activeFile, e.target.value as SupportedLanguage)
             }
             aria-label="Syntax Highlighting Language"
-            className="rounded-md border border-white/10 bg-[#141824] px-2.5 py-0.5 text-xs font-medium text-slate-200 focus:border-indigo-500 focus:outline-none cursor-pointer"
+            className="rounded-md border border-white/10 bg-[#141824] px-2 py-0.5 text-xs font-medium text-slate-200 focus:border-indigo-500 focus:outline-none cursor-pointer"
           >
             {LANGUAGES.map((lang) => (
               <option key={lang.value} value={lang.value} className="bg-[#0f121d]">
@@ -183,6 +250,42 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
           </select>
         </div>
       </div>
+
+      {/* Advisory Conflict Banner */}
+      {activeConflictReservation && (
+        <div className="flex items-center justify-between border-b border-amber-500/30 bg-amber-950/60 px-3 py-1.5 text-xs text-amber-200 animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4 text-amber-400 shrink-0" />
+            <span>
+              <strong>Reserved Section Notice:</strong> Lines{' '}
+              {activeConflictReservation.startLine}–{activeConflictReservation.endLine} are
+              currently reserved by <strong>{activeConflictReservation.ownerName}</strong>
+              {activeConflictReservation.taskDescription ? ` (${activeConflictReservation.taskDescription})` : ''}.
+              Please coordinate before editing this section.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Follow Mode Status Banner */}
+      {followState && (
+        <div className="flex items-center justify-between border-b border-cyan-500/40 bg-cyan-950/60 px-3 py-1 text-xs text-cyan-200 animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <Eye className="h-3.5 w-3.5 text-cyan-400 animate-pulse" />
+            <span>
+              Pair Programming Active: Following <strong>{followState.targetUserName}</strong>.
+              Your editor viewport automatically tracks their cursor.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onStopFollowing}
+            className="rounded border border-cyan-500/40 bg-cyan-900/60 hover:bg-cyan-800 px-2.5 py-0.5 text-[11px] font-semibold text-white transition cursor-pointer"
+          >
+            Stop Following (Esc)
+          </button>
+        </div>
+      )}
 
       {/* Monaco Editor Container */}
       <div className="relative flex-1 overflow-hidden">
@@ -203,6 +306,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
             cursorSmoothCaretAnimation: 'on',
             padding: { top: 12 },
             renderLineHighlight: 'all',
+            glyphMargin: true,
           }}
         />
       </div>

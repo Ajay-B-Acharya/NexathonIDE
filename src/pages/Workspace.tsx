@@ -173,15 +173,67 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     [dbContentSnapshot, persistFileToDatabase]
   );
 
-  const { connectionStatus, isDocumentSynced, collaborators, applyContentToSharedDoc } =
-    useCollaborativeEditor({
-      roomId: room.id,
-      activeFile,
-      user,
-      editorInstance,
-      monacoInstance,
-      onContentChange: handleCollaborativeContentChange,
-    });
+  const {
+    connectionStatus,
+    isDocumentSynced,
+    collaborators,
+    reservations,
+    activeConflictReservation,
+    followState,
+    reserveLines,
+    releaseReservation,
+    startFollowing,
+    stopFollowing,
+    reconcileSession,
+    applyContentToSharedDoc,
+  } = useCollaborativeEditor({
+    roomId: room.id,
+    activeFile,
+    user,
+    editorInstance,
+    monacoInstance,
+    onContentChange: handleCollaborativeContentChange,
+  });
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshStatus, setRefreshStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  const handleRefreshWorkspace = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    setRefreshStatus('idle');
+
+    try {
+      // 1. Refresh file metadata from API without discarding local dirty edits
+      const latestFiles = await workspaceApi.listFiles(room.id);
+      setFiles((currentFiles) => {
+        const dirtyMap = new Map<string, string>();
+        currentFiles.forEach((f) => {
+          if (dirtyFileIds.has(f.id)) {
+            dirtyMap.set(f.id, f.content);
+          }
+        });
+
+        // Merge latest metadata with preserved dirty edits
+        return latestFiles.map((f) => ({
+          ...f,
+          content: dirtyMap.has(f.id) ? dirtyMap.get(f.id)! : f.content,
+        }));
+      });
+
+      // 2. Reconcile Yjs session and provider connection
+      reconcileSession();
+
+      setRefreshStatus('success');
+      setTimeout(() => setRefreshStatus('idle'), 2500);
+    } catch (err) {
+      console.error('Workspace refresh notice:', err);
+      setRefreshStatus('error');
+      setTimeout(() => setRefreshStatus('idle'), 3000);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [room.id, isRefreshing, dirtyFileIds, reconcileSession]);
 
   const handleExplicitSave = useCallback(() => {
     if (!activeFile) return;
@@ -296,6 +348,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         isSaving={isSaving}
         hasUnsavedChanges={dirtyFileIds.size > 0}
         isExplorerOpen={isExplorerOpen}
+        isRefreshing={isRefreshing}
+        refreshStatus={refreshStatus}
+        activeReservationsCount={reservations.length}
+        followState={followState}
+        onRefreshWorkspace={() => void handleRefreshWorkspace()}
+        onFollowCollaborator={startFollowing}
+        onStopFollowing={stopFollowing}
         onToggleExplorer={() => setIsExplorerOpen((prev) => !prev)}
         onRunCode={() => void handleRunCode()}
         onSaveFile={handleExplicitSave}
@@ -340,9 +399,16 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             openFiles={openFiles}
             activeFile={activeFile}
             dirtyFileIds={dirtyFileIds}
+            reservations={reservations}
+            activeConflictReservation={activeConflictReservation}
+            followState={followState}
+            currentUserId={user.id}
             onSelectTab={(file) => setActiveFileId(file.id)}
             onCloseTab={handleCloseTab}
             onLanguageChange={handleLanguageChange}
+            onReserveSelection={reserveLines}
+            onReleaseReservation={releaseReservation}
+            onStopFollowing={stopFollowing}
             onEditorReady={(editor, monaco) => {
               setEditorInstance(editor);
               setMonacoInstance(monaco);
