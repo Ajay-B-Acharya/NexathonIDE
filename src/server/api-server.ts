@@ -163,27 +163,68 @@ const handleListRooms = async (req: Request, res: Response) => {
 app.get('/api/rooms', handleListRooms);
 app.get('/rooms', handleListRooms);
 
-app.post('/api/rooms', async (req: Request, res: Response) => {
+const handleCreateRoom = async (req: Request, res: Response) => {
   try {
-    const { name, ownerId, userId } = req.body;
-    const effectiveOwnerId = ownerId || userId;
-    if (!name || !effectiveOwnerId) {
-      return res.status(400).json({ error: 'Name and ownerId are required' });
+    const { name, ownerId, userId, description } = req.body;
+    const effectiveOwnerId = ownerId || userId || 'default';
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Name is required' });
     }
 
     if (supabaseConnected) {
-      const room = await WorkspaceService.createWorkspace({ name, ownerId: effectiveOwnerId });
-      return res.status(201).json(room);
+      try {
+        const room = await WorkspaceService.createWorkspace({
+          name: name.trim(),
+          ownerId: effectiveOwnerId,
+        });
+        if (description && room) {
+          room.description = description;
+        }
+        return res.status(201).json(room);
+      } catch (dbError: any) {
+        console.warn('⚠️ Supabase createWorkspace error, falling back to resilient in-memory workspace:', dbError?.message);
+      }
     }
 
-    const room = { id: uuidv4(), name, owner_id: effectiveOwnerId, created_at: new Date().toISOString() };
+    // Resilient fallback (or memory mode)
+    const roomId = `room_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
+    const room = {
+      id: roomId,
+      name: name.trim(),
+      description: description || undefined,
+      owner_id: effectiveOwnerId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
     memoryRooms.set(room.id, room);
-    res.status(201).json(room);
+
+    // Initial default file
+    memoryFiles.set(`${room.id}:index.js`, {
+      id: uuidv4(),
+      room_id: room.id,
+      path: 'index.js',
+      content: '// Collaborative IDE Workspace\nconsole.log("Ready to collaborate!");\n',
+      language: 'javascript',
+      version: 1,
+      updated_at: new Date().toISOString(),
+    });
+
+    return res.status(201).json({
+      id: room.id,
+      name: room.name,
+      description: room.description,
+      ownerId: room.owner_id,
+      createdAt: room.created_at,
+      updatedAt: room.updated_at,
+    });
   } catch (error: any) {
     console.error('Error creating room:', error);
     res.status(500).json({ error: error.message || 'Failed to create room' });
   }
-});
+};
+
+app.post('/api/rooms', handleCreateRoom);
+app.post('/rooms', handleCreateRoom);
 
 app.get('/api/rooms/:id', async (req: Request, res: Response) => {
   try {
