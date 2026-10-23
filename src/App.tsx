@@ -172,6 +172,8 @@ export const App: React.FC = () => {
   if (view === 'login' || !user) {
     return (
       <Login
+        theme={theme}
+        onToggleTheme={setTheme}
         onLogin={handleLoginSuccess}
         onBackToLanding={() => setView('landing')}
         onGuestDemo={handleInstantGuestDemo}
@@ -183,6 +185,8 @@ export const App: React.FC = () => {
     return (
       <WorkspaceSelection
         user={user}
+        theme={theme}
+        onToggleTheme={setTheme}
         onSelectRoom={(room) => {
           setActiveRoom(room);
           setView('workspace');
