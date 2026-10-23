@@ -45,6 +45,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [dirtyFileIds, setDirtyFileIds] = useState<Set<string>>(() => new Set());
   const [dbContentSnapshot, setDbContentSnapshot] = useState<Record<string, string>>({});
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'dirty' | 'error'>('saved');
 
   const [isExplorerOpen, setIsExplorerOpen] = useState(true);
   const [isBottomDrawerOpen, setIsBottomDrawerOpen] = useState(true);
@@ -62,6 +63,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [monacoInstance, setMonacoInstance] = useState<typeof Monaco | null>(null);
 
   const autosaveTimerRef = useRef<Record<string, number>>({});
+  const latestContentRef = useRef<Record<string, string>>({});
 
   const sidebarResize = useResizablePanel({
     initialSize: 260,
@@ -83,6 +85,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     .map((id) => files.find((f) => f.id === id))
     .filter((f): f is WorkspaceFile => Boolean(f));
 
+  // Load files on room initial mount
   useEffect(() => {
     let isMounted = true;
     const loadWorkspaceFiles = async () => {
@@ -94,6 +97,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         const snapshots: Record<string, string> = {};
         fetched.forEach((f) => {
           snapshots[f.id] = f.content;
+          latestContentRef.current[f.id] = f.content;
         });
         setDbContentSnapshot(snapshots);
 
@@ -115,67 +119,163 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     };
   }, [room.id]);
 
-  const persistFileToDatabase = useCallback(
-    async (fileToSave: WorkspaceFile) => {
+  // Periodic peer file list reconciliation (detects files added/deleted by peers without manual refresh)
+  useEffect(() => {
+    const syncInterval = window.setInterval(async () => {
+      try {
+        const latest = await workspaceApi.listFiles(room.id);
+        setFiles((current) => {
+          // If length or file IDs changed, update file list while preserving local dirty edits
+          const currentIds = new Set(current.map((f) => f.id));
+          const latestIds = new Set(latest.map((f) => f.id));
+          const hasChanges =
+            current.length !== latest.length ||
+            latest.some((f) => !currentIds.has(f.id)) ||
+            current.some((f) => !latestIds.has(f.id));
+
+          if (!hasChanges) return current;
+
+          return latest.map((lf) => ({
+            ...lf,
+            content: latestContentRef.current[lf.id] ?? lf.content,
+          }));
+        });
+      } catch {
+        // Ignore background polling errors
+      }
+    }, 4000);
+
+    return () => window.clearInterval(syncInterval);
+  }, [room.id]);
+
+  // Reliable Save with Exponential Backoff Retries
+  const scheduleSaveWithRetry = useCallback(
+    async (fileId: string, contentToSave: string, attempt = 1): Promise<void> => {
+      setSaveStatus('saving');
       setIsSaving(true);
       try {
-        await workspaceApi.updateFile(room.id, fileToSave.id, {
-          content: fileToSave.content,
-          path: fileToSave.path,
-          name: fileToSave.name,
-          language: fileToSave.language,
+        const targetFile = files.find((f) => f.id === fileId);
+        const filePath = targetFile?.path || fileId;
+        const fileName = targetFile?.name || filePath.split('/').pop() || filePath;
+        const fileLang = targetFile?.language || 'javascript';
+
+        await workspaceApi.updateFile(room.id, fileId, {
+          content: contentToSave,
+          path: filePath,
+          name: fileName,
+          language: fileLang,
         });
+
         setDbContentSnapshot((prev) => ({
           ...prev,
-          [fileToSave.id]: fileToSave.content,
+          [fileId]: contentToSave,
         }));
+
         setDirtyFileIds((prev) => {
           const next = new Set(prev);
-          next.delete(fileToSave.id);
+          next.delete(fileId);
           return next;
         });
+
+        setFiles((prevFiles) =>
+          prevFiles.map((file) =>
+            file.id === fileId ? { ...file, content: contentToSave } : file
+          )
+        );
+
+        setSaveStatus('saved');
       } catch (err) {
-        console.error('Failed to save file:', err);
+        console.error(`Save attempt ${attempt} failed for file ${fileId}:`, err);
+        if (attempt < 3) {
+          const backoff = attempt * 600;
+          setTimeout(() => {
+            void scheduleSaveWithRetry(fileId, contentToSave, attempt + 1);
+          }, backoff);
+        } else {
+          setSaveStatus('error');
+        }
       } finally {
         setIsSaving(false);
       }
     },
-    [room.id]
+    [room.id, files]
   );
 
+  // Flush any pending debounced autosaves immediately
+  const flushAutosave = useCallback(
+    async (fileId?: string) => {
+      const targetIds = fileId ? [fileId] : Object.keys(autosaveTimerRef.current);
+      for (const id of targetIds) {
+        if (autosaveTimerRef.current[id]) {
+          window.clearTimeout(autosaveTimerRef.current[id]);
+          delete autosaveTimerRef.current[id];
+          const content = latestContentRef.current[id];
+          if (content !== undefined && (dbContentSnapshot[id] ?? '') !== content) {
+            await scheduleSaveWithRetry(id, content);
+          }
+        }
+      }
+    },
+    [dbContentSnapshot, scheduleSaveWithRetry]
+  );
+
+  // Flush on page unload / refresh
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      void flushAutosave();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [flushAutosave]);
+
+  // High-performance Collaborative Content Change Handler
   const handleCollaborativeContentChange = useCallback(
     (fileId: string, newContent: string) => {
-      setFiles((prevFiles) =>
-        prevFiles.map((file) =>
-          file.id === fileId ? { ...file, content: newContent } : file
-        )
-      );
+      latestContentRef.current[fileId] = newContent;
 
       setDirtyFileIds((prev) => {
+        const isDirty = (dbContentSnapshot[fileId] ?? '') !== newContent;
+        if (prev.has(fileId) === isDirty) return prev;
         const next = new Set(prev);
-        if (dbContentSnapshot[fileId] !== newContent) {
-          next.add(fileId);
-        } else {
-          next.delete(fileId);
-        }
+        if (isDirty) next.add(fileId);
+        else next.delete(fileId);
         return next;
       });
+
+      setSaveStatus('dirty');
 
       if (autosaveTimerRef.current[fileId]) {
         window.clearTimeout(autosaveTimerRef.current[fileId]);
       }
 
+      // Fast 800ms autosave debounce (non-blocking)
       autosaveTimerRef.current[fileId] = window.setTimeout(() => {
-        setFiles((currentFiles) => {
-          const target = currentFiles.find((f) => f.id === fileId);
-          if (target && dbContentSnapshot[fileId] !== target.content) {
-            void persistFileToDatabase(target);
-          }
-          return currentFiles;
-        });
-      }, 2500);
+        const currentContent = latestContentRef.current[fileId] ?? newContent;
+        if ((dbContentSnapshot[fileId] ?? '') !== currentContent) {
+          void scheduleSaveWithRetry(fileId, currentContent);
+        }
+      }, 800);
     },
-    [dbContentSnapshot, persistFileToDatabase]
+    [dbContentSnapshot, scheduleSaveWithRetry]
+  );
+
+  // Cross-file Follow Mode switch handler
+  const handleFollowFileChange = useCallback(
+    (targetFilePath: string) => {
+      const cleanTarget = targetFilePath.replace(/^\/+/, '');
+      const target = files.find(
+        (f) =>
+          f.path.replace(/^\/+/, '') === cleanTarget ||
+          cleanTarget.endsWith(f.path.replace(/^\/+/, ''))
+      );
+      if (target && target.id !== activeFileId) {
+        setActiveFileId(target.id);
+        if (!openFileIds.includes(target.id)) {
+          setOpenFileIds((prev) => [...prev, target.id]);
+        }
+      }
+    },
+    [files, activeFileId, openFileIds]
   );
 
   const {
@@ -198,6 +298,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     editorInstance,
     monacoInstance,
     onContentChange: handleCollaborativeContentChange,
+    onFollowFileChange: handleFollowFileChange,
   });
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -215,11 +316,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         const dirtyMap = new Map<string, string>();
         currentFiles.forEach((f) => {
           if (dirtyFileIds.has(f.id)) {
-            dirtyMap.set(f.id, f.content);
+            dirtyMap.set(f.id, latestContentRef.current[f.id] ?? f.content);
           }
         });
 
-        // Merge latest metadata with preserved dirty edits
         return latestFiles.map((f) => ({
           ...f,
           content: dirtyMap.has(f.id) ? dirtyMap.get(f.id)! : f.content,
@@ -242,29 +342,30 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
   const handleExplicitSave = useCallback(() => {
     if (!activeFile) return;
-    if (autosaveTimerRef.current[activeFile.id]) {
-      window.clearTimeout(autosaveTimerRef.current[activeFile.id]);
-    }
-    void persistFileToDatabase(activeFile);
-  }, [activeFile, persistFileToDatabase]);
+    const content = latestContentRef.current[activeFile.id] ?? activeFile.content;
+    void scheduleSaveWithRetry(activeFile.id, content);
+  }, [activeFile, scheduleSaveWithRetry]);
 
   const handleRunCode = useCallback(async () => {
     if (!activeFile) return;
+    // Flush pending save before running
+    void flushAutosave(activeFile.id);
+
     setIsBottomDrawerOpen(true);
     setActiveBottomTab('output');
     setIsRunning(true);
 
     try {
-      const codeToRun = (editorInstance && activeFile ? editorInstance.getValue() : activeFile.content) || '';
-      const result = await executionClient.executeCode(
-        codeToRun,
-        activeFile.language
-      );
+      const codeToRun =
+        (editorInstance ? editorInstance.getValue() : latestContentRef.current[activeFile.id]) ||
+        activeFile.content ||
+        '';
+      const result = await executionClient.executeCode(codeToRun, activeFile.language);
       setExecutionResult(result);
     } finally {
       setIsRunning(false);
     }
-  }, [activeFile, editorInstance]);
+  }, [activeFile, editorInstance, flushAutosave]);
 
   useKeyboardShortcuts({
     onSave: handleExplicitSave,
@@ -273,6 +374,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   });
 
   const handleSelectFile = (file: WorkspaceFile) => {
+    if (activeFileId && activeFileId !== file.id) {
+      void flushAutosave(activeFileId);
+    }
     if (!openFileIds.includes(file.id)) {
       setOpenFileIds((prev) => [...prev, file.id]);
     }
@@ -281,6 +385,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
   const handleCloseTab = (fileId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    void flushAutosave(fileId);
     const updatedOpen = openFileIds.filter((id) => id !== fileId);
     setOpenFileIds(updatedOpen);
     if (activeFileId === fileId) {
@@ -298,6 +403,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       language,
     });
     setFiles((prev) => [...prev, created]);
+    latestContentRef.current[created.id] = created.content;
     setDbContentSnapshot((prev) => ({ ...prev, [created.id]: created.content }));
     setOpenFileIds((prev) => [...prev, created.id]);
     setActiveFileId(created.id);
@@ -330,15 +436,22 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     }
   };
 
-  const handleLanguageChange = (
-    file: WorkspaceFile,
-    language: SupportedLanguage
-  ) => {
+  const handleLanguageChange = (file: WorkspaceFile, language: SupportedLanguage) => {
     setFiles((prev) =>
       prev.map((f) => (f.id === file.id ? { ...f, language } : f))
     );
     void workspaceApi.updateFile(room.id, file.id, { language });
   };
+
+  const handleFollowCollaborator = useCallback(
+    (targetUserId: string, name: string, color: string, activeFilePath?: string) => {
+      startFollowing(targetUserId, name, color, activeFilePath);
+      if (activeFilePath) {
+        handleFollowFileChange(activeFilePath);
+      }
+    },
+    [startFollowing, handleFollowFileChange]
+  );
 
   return (
     <div className="flex h-screen w-screen flex-col theme-bg-root theme-text-primary overflow-hidden transition-colors">
@@ -353,6 +466,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         collaborators={collaborators}
         isRunning={isRunning}
         isSaving={isSaving}
+        saveStatus={saveStatus}
         hasUnsavedChanges={dirtyFileIds.size > 0}
         isExplorerOpen={isExplorerOpen}
         isRefreshing={isRefreshing}
@@ -360,7 +474,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         activeReservationsCount={reservations.length}
         followState={followState}
         onRefreshWorkspace={() => void handleRefreshWorkspace()}
-        onFollowCollaborator={startFollowing}
+        onFollowCollaborator={handleFollowCollaborator}
         onStopFollowing={stopFollowing}
         onToggleExplorer={() => setIsExplorerOpen((prev) => !prev)}
         onRunCode={() => void handleRunCode()}
@@ -411,7 +525,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             followState={followState}
             currentUserId={user.id}
             theme={theme}
-            onSelectTab={(file) => setActiveFileId(file.id)}
+            onSelectTab={(file) => handleSelectFile(file)}
             onCloseTab={handleCloseTab}
             onLanguageChange={handleLanguageChange}
             onReserveSelection={reserveLines}
@@ -442,14 +556,14 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                   setActiveBottomTab('output');
                   setIsBottomDrawerOpen(true);
                 }}
-                className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
                   isBottomDrawerOpen && activeBottomTab === 'output'
-                    ? 'border-indigo-500 theme-text-primary bg-indigo-500/10'
-                    : 'border-transparent theme-text-secondary hover:theme-text-primary'
+                    ? 'border theme-border theme-bg-surface-2 text-indigo-500 dark:text-indigo-400 font-semibold'
+                    : 'theme-text-secondary hover:theme-text-primary'
                 }`}
               >
-                <Play className="h-3 w-3 text-emerald-400" />
-                <span>Output Sandbox</span>
+                <Play className="h-3 w-3" />
+                <span>Execution Output</span>
               </button>
 
               <button
@@ -458,13 +572,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                   setActiveBottomTab('terminal');
                   setIsBottomDrawerOpen(true);
                 }}
-                className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
                   isBottomDrawerOpen && activeBottomTab === 'terminal'
-                    ? 'border-indigo-500 theme-text-primary bg-indigo-500/10'
-                    : 'border-transparent theme-text-secondary hover:theme-text-primary'
+                    ? 'border theme-border theme-bg-surface-2 text-indigo-500 dark:text-indigo-400 font-semibold'
+                    : 'theme-text-secondary hover:theme-text-primary'
                 }`}
               >
-                <Terminal className="h-3 w-3 text-indigo-400" />
+                <Terminal className="h-3 w-3" />
                 <span>Cloud Terminal</span>
               </button>
 
@@ -474,67 +588,64 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                   setActiveBottomTab('ai-debugger');
                   setIsBottomDrawerOpen(true);
                 }}
-                className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
                   isBottomDrawerOpen && activeBottomTab === 'ai-debugger'
-                    ? 'border-purple-500 theme-text-primary bg-purple-500/10'
-                    : 'border-transparent theme-text-secondary hover:theme-text-primary'
+                    ? 'border theme-border theme-bg-surface-2 text-purple-400 font-semibold'
+                    : 'theme-text-secondary hover:theme-text-primary'
                 }`}
               >
                 <Sparkles className="h-3 w-3 text-purple-400" />
-                <span>AI Debugger</span>
+                <span>AI Debugger & Diff</span>
               </button>
             </div>
 
             <button
               type="button"
               onClick={() => setIsBottomDrawerOpen((prev) => !prev)}
-              className="rounded-md p-1 theme-text-secondary hover:theme-bg-surface-2 hover:theme-text-primary transition cursor-pointer"
-              title={isBottomDrawerOpen ? 'Minimize Panel' : 'Expand Panel'}
+              className="rounded p-1 theme-text-secondary hover:theme-bg-surface-2 hover:theme-text-primary transition cursor-pointer"
+              title={isBottomDrawerOpen ? 'Collapse Bottom Panel' : 'Expand Bottom Panel'}
             >
               {isBottomDrawerOpen ? (
-                <ChevronDown className="h-3.5 w-3.5" />
+                <ChevronDown className="h-4 w-4" />
               ) : (
-                <ChevronUp className="h-3.5 w-3.5" />
+                <ChevronUp className="h-4 w-4" />
               )}
             </button>
           </div>
 
+          {/* Bottom Drawer Content */}
           {isBottomDrawerOpen && (
             <div
               style={{ height: `${bottomDrawerResize.size}px` }}
-              className="shrink-0 overflow-hidden"
+              className="shrink-0 overflow-hidden theme-bg-root"
             >
               {activeBottomTab === 'output' && (
                 <OutputPanel
                   result={executionResult}
                   isRunning={isRunning}
                   onClearOutput={() => setExecutionResult(null)}
-                  onSendErrorToAI={(errText) => {
-                    setAiErrorSeed(errText);
+                  onSendErrorToAI={(err) => {
+                    setAiErrorSeed(err);
                     setActiveBottomTab('ai-debugger');
                   }}
                 />
               )}
 
-              <div
-                className={
-                  activeBottomTab === 'terminal' ? 'h-full w-full' : 'hidden'
-                }
-              >
+              {activeBottomTab === 'terminal' && (
                 <TerminalPanel
                   roomId={room.id}
                   user={user}
-                  theme={theme}
                   isVisible={isBottomDrawerOpen && activeBottomTab === 'terminal'}
+                  theme={theme}
                 />
-              </div>
+              )}
 
               {activeBottomTab === 'ai-debugger' && (
                 <AIDebuggerPanel
                   activeFile={activeFile}
                   initialError={aiErrorSeed}
-                  onApplyFixToEditor={(fixedCode) => {
-                    applyContentToSharedDoc(fixedCode);
+                  onApplyFixToEditor={(newCode: string) => {
+                    applyContentToSharedDoc(newCode);
                   }}
                 />
               )}
@@ -543,20 +654,17 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         </div>
       </div>
 
-      <ConfirmModal
-        isOpen={Boolean(filePendingDelete)}
-        title="Delete File Permanently"
-        description={
-          filePendingDelete
-            ? `Are you sure you want to delete "${filePendingDelete.path}" from this workspace? This action cannot be undone.`
-            : ''
-        }
-        confirmLabel="Delete File"
-        cancelLabel="Cancel"
-        variant="danger"
-        onConfirm={() => void handleConfirmDeleteFile()}
-        onCancel={() => setFilePendingDelete(null)}
-      />
+      {filePendingDelete && (
+        <ConfirmModal
+          isOpen={Boolean(filePendingDelete)}
+          title="Delete File"
+          description={`Are you sure you want to permanently delete "${filePendingDelete.name}"? This file will be removed for all collaborators.`}
+          confirmLabel="Delete File"
+          variant="danger"
+          onConfirm={() => void handleConfirmDeleteFile()}
+          onCancel={() => setFilePendingDelete(null)}
+        />
+      )}
     </div>
   );
 };

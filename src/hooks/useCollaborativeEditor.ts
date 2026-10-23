@@ -18,6 +18,7 @@ interface UseCollaborativeEditorOptions {
   editorInstance: Monaco.editor.IStandaloneCodeEditor | null;
   monacoInstance: typeof Monaco | null;
   onContentChange: (fileId: string, newContent: string) => void;
+  onFollowFileChange?: (targetFilePath: string) => void;
 }
 
 interface UseCollaborativeEditorReturn {
@@ -29,7 +30,7 @@ interface UseCollaborativeEditorReturn {
   followState: FollowState | null;
   reserveLines: (startLine: number, endLine: number, taskDescription?: string) => void;
   releaseReservation: (reservationId: string) => void;
-  startFollowing: (targetUserId: string, targetUserName: string, targetUserColor: string) => void;
+  startFollowing: (targetUserId: string, targetUserName: string, targetUserColor: string, targetFile?: string) => void;
   stopFollowing: () => void;
   reconcileSession: () => void;
   applyContentToSharedDoc: (newFullContent: string) => void;
@@ -95,6 +96,7 @@ export function useCollaborativeEditor({
   editorInstance,
   monacoInstance,
   onContentChange,
+  onFollowFileChange,
 }: UseCollaborativeEditorOptions): UseCollaborativeEditorReturn {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [isDocumentSynced, setIsDocumentSynced] = useState<boolean>(false);
@@ -112,12 +114,15 @@ export function useCollaborativeEditor({
   const onContentChangeRef = useRef(onContentChange);
   onContentChangeRef.current = onContentChange;
 
+  const onFollowFileChangeRef = useRef(onFollowFileChange);
+  onFollowFileChangeRef.current = onFollowFileChange;
+
   useEffect(() => {
     if (!editorInstance || !monacoInstance || !activeFile || !roomId) {
       return;
     }
 
-    // Clean up previous file's MonacoBinding without destroying cached Y.Doc sessions prematurely
+    // Clean up previous file's MonacoBinding without destroying cached Y.Doc sessions
     if (bindingRef.current) {
       bindingRef.current.destroy();
       bindingRef.current = null;
@@ -146,16 +151,50 @@ export function useCollaborativeEditor({
       roomId,
       activeFile.path,
       user,
-      activeFile.content,
-      (status) => setConnectionStatus(status),
-      (list) => {
-        setCollaborators(list);
-        syncCollaboratorCursorStyles(list);
-      },
-      (synced) => setIsDocumentSynced(synced)
+      activeFile.content
     );
 
     sessionRef.current = session;
+
+    // Attach real-time connection status listener
+    const handleStatus = (event: { status: string }) => {
+      if (event.status === 'connected') setConnectionStatus('connected');
+      else if (event.status === 'connecting') setConnectionStatus('connecting');
+      else setConnectionStatus('disconnected');
+    };
+    session.provider.on('status', handleStatus);
+    if (session.provider.wsconnected) {
+      setConnectionStatus('connected');
+    }
+
+    // Attach document sync listener
+    const handleSync = (isSynced: boolean) => {
+      setIsDocumentSynced(isSynced);
+    };
+    session.provider.on('sync', handleSync);
+    setIsDocumentSynced(session.provider.synced);
+
+    // Attach peer awareness listener
+    const handleAwareness = () => {
+      const states = session.provider.awareness.getStates();
+      const list: CollaboratorPresence[] = [];
+      states.forEach((state, clientId) => {
+        if (state && state.user) {
+          list.push({
+            clientId,
+            user: state.user as UserProfile,
+            activeFile: state.activeFile as string | undefined,
+            cursor: state.cursor as { lineNumber: number; column: number } | null | undefined,
+            isTyping: Boolean(state.isTyping),
+            lastActive: (state.lastActive as number) || Date.now(),
+          });
+        }
+      });
+      setCollaborators(list);
+      syncCollaboratorCursorStyles(list);
+    };
+    session.provider.awareness.on('change', handleAwareness);
+    handleAwareness();
 
     // Synchronize edit reservations from CRDT shared map
     const updateReservationsFromMap = () => {
@@ -175,8 +214,8 @@ export function useCollaborativeEditor({
     };
     session.reservationsMap.observe(handleReservationsObserver);
 
-    // If session is already synced and contains text, ensure model reflects it immediately
-    if (session.provider.synced && session.ytext.length > 0) {
+    // Ensure model reflects current Y.Text before binding to prevent blank flash
+    if (session.ytext.length > 0) {
       if (model.getValue() !== session.ytext.toString()) {
         model.setValue(session.ytext.toString());
       }
@@ -191,7 +230,7 @@ export function useCollaborativeEditor({
     );
     bindingRef.current = binding;
 
-    // Observe Y.Text changes to update dirty indicators and trigger debounced autosave
+    // Observe Y.Text changes for dirty tracking and debounced autosave
     const handleYTextObserver = () => {
       onContentChangeRef.current(activeFile.id, session.ytext.toString());
     };
@@ -217,6 +256,9 @@ export function useCollaborativeEditor({
     });
 
     return () => {
+      session.provider.off('status', handleStatus);
+      session.provider.off('sync', handleSync);
+      session.provider.awareness.off('change', handleAwareness);
       cursorDisposable.dispose();
       session.ytext.unobserve(handleYTextObserver);
       session.reservationsMap.unobserve(handleReservationsObserver);
@@ -225,7 +267,7 @@ export function useCollaborativeEditor({
         bindingRef.current = null;
       }
     };
-  }, [roomId, activeFile?.id, activeFile?.path, activeFile?.language, editorInstance, monacoInstance, user]);
+  }, [roomId, activeFile?.id, activeFile?.path, activeFile?.language, editorInstance, monacoInstance, user.id]);
 
   // Render Monaco visual decorations for active reservations
   useEffect(() => {
@@ -295,7 +337,15 @@ export function useCollaborativeEditor({
     if (!followState || !editorInstance || !monacoInstance) return;
 
     const target = collaborators.find((c) => c.user.id === followState.targetUserId);
-    if (!target || !target.cursor) return;
+    if (!target) return;
+
+    // If followed collaborator is in a different file, request file switch
+    if (target.activeFile && activeFile && target.activeFile !== activeFile.path) {
+      onFollowFileChangeRef.current?.(target.activeFile);
+      return;
+    }
+
+    if (!target.cursor) return;
 
     if (target.cursor.lineNumber !== lastFollowedLineRef.current) {
       lastFollowedLineRef.current = target.cursor.lineNumber;
@@ -304,7 +354,7 @@ export function useCollaborativeEditor({
         monacoInstance.editor.ScrollType.Smooth
       );
     }
-  }, [collaborators, followState, editorInstance, monacoInstance]);
+  }, [collaborators, followState, editorInstance, monacoInstance, activeFile?.path]);
 
   // Break out of Follow Mode on Escape
   useEffect(() => {
@@ -364,12 +414,12 @@ export function useCollaborativeEditor({
   }, []);
 
   const startFollowing = useCallback(
-    (targetUserId: string, targetUserName: string, targetUserColor: string) => {
+    (targetUserId: string, targetUserName: string, targetUserColor: string, targetFile?: string) => {
       setFollowState({
         targetUserId,
         targetUserName,
         targetUserColor,
-        targetFile: activeFile?.path,
+        targetFile: targetFile || activeFile?.path,
       });
     },
     [activeFile?.path]
