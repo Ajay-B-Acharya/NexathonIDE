@@ -602,9 +602,9 @@ export const Landing: React.FC<LandingProps> = ({
 
             {/* Multiplayer Presence Indicator (Yjs Proof) */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center -space-x-2">
-                <span className="w-6 h-6 rounded-full bg-indigo-600 text-[10px] text-white font-mono flex items-center justify-center ring-2 ring-slate-800" title="Jhostan">JH</span>
-                <span className="w-6 h-6 rounded-full bg-emerald-600 text-[10px] text-white font-mono flex items-center justify-center ring-2 ring-slate-800" title="Adarsh">AD</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-mono text-[11px]">
+                <Users className="w-3.5 h-3.5 text-indigo-400" />
+                <span>2 Active Peers</span>
               </div>
               <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[11px]">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -621,21 +621,16 @@ export const Landing: React.FC<LandingProps> = ({
               <p>
                 <span className="text-indigo-600 dark:text-indigo-400">import</span> <span className="text-amber-500 dark:text-amber-400">numpy</span> <span className="text-indigo-600 dark:text-indigo-400">as</span> np
               </p>
-              <div className="relative inline-block bg-indigo-500/10 dark:bg-indigo-500/20 px-2.5 py-1 rounded border-l-2 border-indigo-500 my-1">
+              <p>
                 dataset = np.random.randn(1000)
-                <span className="absolute -top-5 left-12 bg-indigo-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow font-sans">
-                  Jhostan (typing)
-                </span>
-              </div>
+              </p>
               <p>
                 result = &#123;<span className="text-emerald-600 dark:text-emerald-400">&quot;mean&quot;</span>: float(dataset.mean())&#125;
               </p>
-              <div className="relative inline-block bg-emerald-500/10 dark:bg-emerald-500/20 px-2.5 py-1 rounded border-l-2 border-emerald-500 my-1">
-                print(f<span className="text-emerald-600 dark:text-emerald-400">&quot;Calculated local variance: &#123;dataset.var():.4f&#125;&quot;</span>)
-                <span className="absolute -top-5 left-16 bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow font-sans">
-                  Adarsh (debugging)
-                </span>
-              </div>
+              <p className="flex items-center">
+                <span>print(f<span className="text-emerald-600 dark:text-emerald-400">&quot;Calculated local variance: &#123;dataset.var():.4f&#125;&quot;</span>)</span>
+                <span className="inline-block w-1.5 h-3.5 ml-1 bg-indigo-500 animate-pulse" />
+              </p>
               <p className="theme-text-muted pt-2"># AI Diff Guard &amp; CRDT peer mesh synched</p>
             </div>
 
