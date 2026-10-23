@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "vite",
     "dev:all": "tsx src/server/index.ts",
+    "dev:collab": "tsx collaboration-backend/server.ts",
     "dev:split": "powershell -ExecutionPolicy Bypass -File ./start-services.ps1",
-    "server:yjs": "tsx src/server/yjs-server.ts",
+    "server:yjs": "tsx collaboration-backend/server.ts",
     "server:api": "tsx src/server/api-server.ts",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "db:init": "tsx src/server/init-db.ts"
+    "db:init": "tsx src/server/init-db.ts",
+    "test:collab": "tsx collaboration-backend/test/collaboration.test.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -54,6 +56,7 @@
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^6.1.2",
+    "lightningcss-win32-x64-msvc": "^1.33.0",
     "oxlint": "^1.88.0",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
