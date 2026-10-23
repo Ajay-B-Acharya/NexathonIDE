@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type * as Monaco from 'monaco-editor';
 import { Terminal, Play, Sparkles, ChevronUp, ChevronDown } from 'lucide-react';
 import { TopBar } from '../components/TopBar';
+import { ThemeMode } from '../components/ThemeToggle';
 import { FileExplorer } from '../components/FileExplorer';
 import { EditorPane } from '../components/EditorPane';
 import { OutputPanel } from '../components/OutputPanel';
@@ -25,6 +26,8 @@ import {
 interface WorkspaceProps {
   room: WorkspaceRoom;
   user: UserProfile;
+  theme?: ThemeMode;
+  onToggleTheme?: (theme: ThemeMode) => void;
   onSwitchWorkspace: () => void;
   onLogout: () => void;
 }
@@ -32,6 +35,8 @@ interface WorkspaceProps {
 export const Workspace: React.FC<WorkspaceProps> = ({
   room,
   user,
+  theme = 'dark',
+  onToggleTheme,
   onSwitchWorkspace,
   onLogout,
 }) => {
@@ -284,11 +289,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   };
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-[#090a0f] text-slate-200 overflow-hidden">
+    <div className="flex h-screen w-screen flex-col theme-bg-root theme-text-primary overflow-hidden transition-colors">
       <TopBar
         roomName={room.name}
         roomId={room.id}
         user={user}
+        theme={theme}
+        onToggleTheme={onToggleTheme}
         connectionStatus={connectionStatus}
         isDocumentSynced={isDocumentSynced}
         collaborators={collaborators}
@@ -327,7 +334,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
             <div
               onMouseDown={sidebarResize.startResize}
-              className={`w-1 cursor-col-resize bg-[#0f121d] hover:bg-indigo-500 transition-colors ${
+              className={`w-1 cursor-col-resize theme-bg-surface-2 hover:bg-indigo-500 transition-colors ${
                 sidebarResize.isDragging ? 'bg-indigo-500 shadow-[0_0_10px_#6366f1]' : ''
               }`}
               title="Drag to resize sidebar"
@@ -340,6 +347,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             openFiles={openFiles}
             activeFile={activeFile}
             dirtyFileIds={dirtyFileIds}
+            theme={theme}
             onSelectTab={(file) => setActiveFileId(file.id)}
             onCloseTab={handleCloseTab}
             onLanguageChange={handleLanguageChange}
@@ -352,7 +360,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           {isBottomDrawerOpen && (
             <div
               onMouseDown={bottomDrawerResize.startResize}
-              className={`h-1 cursor-row-resize bg-[#0f121d] hover:bg-indigo-500 transition-colors ${
+              className={`h-1 cursor-row-resize theme-bg-surface-2 hover:bg-indigo-500 transition-colors ${
                 bottomDrawerResize.isDragging ? 'bg-indigo-500 shadow-[0_0_10px_#6366f1]' : ''
               }`}
               title="Drag to resize bottom panel"
@@ -360,7 +368,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           )}
 
           {/* Bottom Drawer Navigation Bar */}
-          <div className="flex h-9 shrink-0 items-center justify-between border-t border-white/10 bg-[#0f121d] px-3 select-none">
+          <div className="flex h-9 shrink-0 items-center justify-between border-t theme-border theme-bg-surface-1 px-3 select-none">
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -370,8 +378,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 }}
                 className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
                   isBottomDrawerOpen && activeBottomTab === 'output'
-                    ? 'border-indigo-500 text-white bg-[#141824]/60'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-indigo-500 theme-text-primary bg-indigo-500/10'
+                    : 'border-transparent theme-text-secondary hover:theme-text-primary'
                 }`}
               >
                 <Play className="h-3 w-3 text-emerald-400" />
@@ -386,8 +394,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 }}
                 className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
                   isBottomDrawerOpen && activeBottomTab === 'terminal'
-                    ? 'border-indigo-500 text-white bg-[#141824]/60'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-indigo-500 theme-text-primary bg-indigo-500/10'
+                    : 'border-transparent theme-text-secondary hover:theme-text-primary'
                 }`}
               >
                 <Terminal className="h-3 w-3 text-indigo-400" />
@@ -402,8 +410,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 }}
                 className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
                   isBottomDrawerOpen && activeBottomTab === 'ai-debugger'
-                    ? 'border-purple-500 text-white bg-purple-950/20'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-purple-500 theme-text-primary bg-purple-500/10'
+                    : 'border-transparent theme-text-secondary hover:theme-text-primary'
                 }`}
               >
                 <Sparkles className="h-3 w-3 text-purple-400" />
@@ -414,7 +422,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             <button
               type="button"
               onClick={() => setIsBottomDrawerOpen((prev) => !prev)}
-              className="rounded-md p-1 text-slate-400 hover:bg-white/10 hover:text-white transition cursor-pointer"
+              className="rounded-md p-1 theme-text-secondary hover:theme-bg-surface-2 hover:theme-text-primary transition cursor-pointer"
               title={isBottomDrawerOpen ? 'Minimize Panel' : 'Expand Panel'}
             >
               {isBottomDrawerOpen ? (
@@ -450,6 +458,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 <TerminalPanel
                   roomId={room.id}
                   user={user}
+                  theme={theme}
                   isVisible={isBottomDrawerOpen && activeBottomTab === 'terminal'}
                 />
               </div>

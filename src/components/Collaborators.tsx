@@ -49,16 +49,16 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
               title={tooltipText}
             >
               <div
-                className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white transition-transform duration-150 group-hover:z-10 group-hover:scale-110"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white transition-transform duration-150 group-hover:z-10 group-hover:scale-110 ring-2 ring-(--bg-root)"
                 style={{
                   backgroundColor: collab.user.color,
-                  boxShadow: `0 0 0 2px #090a0f, 0 0 0 3.5px ${collab.user.color}`,
+                  boxShadow: `0 0 0 1px var(--border-hairline), 0 0 6px ${collab.user.color}40`,
                 }}
               >
                 {initials}
               </div>
-              <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[#090a0f]">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-(--bg-root)">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               </span>
             </div>
           );
@@ -70,7 +70,7 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
         {uniqueCollaborators.slice(0, 3).map((collab) => (
           <div
             key={collab.clientId}
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-[#141824] px-2.5 py-0.5 text-[11px] text-slate-300"
+            className="inline-flex items-center gap-1.5 rounded-full border theme-border theme-bg-surface-2 px-2.5 py-0.5 text-[11px] theme-text-secondary"
           >
             <span
               className="h-2 w-2 rounded-full"
@@ -79,11 +79,11 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
                 boxShadow: `0 0 6px ${collab.user.color}`,
               }}
             />
-            <span className="max-w-[80px] truncate font-medium text-white">
+            <span className="max-w-[80px] truncate font-medium theme-text-primary">
               {collab.user.name}
             </span>
             {collab.cursor && (
-              <span className="rounded bg-black/40 px-1 py-0.2 text-[10px] font-mono text-slate-400">
+              <span className="rounded theme-bg-surface-1 border theme-border px-1 py-0.2 text-[10px] font-mono theme-text-secondary">
                 Ln {collab.cursor.lineNumber}
               </span>
             )}
