@@ -130,10 +130,9 @@ app.get('/api/users/:id', async (req: Request, res: Response) => {
 });
 
 // Rooms / Workspaces
-app.get('/api/rooms', async (req: Request, res: Response) => {
+const handleListRooms = async (req: Request, res: Response) => {
   try {
     const token = getBearerToken(req);
-
     if (supabaseConnected) {
       const rooms = await WorkspaceService.listRooms(token);
       return res.json(rooms);
@@ -150,7 +149,10 @@ app.get('/api/rooms', async (req: Request, res: Response) => {
     console.error('Error listing rooms:', error);
     res.status(500).json({ error: error.message || 'Failed to list rooms' });
   }
-});
+};
+
+app.get('/api/rooms', handleListRooms);
+app.get('/rooms', handleListRooms);
 
 app.post('/api/rooms', async (req: Request, res: Response) => {
   try {
