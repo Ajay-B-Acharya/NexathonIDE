@@ -587,30 +587,30 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
         {/* Interactive Draggable Reservation Box Overlay & Handles */}
         {boxCoords && myReservation && boxCoords.top + boxCoords.height > -50 && boxCoords.top < 3000 && (
           <>
-            {/* Top Draggable Handle */}
+            {/* Top Draggable Handle (Compact & Shifted to Right) */}
             <div
               onMouseDown={(e) => handleStartDrag('top', e)}
-              className={`pointer-events-auto absolute left-14 z-30 flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-semibold shadow-lg cursor-ns-resize select-none transition-all ${
+              className={`pointer-events-auto absolute right-24 z-30 flex items-center gap-1 px-1.5 py-0.5 rounded bg-teal-600/90 hover:bg-teal-500 text-white text-[10px] font-medium shadow-md cursor-ns-resize select-none transition-all ${
                 dragEdge === 'top' ? 'scale-110 ring-2 ring-teal-300 bg-teal-500' : 'hover:scale-105'
               }`}
-              style={{ top: `${Math.max(4, boxCoords.top - 12)}px` }}
-              title="Click & Drag UP to expand reservation"
+              style={{ top: `${Math.max(4, boxCoords.top - 10)}px` }}
+              title="Click and drag upwards to expand the reservation to earlier lines"
             >
               <ChevronsUp className="h-3 w-3" />
-              <span>Expand Up (Ln {boxCoords.startLine})</span>
+              <span>▲ Ln {boxCoords.startLine}</span>
             </div>
 
-            {/* Bottom Draggable Handle */}
+            {/* Bottom Draggable Handle (Compact & Shifted to Right) */}
             <div
               onMouseDown={(e) => handleStartDrag('bottom', e)}
-              className={`pointer-events-auto absolute left-14 z-30 flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-semibold shadow-lg cursor-ns-resize select-none transition-all ${
+              className={`pointer-events-auto absolute right-24 z-30 flex items-center gap-1 px-1.5 py-0.5 rounded bg-teal-600/90 hover:bg-teal-500 text-white text-[10px] font-medium shadow-md cursor-ns-resize select-none transition-all ${
                 dragEdge === 'bottom' ? 'scale-110 ring-2 ring-teal-300 bg-teal-500' : 'hover:scale-105'
               }`}
-              style={{ top: `${boxCoords.top + boxCoords.height - 10}px` }}
-              title="Click & Drag DOWN to expand reservation"
+              style={{ top: `${boxCoords.top + boxCoords.height - 8}px` }}
+              title="Click and drag downwards to expand the reservation to as many lines as needed"
             >
               <ChevronsDown className="h-3 w-3" />
-              <span>Expand Down (Ln {boxCoords.endLine})</span>
+              <span>▼ Ln {boxCoords.endLine}</span>
             </div>
 
             {/* Floating Reservation Quick-Adjustment Toolbar */}
