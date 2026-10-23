@@ -1,14 +1,21 @@
 import React from 'react';
-import { CollaboratorPresence } from '../types';
+import { Eye, EyeOff } from 'lucide-react';
+import { CollaboratorPresence, FollowState } from '../types';
 
 interface CollaboratorsProps {
   collaborators: CollaboratorPresence[];
   currentUserId: string;
+  followState?: FollowState | null;
+  onFollowCollaborator?: (userId: string, name: string, color: string) => void;
+  onStopFollowing?: () => void;
 }
 
 export const Collaborators: React.FC<CollaboratorsProps> = ({
   collaborators,
   currentUserId,
+  followState,
+  onFollowCollaborator,
+  onStopFollowing,
 }) => {
   const uniqueCollaborators = React.useMemo(() => {
     const map = new Map<string, CollaboratorPresence>();
@@ -27,6 +34,7 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
       <div className="flex -space-x-2">
         {uniqueCollaborators.map((collab) => {
           const isMe = collab.user.id === currentUserId;
+          const isFollowed = followState?.targetUserId === collab.user.id;
           const initials = collab.user.name
             .split(' ')
             .map((part) => part[0])
@@ -34,61 +42,114 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
             .slice(0, 2)
             .toUpperCase();
 
-          const tooltipText = `${collab.user.name}${isMe ? ' (You)' : ''} • Editing ${
-            collab.activeFile || 'workspace'
-          }${
-            collab.cursor
-              ? ` • Ln ${collab.cursor.lineNumber}, Col ${collab.cursor.column}`
-              : ''
-          }`;
+          const tooltipText = isMe
+            ? `${collab.user.name} (You)`
+            : isFollowed
+            ? `Following ${collab.user.name} • Click to Stop Following`
+            : `${collab.user.name} • Click to Follow (Ln ${collab.cursor?.lineNumber || 1})`;
 
           return (
-            <div
+            <button
+              type="button"
               key={`${collab.user.id}-${collab.clientId}`}
-              className="group relative flex items-center"
+              disabled={isMe}
+              onClick={() => {
+                if (isMe) return;
+                if (isFollowed) {
+                  onStopFollowing?.();
+                } else {
+                  onFollowCollaborator?.(
+                    collab.user.id,
+                    collab.user.name,
+                    collab.user.color
+                  );
+                }
+              }}
+              className={`group relative flex items-center transition-transform duration-150 ${
+                isMe ? 'cursor-default' : 'cursor-pointer hover:z-20 hover:scale-115'
+              }`}
               title={tooltipText}
             >
               <div
-                className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white transition-transform duration-150 group-hover:z-10 group-hover:scale-110"
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white transition-all ring-2 ring-(--bg-root) ${
+                  isFollowed ? 'ring-2 ring-cyan-400 animate-pulse' : ''
+                }`}
                 style={{
                   backgroundColor: collab.user.color,
-                  boxShadow: `0 0 0 2px #090a0f, 0 0 0 3.5px ${collab.user.color}`,
+                  boxShadow: isFollowed
+                    ? `0 0 12px ${collab.user.color}`
+                    : `0 0 0 1px var(--border-hairline), 0 0 6px ${collab.user.color}40`,
                 }}
               >
                 {initials}
               </div>
-              <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[#090a0f]">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-(--bg-root)">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    isFollowed ? 'bg-cyan-400 animate-ping' : 'bg-emerald-500'
+                  }`}
+                />
               </span>
-            </div>
+            </button>
           );
         })}
       </div>
 
-      {/* Color Legend Pill Bar */}
+      {/* Follow Pill & Legend Bar */}
       <div className="hidden xl:flex items-center gap-1.5">
-        {uniqueCollaborators.slice(0, 3).map((collab) => (
-          <div
-            key={collab.clientId}
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-[#141824] px-2.5 py-0.5 text-[11px] text-slate-300"
-          >
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{
-                backgroundColor: collab.user.color,
-                boxShadow: `0 0 6px ${collab.user.color}`,
+        {uniqueCollaborators.slice(0, 3).map((collab) => {
+          const isMe = collab.user.id === currentUserId;
+          const isFollowed = followState?.targetUserId === collab.user.id;
+
+          return (
+            <button
+              type="button"
+              key={collab.clientId}
+              disabled={isMe}
+              onClick={() => {
+                if (isMe) return;
+                if (isFollowed) {
+                  onStopFollowing?.();
+                } else {
+                  onFollowCollaborator?.(
+                    collab.user.id,
+                    collab.user.name,
+                    collab.user.color
+                  );
+                }
               }}
-            />
-            <span className="max-w-[80px] truncate font-medium text-white">
-              {collab.user.name}
-            </span>
-            {collab.cursor && (
-              <span className="rounded bg-black/40 px-1 py-0.2 text-[10px] font-mono text-slate-400">
-                Ln {collab.cursor.lineNumber}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] transition ${
+                isFollowed
+                  ? 'border-cyan-500/50 bg-cyan-950/40 text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.25)]'
+                  : 'theme-border theme-bg-surface-2 theme-text-secondary hover:border-cyan-500/30'
+              } ${isMe ? 'cursor-default' : 'cursor-pointer'}`}
+              title={isMe ? 'You' : isFollowed ? 'Stop Following' : `Follow ${collab.user.name}`}
+            >
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{
+                  backgroundColor: collab.user.color,
+                  boxShadow: `0 0 6px ${collab.user.color}`,
+                }}
+              />
+              <span className="max-w-[70px] truncate font-medium theme-text-primary">
+                {collab.user.name}
               </span>
-            )}
-          </div>
-        ))}
+              {collab.cursor && (
+                <span className="rounded theme-bg-surface-1 border theme-border px-1 py-0.2 text-[10px] font-mono theme-text-secondary">
+                  Ln {collab.cursor.lineNumber}
+                </span>
+              )}
+              {!isMe && (
+                isFollowed ? (
+                  <EyeOff className="h-3 w-3 text-cyan-400" />
+                ) : (
+                  <Eye className="h-3 w-3 theme-text-secondary opacity-60 group-hover:opacity-100" />
+                )
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

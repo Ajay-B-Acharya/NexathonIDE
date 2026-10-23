@@ -16,13 +16,13 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
   onSendErrorToAI,
 }) => {
   return (
-    <div className="flex h-full flex-col bg-[#090a0f] text-slate-200 font-mono text-xs overflow-hidden">
+    <div className="flex h-full flex-col theme-bg-root theme-text-primary font-mono text-xs overflow-hidden transition-colors">
       {/* Benchmark Header Bar */}
-      <div className="flex items-center justify-between border-b border-white/10 bg-[#0f121d] px-3.5 py-1.5 font-sans">
+      <div className="flex items-center justify-between border-b theme-border theme-bg-surface-1 px-3.5 py-1.5 font-sans">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <Terminal className="h-3.5 w-3.5 text-indigo-400" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">
+            <Terminal className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider theme-text-secondary">
               WASM Sandbox (Pyodide & QuickJS)
             </span>
           </div>
@@ -30,19 +30,19 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
           {result && (
             <div className="flex items-center gap-2 text-[11px]">
               {result.exitCode === 0 ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/50 px-2.5 py-0.5 font-medium text-emerald-300">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 font-medium text-emerald-600 dark:text-emerald-300">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-500" />
                   <span>● Exit 0 (Success)</span>
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-950/50 px-2.5 py-0.5 font-medium text-rose-300">
-                  <XCircle className="h-3 w-3 text-rose-400" />
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 font-medium text-rose-600 dark:text-rose-300">
+                  <XCircle className="h-3 w-3 text-rose-500" />
                   <span>● Exit {result.exitCode} (Failed)</span>
                 </span>
               )}
 
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-[#141824] px-2.5 py-0.5 font-mono text-[11px] text-slate-300">
-                <Clock className="h-3 w-3 text-indigo-400" />
+              <span className="inline-flex items-center gap-1 rounded-full border theme-border theme-bg-surface-2 px-2.5 py-0.5 font-mono text-[11px] theme-text-secondary">
+                <Clock className="h-3 w-3 text-indigo-500 dark:text-indigo-400" />
                 <span>⏱️ {result.executionTimeMs}ms</span>
               </span>
             </div>
@@ -64,7 +64,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             type="button"
             onClick={onClearOutput}
             title="Clear Output"
-            className="rounded-md border border-white/10 bg-[#141824] p-1 text-slate-400 hover:bg-[#1c2234] hover:text-white transition cursor-pointer"
+            className="rounded-md border theme-border theme-bg-surface-2 p-1 theme-text-secondary hover:theme-bg-elevated hover:theme-text-primary transition cursor-pointer shadow-xs"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -74,20 +74,20 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
       {/* Output Stream Content */}
       <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
         {isRunning && (
-          <div className="flex items-center gap-2.5 rounded-xl border border-indigo-500/30 bg-[#141824]/80 p-3 text-indigo-300 animate-shimmer">
-            <Play className="h-4 w-4 animate-pulse text-indigo-400" />
+          <div className="flex items-center gap-2.5 rounded-xl border border-indigo-500/30 theme-bg-surface-2 p-3 text-indigo-500 dark:text-indigo-300 animate-shimmer">
+            <Play className="h-4 w-4 animate-pulse text-indigo-500 dark:text-indigo-400" />
             <span>Executing code in isolated WebAssembly runtime...</span>
           </div>
         )}
 
         {!isRunning && !result && (
-          <div className="flex h-full items-center justify-center text-slate-500 font-sans text-xs">
+          <div className="flex h-full items-center justify-center theme-text-secondary font-sans text-xs">
             <span>
               Press{' '}
-              <kbd className="rounded border border-white/10 bg-[#141824] px-1.5 py-0.5 font-mono text-slate-300">
+              <kbd className="rounded border theme-border theme-bg-surface-2 px-1.5 py-0.5 font-mono theme-text-primary">
                 Ctrl+Enter
               </kbd>{' '}
-              or click <strong className="text-emerald-400">Run Code</strong> to execute Python or JavaScript/TypeScript in-browser.
+              or click <strong className="text-emerald-500 dark:text-emerald-400">Run Code</strong> to execute Python or JavaScript/TypeScript in-browser.
             </span>
           </div>
         )}
@@ -95,29 +95,29 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
         {result && (
           <>
             {result.stdout && (
-              <div className="rounded-xl border border-white/10 bg-[#0f121d] overflow-hidden">
-                <div className="border-b border-white/5 bg-[#141824] px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              <div className="rounded-xl border theme-border theme-bg-surface-1 overflow-hidden shadow-xs">
+                <div className="border-b theme-border theme-bg-surface-2 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider theme-text-secondary">
                   Standard Output (stdout)
                 </div>
-                <pre className="whitespace-pre-wrap break-words p-3 text-slate-100 leading-relaxed">
+                <pre className="whitespace-pre-wrap break-words p-3 theme-text-primary leading-relaxed">
                   {result.stdout}
                 </pre>
               </div>
             )}
 
             {result.stderr && (
-              <div className="rounded-xl border border-rose-500/30 bg-rose-950/20 overflow-hidden">
-                <div className="border-b border-rose-500/20 bg-rose-950/40 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-rose-300">
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 overflow-hidden shadow-xs">
+                <div className="border-b border-rose-500/20 bg-rose-500/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-rose-500">
                   Standard Error / Traceback (stderr)
                 </div>
-                <pre className="whitespace-pre-wrap break-words p-3 text-rose-200 leading-relaxed">
+                <pre className="whitespace-pre-wrap break-words p-3 text-rose-600 dark:text-rose-300 leading-relaxed">
                   {result.stderr}
                 </pre>
               </div>
             )}
 
             {!result.stdout && !result.stderr && (
-              <div className="rounded-xl border border-white/5 bg-[#0f121d] p-3 text-slate-400 italic">
+              <div className="rounded-xl border theme-border theme-bg-surface-1 p-3 theme-text-secondary italic">
                 Process finished with exit code 0 and no console output.
               </div>
             )}

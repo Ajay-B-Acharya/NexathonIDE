@@ -4,17 +4,20 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { RefreshCw, Terminal as TerminalIcon } from 'lucide-react';
 import { ConnectionStatus, UserProfile } from '../types';
+import { ThemeMode } from './ThemeToggle';
 
 interface TerminalPanelProps {
   roomId: string;
   user: UserProfile;
   isVisible: boolean;
+  theme?: ThemeMode;
 }
 
 export const TerminalPanel: React.FC<TerminalPanelProps> = ({
   roomId,
   user,
   isVisible,
+  theme = 'dark',
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -23,6 +26,27 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
   const reconnectTimerRef = useRef<number | null>(null);
 
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
+
+  const getTerminalTheme = useCallback((currentTheme: ThemeMode) => {
+    const isDark = currentTheme !== 'light';
+    return isDark
+      ? {
+          background: '#06080e',
+          foreground: '#f8fafc',
+          cursor: '#818cf8',
+          selectionBackground: '#6366f144',
+          black: '#06080e',
+          white: '#f8fafc',
+        }
+      : {
+          background: '#f8fafc',
+          foreground: '#0f172a',
+          cursor: '#4f46e5',
+          selectionBackground: '#6366f133',
+          black: '#0f172a',
+          white: '#ffffff',
+        };
+  }, []);
 
   const connectWebSocket = useCallback(() => {
     if (!termRef.current) return;
@@ -97,12 +121,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
       cursorBlink: true,
       fontSize: 13,
       fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-      theme: {
-        background: '#090a0f',
-        foreground: '#e2e8f0',
-        cursor: '#818cf8',
-        selectionBackground: '#6366f144',
-      },
+      theme: getTerminalTheme(theme),
       convertEol: true,
     });
 
@@ -152,7 +171,13 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
       }
       term.dispose();
     };
-  }, [connectWebSocket]);
+  }, [connectWebSocket, getTerminalTheme]);
+
+  useEffect(() => {
+    if (termRef.current) {
+      termRef.current.options.theme = getTerminalTheme(theme);
+    }
+  }, [theme, getTerminalTheme]);
 
   useEffect(() => {
     if (isVisible && fitAddonRef.current) {
@@ -167,29 +192,29 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
   }, [isVisible]);
 
   return (
-    <div className="flex h-full flex-col bg-[#090a0f] overflow-hidden">
-      <div className="flex items-center justify-between border-b border-white/10 bg-[#0f121d] px-3.5 py-1.5">
-        <div className="flex items-center gap-2 text-xs text-slate-300">
-          <TerminalIcon className="h-3.5 w-3.5 text-indigo-400" />
+    <div className="flex h-full flex-col theme-bg-root overflow-hidden transition-colors">
+      <div className="flex items-center justify-between border-b theme-border theme-bg-surface-1 px-3.5 py-1.5">
+        <div className="flex items-center gap-2 text-xs theme-text-primary">
+          <TerminalIcon className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" />
           <span className="text-[11px] font-semibold uppercase tracking-wider">
             Cloud Node-PTY Terminal
           </span>
           <span
             className={`h-2 w-2 rounded-full ${
               status === 'connected'
-                ? 'bg-emerald-400 shadow-[0_0_8px_#10b981]'
+                ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]'
                 : status === 'connecting'
                 ? 'bg-amber-400 animate-pulse'
-                : 'bg-rose-400'
+                : 'bg-rose-500'
             }`}
           />
-          <span className="text-[11px] text-slate-400 capitalize">{status}</span>
+          <span className="text-[11px] theme-text-secondary capitalize">{status}</span>
         </div>
 
         <button
           type="button"
           onClick={connectWebSocket}
-          className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-[#141824] px-2.5 py-0.5 text-[11px] text-slate-200 hover:bg-[#1c2234] transition cursor-pointer"
+          className="inline-flex items-center gap-1.5 rounded-md border theme-border theme-bg-surface-2 px-2.5 py-0.5 text-[11px] theme-text-primary hover:theme-bg-elevated transition cursor-pointer shadow-xs"
         >
           <RefreshCw className="h-3 w-3" />
           <span>Reconnect</span>
