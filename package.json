@@ -11,7 +11,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "db:init": "tsx src/server/init-db.ts"
+    "db:init": "tsx src/server/init-db.ts",
+    "test:collab": "tsx test/collaboration.test.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

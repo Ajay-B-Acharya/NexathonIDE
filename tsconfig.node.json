@@ -22,5 +22,5 @@
     "noImplicitAny": true,
     "strictNullChecks": true
   },
-  "include": ["vite.config.ts", "src/server/**/*"]
+  "include": ["vite.config.ts", "src/server/**/*", "test/**/*"]
 }
