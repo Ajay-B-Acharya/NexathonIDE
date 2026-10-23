@@ -9,6 +9,7 @@ import { OutputPanel } from '../components/OutputPanel';
 import { TerminalPanel } from '../components/TerminalPanel';
 import { AIDebuggerPanel } from '../components/AIDebuggerPanel';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { ConnectionDiagnosticsModal } from '../components/ConnectionDiagnosticsModal';
 import { workspaceApi, detectLanguageFromPath } from '../services/workspaceApi';
 import { executionClient } from '../services/executionClient';
 import { useCollaborativeEditor } from '../hooks/useCollaborativeEditor';
@@ -57,6 +58,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [aiErrorSeed, setAiErrorSeed] = useState<string>('');
 
   const [filePendingDelete, setFilePendingDelete] = useState<WorkspaceFile | null>(null);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
 
   const [editorInstance, setEditorInstance] =
     useState<Monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -485,6 +487,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         }}
         onSwitchWorkspace={onSwitchWorkspace}
         onLogout={onLogout}
+        onOpenDiagnostics={() => setIsDiagnosticsOpen(true)}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -665,6 +668,18 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           onCancel={() => setFilePendingDelete(null)}
         />
       )}
+
+      <ConnectionDiagnosticsModal
+        isOpen={isDiagnosticsOpen}
+        onClose={() => setIsDiagnosticsOpen(false)}
+        roomId={room.id}
+        activeFilePath={activeFile?.path}
+        connectionStatus={connectionStatus}
+        isDocumentSynced={isDocumentSynced}
+        collaborators={collaborators}
+        currentUser={user}
+        onForceReconnect={reconcileSession}
+      />
     </div>
   );
 };

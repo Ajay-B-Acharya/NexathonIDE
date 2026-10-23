@@ -17,6 +17,7 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0',
     port: 5173,
     proxy: {
       '/api': {
@@ -26,6 +27,11 @@ export default defineConfig({
       '/ws': {
         target: 'ws://localhost:3001',
         ws: true,
+      },
+      '/yjs': {
+        target: 'ws://localhost:1234',
+        ws: true,
+        rewrite: (path) => path.replace(/^\/yjs/, '') || '/',
       },
     },
   },

@@ -33,6 +33,7 @@ import { executionClient } from '../services/executionClient';
 import { SupportedLanguage, UserProfile } from '../types';
 import { AmbientCollaborationCanvas } from '../components/AmbientCollaborationCanvas';
 import { ThemeMode, ThemeToggle } from '../components/ThemeToggle';
+import { getYjsWsUrl } from '../config/endpoints';
 
 interface LandingProps {
   existingUser: UserProfile | null;
@@ -234,8 +235,7 @@ export const Landing: React.FC<LandingProps> = ({
   // Real WebSocket / Loopback RTT Probe
   const runClusterLatencyProbe = useCallback(() => {
     setClusterStatus('probing');
-    const wsUrl =
-      (import.meta.env.VITE_YJS_WS_URL as string) || 'ws://localhost:1234';
+    const wsUrl = getYjsWsUrl();
     const start = performance.now();
 
     try {

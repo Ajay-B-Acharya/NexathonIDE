@@ -1,10 +1,10 @@
 import { SupportedLanguage, WorkspaceFile, WorkspaceRoom } from '../types';
-
-const rawApiUrl = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3001';
-const API_BASE_URL = rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl.replace(/\/+$/, '')}/api`;
+import { getApiBaseUrl } from '../config/endpoints';
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
       ...(options?.headers || {}),

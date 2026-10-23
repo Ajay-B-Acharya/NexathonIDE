@@ -5,6 +5,7 @@ import '@xterm/xterm/css/xterm.css';
 import { RefreshCw, Terminal as TerminalIcon } from 'lucide-react';
 import { ConnectionStatus, UserProfile } from '../types';
 import { ThemeMode } from './ThemeToggle';
+import { getTerminalWsUrl } from '../config/endpoints';
 
 interface TerminalPanelProps {
   roomId: string;
@@ -56,9 +57,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
       wsRef.current = null;
     }
 
-    const baseWsUrl =
-      (import.meta.env.VITE_TERMINAL_WS_URL as string) ||
-      'ws://localhost:3001/ws/terminal';
+    const baseWsUrl = getTerminalWsUrl();
     const wsUrl = `${baseWsUrl}?roomId=${encodeURIComponent(
       roomId
     )}&userId=${encodeURIComponent(user.id)}`;

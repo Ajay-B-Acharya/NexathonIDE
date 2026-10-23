@@ -6,7 +6,9 @@ import '@xterm/xterm/css/xterm.css';
 import { RotateCcw, Trash2, Users, Shield, Cpu, Terminal as TerminalIcon } from 'lucide-react';
 import type { User } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getApiBaseUrl } from '../config/endpoints';
+
+const API_URL = getApiBaseUrl();
 
 interface TerminalCollaborator {
   userId: string;
