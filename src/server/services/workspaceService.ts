@@ -47,8 +47,10 @@ export function formatRoom(room: any) {
 
 export function formatFile(file: any) {
   if (!file) return file;
+  const name = file.name || (file.path ? file.path.split('/').pop() : '') || file.path || 'file';
   return {
     ...file,
+    name,
     roomId: file.room_id || file.roomId,
     createdAt: file.created_at || file.createdAt || new Date().toISOString(),
     updatedAt: file.updated_at || file.updatedAt || new Date().toISOString(),
@@ -156,13 +158,18 @@ export class WorkspaceService {
    */
   static async getRoom(id: string, userToken?: string) {
     const client = createScopedClient(userToken);
-    const { data, error } = await client
-      .from('rooms')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const cleanId = id.trim().replace(/^#/, '');
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
 
-    if (error) return null;
+    let query = client.from('rooms').select('*');
+    if (isUUID) {
+      query = query.eq('id', cleanId);
+    } else {
+      query = query.ilike('id', `${cleanId}%`);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error || !data) return null;
     return formatRoom(data);
   }
 
