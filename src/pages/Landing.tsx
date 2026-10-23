@@ -231,7 +231,7 @@ export const Landing: React.FC<LandingProps> = ({
   const runClusterLatencyProbe = useCallback(() => {
     setClusterStatus('probing');
     const wsUrl =
-      (import.meta.env.VITE_YJS_WS_URL as string) || 'ws://localhost:3001/ws/yjs';
+      (import.meta.env.VITE_YJS_WS_URL as string) || 'ws://localhost:1234';
     const start = performance.now();
 
     try {

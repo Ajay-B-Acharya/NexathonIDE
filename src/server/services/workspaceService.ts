@@ -35,6 +35,26 @@ export function getLanguageFromPath(path: string): string {
   return langMap[ext || ''] || 'plaintext';
 }
 
+export function formatRoom(room: any) {
+  if (!room) return room;
+  return {
+    ...room,
+    createdAt: room.created_at || room.createdAt || new Date().toISOString(),
+    updatedAt: room.updated_at || room.updatedAt || new Date().toISOString(),
+    ownerId: room.owner_id || room.ownerId || 'default',
+  };
+}
+
+export function formatFile(file: any) {
+  if (!file) return file;
+  return {
+    ...file,
+    roomId: file.room_id || file.roomId,
+    createdAt: file.created_at || file.createdAt || new Date().toISOString(),
+    updatedAt: file.updated_at || file.updatedAt || new Date().toISOString(),
+  };
+}
+
 export class WorkspaceService {
   /**
    * Create or fetch user profile
@@ -106,7 +126,28 @@ export class WorkspaceService {
 
     await supabaseAdmin.from('workspace_files').insert(defaultFile);
 
-    return room;
+    return formatRoom(room);
+  }
+
+  /**
+   * List all rooms / workspaces
+   */
+  static async listRooms(userToken?: string) {
+    const client = createScopedClient(userToken);
+    const { data, error } = await client
+      .from('rooms')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      const { data: adminRooms } = await supabaseAdmin
+        .from('rooms')
+        .select('*')
+        .order('created_at', { ascending: false });
+      return (adminRooms || []).map(formatRoom);
+    }
+
+    return (data || []).map(formatRoom);
   }
 
   /**
@@ -121,7 +162,7 @@ export class WorkspaceService {
       .single();
 
     if (error) return null;
-    return data;
+    return formatRoom(data);
   }
 
   /**
@@ -136,7 +177,7 @@ export class WorkspaceService {
       .order('path', { ascending: true });
 
     if (error) throw new Error(`Failed to list files: ${error.message}`);
-    return data || [];
+    return (data || []).map(formatFile);
   }
 
   /**
@@ -152,7 +193,7 @@ export class WorkspaceService {
       .single();
 
     if (error) return null;
-    return data;
+    return formatFile(data);
   }
 
   /**
@@ -181,7 +222,7 @@ export class WorkspaceService {
       if (error || !data) {
         throw new Error('CONFLICT: File was modified by another user or session. Please reload.');
       }
-      return data;
+      return formatFile(data);
     }
 
     // Upsert if no version locking requested
@@ -201,7 +242,7 @@ export class WorkspaceService {
       .single();
 
     if (error) throw new Error(`Failed to save file: ${error.message}`);
-    return data;
+    return formatFile(data);
   }
 
   /**
@@ -221,7 +262,7 @@ export class WorkspaceService {
       .single();
 
     if (error) return null;
-    return data;
+    return formatFile(data);
   }
 
   /**
