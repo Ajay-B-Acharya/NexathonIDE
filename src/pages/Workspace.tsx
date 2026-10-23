@@ -198,15 +198,16 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     setIsRunning(true);
 
     try {
+      const codeToRun = (editorInstance && activeFile ? editorInstance.getValue() : activeFile.content) || '';
       const result = await executionClient.executeCode(
-        activeFile.content,
+        codeToRun,
         activeFile.language
       );
       setExecutionResult(result);
     } finally {
       setIsRunning(false);
     }
-  }, [activeFile]);
+  }, [activeFile, editorInstance]);
 
   useKeyboardShortcuts({
     onSave: handleExplicitSave,
