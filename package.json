@@ -14,6 +14,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "db:init": "tsx src/server/init-db.ts",
+    "stop:all": "powershell -Command \"Get-Process node,tsx -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue\"",
     "test:collab": "tsx collaboration-backend/test/collaboration.test.ts",
     "test:cross-device": "tsx collaboration-backend/test/cross-device.test.ts"
   },

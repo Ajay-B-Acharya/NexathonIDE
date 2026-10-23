@@ -11,8 +11,14 @@ import { sessionManager } from './sessionManager.js';
 /**
  * Configure and attach the WebSocket server for collaborative terminals
  */
-export function setupTerminalServer(httpServer: Server): WebSocketServer {
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws/terminal' });
+export function setupTerminalServer(httpServer?: Server): WebSocketServer {
+  // Use noServer mode so ws does not automatically hook httpServer.on('upgrade')
+  // and destroy sockets belonging to other WebSocket paths (such as Yjs/CRDT /yjs or /collab).
+  const wss = new WebSocketServer({ noServer: true });
+
+  wss.on('error', (err) => {
+    console.warn('[TerminalServer] WebSocket server error:', err?.message || err);
+  });
 
   wss.on('connection', (ws: WebSocket, req) => {
     try {
@@ -99,6 +105,22 @@ export function setupTerminalServer(httpServer: Server): WebSocketServer {
       ws.close(1011, 'Server error initializing terminal');
     }
   });
+
+  if (httpServer) {
+    httpServer.on('upgrade', (req, socket, head) => {
+      try {
+        const url = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+        if (url.pathname.startsWith('/ws/terminal') || url.pathname === '/terminal') {
+          wss.handleUpgrade(req, socket, head, (ws) => {
+            wss.emit('connection', ws, req);
+          });
+        }
+        // Do NOT abort or destroy non-matching sockets: allow other upgrade listeners (Yjs, etc.) to process them
+      } catch (err: any) {
+        console.warn('[TerminalServer] Upgrade handling error:', err?.message);
+      }
+    });
+  }
 
   return wss;
 }
