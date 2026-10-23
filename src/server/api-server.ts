@@ -601,19 +601,30 @@ ${error || 'Check code for syntax errors, bugs, or logic flaws.'}`;
 app.post('/api/ai/debug', handleAIDebug);
 app.post('/ai/debug', handleAIDebug);
 
-setupTerminalServer(httpServer);
+const terminalWss = setupTerminalServer();
 
-// Route /yjs and /collab WebSocket upgrades directly through the unified API server as well
+// Unified WebSocket Upgrade Router for Terminal & Yjs CRDT Collaboration
 httpServer.on('upgrade', (request, socket, head) => {
   try {
     const parsed = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
-    if (parsed.pathname.startsWith('/yjs') || parsed.pathname.startsWith('/collab')) {
+    const pathname = parsed.pathname;
+
+    if (pathname.startsWith('/ws/terminal') || pathname === '/terminal') {
+      terminalWss.handleUpgrade(request, socket, head, (ws) => {
+        terminalWss.emit('connection', ws, request);
+      });
+    } else if (pathname.startsWith('/yjs') || pathname.startsWith('/collab')) {
       yjsWss.handleUpgrade(request, socket as any, head, (ws) => {
         yjsWss.emit('connection', ws, request);
       });
+    } else {
+      socket.destroy();
     }
   } catch (err: any) {
     console.warn('Notice: WebSocket upgrade error:', err?.message);
+    try {
+      socket.destroy();
+    } catch {}
   }
 });
 
@@ -630,10 +641,25 @@ startYjsServer(YJS_PORT)
     }
   });
 
+httpServer.on('error', (err: any) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n======================================================`);
+    console.error(`[API Server] Error: Port ${PORT} is already in use.`);
+    console.error(`A previous API server instance or process is occupying port ${PORT}.`);
+    console.error(`To stop it, run: npm run stop:all`);
+    console.error(`======================================================\n`);
+    process.exit(1);
+  } else {
+    console.error('[API Server] Fatal server error:', err);
+    process.exit(1);
+  }
+});
+
 httpServer.listen(PORT, async () => {
   await verifyDatabaseConnection();
   console.log(`API server running on port ${PORT}`);
   console.log(`Terminal WebSocket available at ws://localhost:${PORT}/ws/terminal`);
+  console.log(`Unified Yjs WebSocket available at ws://localhost:${PORT}/yjs`);
 });
 
 const handleGracefulShutdown = async () => {

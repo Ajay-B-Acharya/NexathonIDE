@@ -108,9 +108,15 @@ function shutdown() {
   isShuttingDown = true;
   console.log('\n[Orchestrator] Shutting down servers...');
 
-  try { yjsServer.kill('SIGINT'); } catch {}
-  try { apiServer.kill('SIGINT'); } catch {}
-  try { viteDev.kill('SIGINT'); } catch {}
+  if (process.platform === 'win32') {
+    if (yjsServer.pid) { try { spawn('taskkill', ['/F', '/T', '/PID', yjsServer.pid.toString()]); } catch {} }
+    if (apiServer.pid) { try { spawn('taskkill', ['/F', '/T', '/PID', apiServer.pid.toString()]); } catch {} }
+    if (viteDev.pid) { try { spawn('taskkill', ['/F', '/T', '/PID', viteDev.pid.toString()]); } catch {} }
+  } else {
+    try { yjsServer.kill('SIGINT'); } catch {}
+    try { apiServer.kill('SIGINT'); } catch {}
+    try { viteDev.kill('SIGINT'); } catch {}
+  }
 
   setTimeout(() => {
     process.exit(0);
