@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Environment variables
+# Environment variables (contains secrets — keep out of version control)
 .env
 .env.*
 !.env.example

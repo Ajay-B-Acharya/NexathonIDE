@@ -1,9 +1,12 @@
+import 'dotenv/config';
 import express, { type Request, type Response } from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
-import { Pool } from 'pg';
+import { v4 as uuidv4 } from 'uuid';
 import OpenAI from 'openai';
-import type { AIDebugRequest, AIDebugResponse } from '../types/index.js';
+import { supabaseAdmin } from './supabase.js';
+import { WorkspaceService, getLanguageFromPath } from './services/workspaceService.js';
+import type { AIDebugRequest, AIDebugResponse } from './types.js';
 import { createTerminalRouter, setupTerminalServer } from './terminal/terminalServer.js';
 import { sessionManager } from './terminal/sessionManager.js';
 
@@ -19,298 +22,266 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/terminal', createTerminalRouter());
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/collaborative_ide',
-  max: 20,
-});
+// AI Provider Setup: Supports Groq (fast inference) or OpenAI
+const groqApiKey = process.env.GROQ_API_KEY;
+const isRealGroqKey = Boolean(groqApiKey && !groqApiKey.includes('paste_your_real_groq_api_key_here'));
 
-const hasOpenAI = Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() && process.env.OPENAI_API_KEY !== 'your_openai_api_key_here');
+const groq = isRealGroqKey
+  ? new OpenAI({
+      apiKey: groqApiKey,
+      baseURL: 'https://api.groq.com/openai/v1',
+    })
+  : null;
+
+const hasOpenAI = Boolean(
+  process.env.OPENAI_API_KEY &&
+  process.env.OPENAI_API_KEY.trim() &&
+  process.env.OPENAI_API_KEY !== 'your_openai_api_key_here'
+);
+
 const openai = hasOpenAI ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
-let dbConnected = false;
+// In-memory fallback if Supabase is offline
+let supabaseConnected = false;
 const memoryUsers = new Map<string, any>();
 const memoryRooms = new Map<string, any>();
 const memoryFiles = new Map<string, any>();
 
-async function initDatabase() {
+function getBearerToken(req: Request): string | undefined {
+  const authHeader = req.headers.authorization;
+  return authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined;
+}
+
+async function verifyDatabaseConnection() {
   try {
-    const client = await pool.connect();
-    try {
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS users (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          username VARCHAR(255) UNIQUE NOT NULL,
-          avatar_url TEXT,
-          created_at TIMESTAMP DEFAULT NOW()
-        );
-        
-        CREATE TABLE IF NOT EXISTS rooms (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          name VARCHAR(255) NOT NULL,
-          owner_id UUID REFERENCES users(id),
-          created_at TIMESTAMP DEFAULT NOW()
-        );
-        
-        CREATE TABLE IF NOT EXISTS workspace_files (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
-          path TEXT NOT NULL,
-          content TEXT DEFAULT '',
-          language VARCHAR(50) DEFAULT 'plaintext',
-          updated_at TIMESTAMP DEFAULT NOW(),
-          UNIQUE(room_id, path)
-        );
-        
-        CREATE INDEX IF NOT EXISTS idx_workspace_files_room_id ON workspace_files(room_id);
-      `);
-      dbConnected = true;
-      console.log('[Database] PostgreSQL initialized successfully.');
-    } finally {
-      client.release();
+    const { error } = await supabaseAdmin.from('rooms').select('count', { count: 'exact', head: true });
+    if (error) {
+      supabaseConnected = false;
+      console.warn('⚠️ Supabase connection warning (using resilient in-memory fallback):', error.message);
+    } else {
+      supabaseConnected = true;
+      console.log('✅ Connected to Supabase managed PostgreSQL successfully');
     }
   } catch (err: any) {
-    dbConnected = false;
-    console.warn(`[Database] PostgreSQL is not running on port 5432. Operating in resilient in-memory mode.`);
+    supabaseConnected = false;
+    console.warn('⚠️ Could not connect to Supabase, running in resilient in-memory mode:', err.message);
   }
 }
 
-function getLanguageFromPath(path: string): string {
-  const ext = path.split('.').pop()?.toLowerCase();
-  const langMap: Record<string, string> = {
-    'js': 'javascript',
-    'ts': 'typescript',
-    'jsx': 'javascript',
-    'tsx': 'typescript',
-    'py': 'python',
-    'html': 'html',
-    'css': 'css',
-    'json': 'json',
-    'md': 'markdown',
-    'sql': 'sql',
-    'sh': 'shell',
-    'yaml': 'yaml',
-    'yml': 'yaml',
-  };
-  return langMap[ext || ''] || 'plaintext';
-}
-
+// Health check
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), dbConnected });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    supabaseConnected,
+    aiProvider: groq ? 'groq' : openai ? 'openai' : 'none',
+  });
 });
 
+// Users
 app.post('/api/users', async (req: Request, res: Response) => {
   try {
-    const { username, avatar_url } = req.body;
+    const { username, avatarUrl, id } = req.body;
     if (!username) {
       return res.status(400).json({ error: 'Username is required' });
     }
-    
-    if (dbConnected) {
-      const result = await pool.query(
-        'INSERT INTO users (username, avatar_url) VALUES ($1, $2) ON CONFLICT (username) DO UPDATE SET avatar_url = $2 RETURNING *',
-        [username, avatar_url]
-      );
-      return res.json(result.rows[0]);
+
+    if (supabaseConnected) {
+      const user = await WorkspaceService.upsertUser(username, avatarUrl, id);
+      return res.json(user);
     }
 
-    let user = memoryUsers.get(username);
+    let user = Array.from(memoryUsers.values()).find((u) => u.username === username);
     if (!user) {
-      user = {
-        id: `usr_${crypto.randomUUID().slice(0, 8)}`,
-        username,
-        avatar_url,
-        created_at: new Date().toISOString(),
-      };
-      memoryUsers.set(username, user);
-    } else if (avatar_url) {
-      user.avatar_url = avatar_url;
+      user = { id: id || uuidv4(), username, avatar_url: avatarUrl || null, created_at: new Date().toISOString() };
+      memoryUsers.set(user.id, user);
     }
     res.json(user);
-  } catch (error) {
-    console.error('Error creating/updating user:', error);
-    res.status(500).json({ error: 'Failed to create/update user' });
+  } catch (error: any) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ error: error.message || 'Failed to create user' });
   }
 });
 
-app.get('/api/rooms', async (req: Request, res: Response) => {
+app.get('/api/users/:id', async (req: Request, res: Response) => {
   try {
-    if (dbConnected) {
-      const result = await pool.query('SELECT * FROM rooms ORDER BY created_at DESC');
-      return res.json(result.rows);
+    const id = String(req.params.id);
+    if (supabaseConnected) {
+      const user = await WorkspaceService.getUser(id);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      return res.json(user);
     }
-    res.json(Array.from(memoryRooms.values()));
-  } catch (error) {
-    console.error('Error fetching rooms:', error);
-    res.status(500).json({ error: 'Failed to fetch rooms' });
+
+    const user = memoryUsers.get(id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+  } catch (error: any) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch user' });
   }
 });
 
+// Rooms / Workspaces
 app.post('/api/rooms', async (req: Request, res: Response) => {
   try {
-    const { name, owner_id } = req.body;
-    if (!name) {
-      return res.status(400).json({ error: 'Room name is required' });
-    }
-    
-    if (dbConnected) {
-      const result = await pool.query(
-        'INSERT INTO rooms (name, owner_id) VALUES ($1, $2) RETURNING *',
-        [name, owner_id || null]
-      );
-      
-      const newRoom = result.rows[0];
-      
-      const defaultFiles = [
-        { path: 'main.py', content: '# Welcome to your Python collaborative workspace!\n\ndef calculate_fibonacci(n):\n    if n <= 0:\n        return []\n    elif n == 1:\n        return [0]\n    fib = [0, 1]\n    while len(fib) < n:\n        fib.append(fib[-1] + fib[-2])\n    return fib\n\nif __name__ == "__main__":\n    print("Fibonacci Sequence (first 10 numbers):")\n    print(calculate_fibonacci(10))\n' },
-        { path: 'index.js', content: '// Welcome to your JavaScript collaborative workspace!\n\nfunction processData(items) {\n    return items\n        .map(x => x * 2)\n        .filter(x => x > 5);\n}\n\nconst testData = [1, 2, 3, 4, 5];\nconsole.log("Processed Results:", processData(testData));\n' },
-        { path: 'README.md', content: `# Collaborative Workspace\n\nThis workspace is synced across all connected peers in real time using Yjs CRDTs.\n\n### Features\n- Real-time peer-to-peer editing\n- Pyodide client-side Python execution\n- QuickJS client-side JavaScript execution\n- Shared interactive cloud terminal\n- AI Debugger with syntax error diagnostics\n` },
-      ];
-      
-      for (const file of defaultFiles) {
-        await pool.query(
-          'INSERT INTO workspace_files (room_id, path, content, language) VALUES ($1, $2, $3, $4)',
-          [newRoom.id, file.path, file.content, getLanguageFromPath(file.path)]
-        );
-      }
-      
-      return res.status(201).json(newRoom);
+    const { name, ownerId, userId } = req.body;
+    const effectiveOwnerId = ownerId || userId;
+    if (!name || !effectiveOwnerId) {
+      return res.status(400).json({ error: 'Name and ownerId are required' });
     }
 
-    const roomId = `room_${crypto.randomUUID().slice(0, 8)}`;
-    const newRoom = {
-      id: roomId,
-      name,
-      owner_id: owner_id || null,
-      created_at: new Date().toISOString(),
-    };
-    memoryRooms.set(roomId, newRoom);
-
-    const defaultFiles = [
-      { path: 'main.py', content: '# Welcome to your Python collaborative workspace!\n\ndef calculate_fibonacci(n):\n    if n <= 0:\n        return []\n    elif n == 1:\n        return [0]\n    fib = [0, 1]\n    while len(fib) < n:\n        fib.append(fib[-1] + fib[-2])\n    return fib\n\nif __name__ == "__main__":\n    print("Fibonacci Sequence (first 10 numbers):")\n    print(calculate_fibonacci(10))\n' },
-      { path: 'index.js', content: '// Welcome to your JavaScript collaborative workspace!\n\nfunction processData(items) {\n    return items\n        .map(x => x * 2)\n        .filter(x => x > 5);\n}\n\nconst testData = [1, 2, 3, 4, 5];\nconsole.log("Processed Results:", processData(testData));\n' },
-      { path: 'README.md', content: `# Collaborative Workspace\n\nThis workspace is synced across all connected peers in real time using Yjs CRDTs.\n\n### Features\n- Real-time peer-to-peer editing\n- Pyodide client-side Python execution\n- QuickJS client-side JavaScript execution\n- Shared interactive cloud terminal\n- AI Debugger with syntax error diagnostics\n` },
-    ];
-
-    for (const file of defaultFiles) {
-      const fileId = `file_${crypto.randomUUID().slice(0, 8)}`;
-      memoryFiles.set(`${roomId}:${file.path}`, {
-        id: fileId,
-        roomId,
-        path: file.path,
-        content: file.content,
-        language: getLanguageFromPath(file.path),
-        updated_at: new Date().toISOString(),
-      });
+    if (supabaseConnected) {
+      const room = await WorkspaceService.createWorkspace({ name, ownerId: effectiveOwnerId });
+      return res.status(201).json(room);
     }
 
-    res.status(201).json(newRoom);
-  } catch (error) {
+    const room = { id: uuidv4(), name, owner_id: effectiveOwnerId, created_at: new Date().toISOString() };
+    memoryRooms.set(room.id, room);
+    res.status(201).json(room);
+  } catch (error: any) {
     console.error('Error creating room:', error);
-    res.status(500).json({ error: 'Failed to create room' });
+    res.status(500).json({ error: error.message || 'Failed to create room' });
   }
 });
 
-app.get('/api/rooms/:roomId', async (req: Request, res: Response) => {
+app.get('/api/rooms/:id', async (req: Request, res: Response) => {
   try {
-    const roomId = String(req.params.roomId);
-    
-    if (dbConnected) {
-      const roomResult = await pool.query('SELECT * FROM rooms WHERE id = $1', [roomId]);
-      if (roomResult.rows.length === 0) {
-        return res.status(404).json({ error: 'Room not found' });
-      }
-      
-      const filesResult = await pool.query('SELECT * FROM workspace_files WHERE room_id = $1 ORDER BY path ASC', [roomId]);
-      const room = roomResult.rows[0];
-      room.files = filesResult.rows;
+    const token = getBearerToken(req);
+    const id = String(req.params.id);
+
+    if (supabaseConnected) {
+      const room = await WorkspaceService.getRoom(id, token);
+      if (!room) return res.status(404).json({ error: 'Room not found' });
       return res.json(room);
     }
 
-    const room = memoryRooms.get(roomId);
+    let room = memoryRooms.get(id);
     if (!room) {
-      return res.status(404).json({ error: 'Room not found' });
+      room = { id, name: 'Collaborative Room', owner_id: 'default', created_at: new Date().toISOString() };
+      memoryRooms.set(room.id, room);
     }
-    const files = Array.from(memoryFiles.values()).filter((f: any) => f.roomId === roomId);
-    res.json({ ...room, files });
-  } catch (error) {
+    res.json(room);
+  } catch (error: any) {
     console.error('Error fetching room:', error);
-    res.status(500).json({ error: 'Failed to fetch room' });
+    res.status(500).json({ error: error.message || 'Failed to fetch room' });
   }
 });
 
-app.get('/api/rooms/:roomId/files', async (req: Request, res: Response) => {
+// Workspace Files
+app.get('/api/rooms/:id/files', async (req: Request, res: Response) => {
   try {
-    const roomId = String(req.params.roomId);
-    if (dbConnected) {
-      const result = await pool.query('SELECT * FROM workspace_files WHERE room_id = $1 ORDER BY path ASC', [roomId]);
-      return res.json(result.rows);
+    const token = getBearerToken(req);
+    const id = String(req.params.id);
+
+    if (supabaseConnected) {
+      const files = await WorkspaceService.listFiles(id, token);
+      return res.json(files);
     }
-    const files = Array.from(memoryFiles.values()).filter((f: any) => f.roomId === roomId);
+
+    const files = Array.from(memoryFiles.values()).filter((f) => f.room_id === id || f.roomId === id);
     res.json(files);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching files:', error);
-    res.status(500).json({ error: 'Failed to fetch files' });
+    res.status(500).json({ error: error.message || 'Failed to fetch files' });
+  }
+});
+
+app.get('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
+  try {
+    const token = getBearerToken(req);
+    const roomId = String(req.params.roomId);
+    const filePath = String(req.params.filePath);
+
+    if (supabaseConnected) {
+      const file = await WorkspaceService.loadFile(roomId, filePath, token);
+      if (!file) return res.status(404).json({ error: 'File not found' });
+      return res.json(file);
+    }
+
+    let file = memoryFiles.get(`${roomId}:${filePath}`);
+    if (!file) {
+      for (const f of memoryFiles.values()) {
+        if ((f.roomId === roomId || f.room_id === roomId) && (f.id === filePath || f.path === filePath)) {
+          file = f;
+          break;
+        }
+      }
+    }
+
+    if (!file) return res.status(404).json({ error: 'File not found' });
+    res.json(file);
+  } catch (error: any) {
+    console.error('Error fetching file:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch file' });
   }
 });
 
 app.post('/api/rooms/:roomId/files', async (req: Request, res: Response) => {
   try {
+    const token = getBearerToken(req);
     const roomId = String(req.params.roomId);
-    const { path: filePath, content = '', language } = req.body;
-    
-    if (!filePath) {
-      return res.status(400).json({ error: 'File path is required' });
+    const rawPath = req.body.path || req.body.filePath || req.body.name;
+    const content = req.body.content || '';
+    const language = req.body.language;
+    const expectedVersion = req.body.expectedVersion;
+
+    if (!rawPath) {
+      return res.status(400).json({ error: 'Path is required' });
     }
-    
+
+    const filePath = String(rawPath);
     const determinedLang = language || getLanguageFromPath(filePath);
-    
-    if (dbConnected) {
-      const result = await pool.query(
-        'INSERT INTO workspace_files (room_id, path, content, language) VALUES ($1, $2, $3, $4) ON CONFLICT (room_id, path) DO UPDATE SET content = $3, language = $4, updated_at = NOW() RETURNING *',
-        [roomId, filePath, content, determinedLang]
-      );
-      return res.status(201).json(result.rows[0]);
+
+    if (supabaseConnected) {
+      const savedFile = await WorkspaceService.saveFile({
+        roomId,
+        path: filePath,
+        content,
+        language: determinedLang,
+        expectedVersion,
+        userToken: token,
+      });
+      return res.status(201).json(savedFile);
     }
 
     const key = `${roomId}:${filePath}`;
     const existing = memoryFiles.get(key);
     const file = {
-      id: existing?.id || `file_${crypto.randomUUID().slice(0, 8)}`,
+      id: existing?.id || uuidv4(),
       roomId,
+      room_id: roomId,
       path: filePath,
       content,
       language: determinedLang,
+      version: 1,
       updated_at: new Date().toISOString(),
     };
     memoryFiles.set(key, file);
     res.status(201).json(file);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating/updating file:', error);
-    res.status(500).json({ error: 'Failed to create/update file' });
+    const status = error.message?.includes('CONFLICT') ? 409 : 500;
+    res.status(status).json({ error: error.message || 'Failed to save file' });
   }
 });
 
 const handleUpdateFile = async (req: Request, res: Response) => {
   try {
+    const token = getBearerToken(req);
     const roomId = String(req.params.roomId);
     const fileIdentifier = String(req.params.filePath);
     const { content, path, language } = req.body;
-    
-    if (dbConnected) {
-      const result = await pool.query(
-        'UPDATE workspace_files SET content = COALESCE($1, content), path = COALESCE($4, path), language = COALESCE($5, language), updated_at = NOW() WHERE room_id = $2 AND (path = $3 OR id::text = $3) RETURNING *',
-        [content, roomId, fileIdentifier, path || null, language || null]
-      );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'File not found' });
-      }
-      return res.json(result.rows[0]);
+
+    if (supabaseConnected) {
+      const updated = await WorkspaceService.updateFileContent(roomId, fileIdentifier, content, token);
+      if (!updated) return res.status(404).json({ error: 'File not found' });
+      return res.json(updated);
     }
 
     let file = memoryFiles.get(`${roomId}:${fileIdentifier}`);
     if (!file) {
-      for (const [key, f] of memoryFiles.entries()) {
-        if (f.roomId === roomId && (f.id === fileIdentifier || f.path === fileIdentifier)) {
+      for (const f of memoryFiles.values()) {
+        if ((f.roomId === roomId || f.room_id === roomId) && (f.id === fileIdentifier || f.path === fileIdentifier)) {
           file = f;
           break;
         }
@@ -324,9 +295,9 @@ const handleUpdateFile = async (req: Request, res: Response) => {
     if (language !== undefined) file.language = language;
     file.updated_at = new Date().toISOString();
     res.json(file);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating file:', error);
-    res.status(500).json({ error: 'Failed to update file' });
+    res.status(500).json({ error: error.message || 'Failed to update file' });
   }
 };
 
@@ -335,48 +306,50 @@ app.put('/api/rooms/:roomId/files/:filePath', handleUpdateFile);
 
 app.delete('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
   try {
+    const token = getBearerToken(req);
     const roomId = String(req.params.roomId);
     const fileIdentifier = String(req.params.filePath);
-    
-    if (dbConnected) {
-      await pool.query(
-        'DELETE FROM workspace_files WHERE room_id = $1 AND (path = $2 OR id::text = $2)',
-        [roomId, fileIdentifier]
-      );
+
+    if (supabaseConnected) {
+      await WorkspaceService.deleteFile(roomId, fileIdentifier, token);
       return res.status(204).send();
     }
 
     memoryFiles.delete(`${roomId}:${fileIdentifier}`);
     for (const [key, f] of memoryFiles.entries()) {
-      if (f.roomId === roomId && (f.id === fileIdentifier || f.path === fileIdentifier)) {
+      if ((f.roomId === roomId || f.room_id === roomId) && (f.id === fileIdentifier || f.path === fileIdentifier)) {
         memoryFiles.delete(key);
       }
     }
     res.status(204).send();
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting file:', error);
-    res.status(500).json({ error: 'Failed to delete file' });
+    res.status(500).json({ error: error.message || 'Failed to delete file' });
   }
 });
 
+// AI Debugger (Groq with fallback to OpenAI)
 app.post('/api/ai/debug', async (req: Request, res: Response) => {
   try {
     const { code, language, error, filePath }: AIDebugRequest = req.body;
-    
+
     if (!code || !language) {
       return res.status(400).json({ error: 'Code and language are required' });
     }
-    
-    if (!openai) {
-      return res.status(503).json({ 
+
+    const activeAIClient = groq || openai;
+    const modelName = groq ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
+
+    if (!activeAIClient) {
+      return res.status(503).json({
         error: 'AI service not configured',
-        explanation: 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.',
+        explanation: 'Neither GROQ_API_KEY nor OPENAI_API_KEY is configured. Please provide an API key in .env.',
         suggestedFix: null,
-        confidence: 0
+        confidence: 0,
       });
     }
-    
-    const prompt = `You are an expert programming assistant. Analyze the following code and error, then provide a clear explanation and suggested fix.
+
+    const prompt = `You are an expert programming assistant and real-time code debugger. Analyze the following code and error, then provide a clear explanation and suggested fix.
 
 File: ${filePath}
 Language: ${language}
@@ -386,35 +359,35 @@ Code:
 ${code}
 \`\`\`
 
-${error ? `Error:\n${error}\n` : ''}
+${error ? `Error / Console Trace:\n${error}\n` : ''}
 
-Provide your response in JSON format:
+Provide your response strictly in JSON format:
 {
-  "explanation": "Clear explanation of the issue",
-  "suggestedFix": "Fixed code snippet (only if you can provide a concrete fix)",
+  "explanation": "Clear explanation of why the issue happens",
+  "suggestedFix": "Fixed code snippet (or full corrected block)",
   "confidence": 0.95
 }`;
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const completion = await activeAIClient.chat.completions.create({
+      model: modelName,
       messages: [
-        { role: 'system', content: 'You are an expert debugging assistant. Respond only with valid JSON.' },
-        { role: 'user', content: prompt }
+        { role: 'system', content: 'You are an expert real-time code debugger. Respond only with valid JSON.' },
+        { role: 'user', content: prompt },
       ],
-      temperature: 0.3,
+      temperature: 0.2,
       max_tokens: 2000,
       response_format: { type: 'json_object' },
     });
-    
+
     const response = JSON.parse(completion.choices[0].message.content || '{}') as AIDebugResponse;
     res.json(response);
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI debug error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'AI debugging failed',
-      explanation: 'Failed to get AI assistance. Please try again.',
+      explanation: error.message || 'Failed to get AI assistance. Please check your API key.',
       suggestedFix: null,
-      confidence: 0
+      confidence: 0,
     });
   }
 });
@@ -423,7 +396,7 @@ Provide your response in JSON format:
 setupTerminalServer(httpServer);
 
 httpServer.listen(PORT, async () => {
-  await initDatabase();
+  await verifyDatabaseConnection();
   console.log(`API server running on port ${PORT}`);
   console.log(`Terminal WebSocket available at ws://localhost:${PORT}/ws/terminal`);
 });
@@ -431,13 +404,6 @@ httpServer.listen(PORT, async () => {
 const handleGracefulShutdown = async () => {
   console.log('\nGracefully shutting down API server and terminal sessions...');
   sessionManager.shutdown();
-  if (dbConnected) {
-    try {
-      await pool.end();
-    } catch {
-      // Ignore cleanup error
-    }
-  }
   httpServer.close(() => {
     process.exit(0);
   });
