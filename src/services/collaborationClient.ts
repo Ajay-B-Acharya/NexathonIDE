@@ -106,7 +106,8 @@ class CollaborationManager {
     provider: WebsocketProvider,
     user: UserProfile,
     activeFile: string,
-    cursor?: { lineNumber: number; column: number } | null
+    cursor?: { lineNumber: number; column: number } | null,
+    isInactive?: boolean
   ): void {
     provider.awareness.setLocalStateField('user', {
       id: user.id,
@@ -116,6 +117,9 @@ class CollaborationManager {
     provider.awareness.setLocalStateField('activeFile', activeFile);
     if (cursor !== undefined) {
       provider.awareness.setLocalStateField('cursor', cursor);
+    }
+    if (isInactive !== undefined) {
+      provider.awareness.setLocalStateField('isInactive', isInactive);
     }
     provider.awareness.setLocalStateField('lastActive', Date.now());
   }

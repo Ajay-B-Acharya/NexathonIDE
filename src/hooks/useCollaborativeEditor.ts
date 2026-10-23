@@ -90,6 +90,7 @@ function syncCollaboratorCursorStyles(collaborators: CollaboratorPresence[]) {
 }
 
 const DYNAMIC_RESERVATION_LINES = 10;
+const INACTIVITY_TIMEOUT_MS = 15_000;
 
 /**
  * Calculates a 10-line dedicated workspace section centered around the user's cursor.
@@ -202,6 +203,8 @@ export function useCollaborativeEditor({
   const [reservations, setReservations] = useState<EditReservation[]>([]);
   const [activeConflictReservation, setActiveConflictReservation] = useState<EditReservation | null>(null);
   const [followState, setFollowState] = useState<FollowState | null>(null);
+  const lastLocalActivityRef = useRef<number>(Date.now());
+  const isInactiveRef = useRef<boolean>(false);
 
   const bindingRef = useRef<MonacoBinding | null>(null);
   const sessionRef = useRef<FileCollaborationSession | null>(null);
@@ -284,12 +287,14 @@ export function useCollaborativeEditor({
             activeFile: state.activeFile as string | undefined,
             cursor: state.cursor as { lineNumber: number; column: number } | null | undefined,
             isTyping: Boolean(state.isTyping),
+            isInactive: Boolean(state.isInactive),
             lastActive: (state.lastActive as number) || Date.now(),
           });
         }
       });
       setCollaborators(list);
       syncCollaboratorCursorStyles(list);
+      updateReservationsFromMap();
     };
     session.provider.awareness.on('change', handleAwareness);
     handleAwareness();
@@ -297,13 +302,51 @@ export function useCollaborativeEditor({
     // Synchronize edit reservations from CRDT shared map
     const updateReservationsFromMap = () => {
       const now = Date.now();
+      const states = session.provider.awareness.getStates();
+      const connectedUserIds = new Set<string>();
+      const inactiveUserIds = new Set<string>();
+
+      states.forEach((state) => {
+        if (state && state.user && state.user.id) {
+          connectedUserIds.add(state.user.id);
+          if (state.isInactive) {
+            inactiveUserIds.add(state.user.id);
+          }
+        }
+      });
+
       const list: EditReservation[] = [];
-      session.reservationsMap.forEach((res) => {
+      session.reservationsMap.forEach((res, key) => {
+        // If owner disconnected/left the codebase, immediately prune reservation from shared map
+        if (!connectedUserIds.has(res.ownerId)) {
+          session.reservationsMap.delete(key);
+          return;
+        }
+
+        // If owner is inactive and this is an automatic cursor window reservation, prune it
+        if (inactiveUserIds.has(res.ownerId) && (res.isAutomatic || key.startsWith('auto_'))) {
+          session.reservationsMap.delete(key);
+          return;
+        }
+
+        // If local user is inactive and this is local user's auto reservation, prune it
+        if (res.ownerId === user.id && isInactiveRef.current && (res.isAutomatic || key.startsWith('auto_'))) {
+          session.reservationsMap.delete(key);
+          return;
+        }
+
         if (res.expiresAt > now && res.filePath === activeFile.path) {
           list.push(res);
         }
       });
       setReservations(list);
+
+      // Clear any conflict banner if the blocking reservation was released/pruned
+      setActiveConflictReservation((prev) => {
+        if (!prev) return null;
+        const stillActive = list.find((r) => r.id === prev.id);
+        return stillActive || null;
+      });
     };
 
     updateReservationsFromMap();
@@ -334,17 +377,31 @@ export function useCollaborativeEditor({
     };
     session.ytext.observe(handleYTextObserver);
 
-    // Track local cursor position in awareness and maintain dynamic 10-line reserved workspace section
-    const cursorDisposable = editorInstance.onDidChangeCursorPosition((e) => {
-      const currentLine = e.position.lineNumber;
+    // Local activity handler: touches lastLocalActivityRef, resets isInactive, updates dynamic 10-line reservation
+    const markLocalActivity = (cursorPos?: { lineNumber: number; column: number }) => {
+      lastLocalActivityRef.current = Date.now();
+      if (isInactiveRef.current) {
+        isInactiveRef.current = false;
+        session.provider.awareness.setLocalStateField('isInactive', false);
+      }
+
+      const currentLine = cursorPos
+        ? cursorPos.lineNumber
+        : editorInstance.getPosition()?.lineNumber || 1;
+      const currentColumn = cursorPos
+        ? cursorPos.column
+        : editorInstance.getPosition()?.column || 1;
       const totalLines = editorInstance.getModel()?.getLineCount() || 1;
 
-      collaborationClient.updateLocalAwareness(session.provider, user, activeFile.path, {
-        lineNumber: currentLine,
-        column: e.position.column,
-      });
+      collaborationClient.updateLocalAwareness(
+        session.provider,
+        user,
+        activeFile.path,
+        { lineNumber: currentLine, column: currentColumn },
+        false
+      );
 
-      // Feature 1 & 2: Dynamically calculate and reserve a 10-line workspace block centered around user's line
+      // Dynamically calculate and reserve 10-line workspace block centered around user's line
       const dynWindow = calculateDynamicWindow(currentLine, totalLines);
       const autoResId = `auto_${user.id}_${activeFile.id}`;
       const existing = session.reservationsMap.get(autoResId);
@@ -367,7 +424,7 @@ export function useCollaborativeEditor({
           endLine: dynWindow.endLine,
           activeLine: currentLine,
           createdAt: existing?.createdAt || Date.now(),
-          expiresAt: Date.now() + 60_000,
+          expiresAt: Date.now() + 30_000,
           isAutomatic: true,
           taskDescription: `Active Workspace (Lines ${dynWindow.startLine}–${dynWindow.endLine})`,
         });
@@ -383,7 +440,22 @@ export function useCollaborativeEditor({
           currentLine <= r.endLine
       );
       setActiveConflictReservation(conflict || null);
+    };
+
+    const cursorDisposable = editorInstance.onDidChangeCursorPosition((e) => {
+      markLocalActivity({ lineNumber: e.position.lineNumber, column: e.position.column });
     });
+
+    const keyDisposable = editorInstance.onKeyDown(() => {
+      markLocalActivity();
+    });
+
+    const mouseDisposable = editorInstance.onMouseDown(() => {
+      markLocalActivity();
+    });
+
+    // Seed initial reservation on mount
+    markLocalActivity();
 
     return () => {
       // Release automatic reservation when switching away from this file
@@ -396,6 +468,8 @@ export function useCollaborativeEditor({
       session.provider.off('sync', handleSync);
       session.provider.awareness.off('change', handleAwareness);
       cursorDisposable.dispose();
+      keyDisposable.dispose();
+      mouseDisposable.dispose();
       session.ytext.unobserve(handleYTextObserver);
       session.reservationsMap.unobserve(handleReservationsObserver);
       if (bindingRef.current) {
@@ -461,28 +535,92 @@ export function useCollaborativeEditor({
     );
   }, [reservations, editorInstance, monacoInstance, activeFile?.path, user.id]);
 
-  // Periodic Lease Auto-Renewal for owned reservations & expired reservation cleanup
+  // Periodic Lease Auto-Renewal, Inactivity check, and expired/departed peer reservation cleanup
   useEffect(() => {
     const interval = window.setInterval(() => {
       const session = sessionRef.current;
       if (!session) return;
       const now = Date.now();
 
+      // Check inactivity locally
+      const idleTime = now - lastLocalActivityRef.current;
+      if (idleTime >= INACTIVITY_TIMEOUT_MS && !isInactiveRef.current) {
+        isInactiveRef.current = true;
+        session.provider.awareness.setLocalStateField('isInactive', true);
+        const autoResId = `auto_${user.id}_${activeFile?.id}`;
+        if (session.reservationsMap.has(autoResId)) {
+          session.reservationsMap.delete(autoResId);
+        }
+      }
+
+      const states = session.provider.awareness.getStates();
+      const connectedUserIds = new Set<string>();
+      const inactiveUserIds = new Set<string>();
+      states.forEach((state) => {
+        if (state && state.user && state.user.id) {
+          connectedUserIds.add(state.user.id);
+          if (state.isInactive) {
+            inactiveUserIds.add(state.user.id);
+          }
+        }
+      });
+
       session.reservationsMap.forEach((res, key) => {
+        // If owner disconnected (left the codebase), prune immediately
+        if (!connectedUserIds.has(res.ownerId)) {
+          session.reservationsMap.delete(key);
+          return;
+        }
+
+        // If owner is inactive and this is an automatic reservation, prune immediately
+        if (inactiveUserIds.has(res.ownerId) && (res.isAutomatic || key.startsWith('auto_'))) {
+          session.reservationsMap.delete(key);
+          return;
+        }
+
         if (res.ownerId === user.id) {
-          // Auto-renew while owner is actively connected
-          session.reservationsMap.set(key, {
-            ...res,
-            expiresAt: now + 60_000,
-          });
+          if (!isInactiveRef.current) {
+            // Auto-renew while owner is actively connected and NOT inactive
+            session.reservationsMap.set(key, {
+              ...res,
+              expiresAt: now + 30_000,
+            });
+          } else if (res.isAutomatic || key.startsWith('auto_')) {
+            session.reservationsMap.delete(key);
+          }
         } else if (res.expiresAt <= now) {
-          // Clean up expired peer lease
           session.reservationsMap.delete(key);
         }
       });
-    }, 20_000);
+    }, 2_500);
 
     return () => window.clearInterval(interval);
+  }, [user.id, activeFile?.id]);
+
+  // Clean up reservations when leaving the page or closing tab
+  useEffect(() => {
+    const handleLeave = () => {
+      const session = sessionRef.current;
+      if (session) {
+        session.reservationsMap.forEach((res, key) => {
+          if (res.ownerId === user.id) {
+            session.reservationsMap.delete(key);
+          }
+        });
+        try {
+          session.provider.awareness.setLocalState(null);
+        } catch {}
+      }
+    };
+
+    window.addEventListener('beforeunload', handleLeave);
+    window.addEventListener('pagehide', handleLeave);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleLeave);
+      window.removeEventListener('pagehide', handleLeave);
+      handleLeave();
+    };
   }, [user.id]);
 
   // Follow Mode: Smoothly scroll and reveal target collaborator's cursor

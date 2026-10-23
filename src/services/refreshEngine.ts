@@ -220,3 +220,37 @@ export function clearFileDraft(roomId: string, fileId: string): void {
     localStorage.removeItem(`${STORAGE_KEY_DRAFT_PREFIX}${roomId}_${fileId}`);
   } catch {}
 }
+
+
+/**
+ * Access Control: Tracks workspace rooms created by the user or joined via invite code.
+ * Ensures the user only sees/accesses directories they created or entered the code for.
+ */
+const STORAGE_KEY_ACCESSIBLE_ROOMS = 'nexathon_accessible_rooms_';
+
+export function getAccessibleRoomIds(userId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_KEY_ACCESSIBLE_ROOMS}${userId}`);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr : []);
+    }
+    return new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function addAccessibleRoomId(userId: string, roomId: string): void {
+  try {
+    if (!userId || !roomId) return;
+    const ids = getAccessibleRoomIds(userId);
+    ids.add(roomId);
+    localStorage.setItem(
+      `${STORAGE_KEY_ACCESSIBLE_ROOMS}${userId}`,
+      JSON.stringify(Array.from(ids))
+    );
+  } catch (err) {
+    console.warn('Failed to save accessible room ID:', err);
+  }
+}

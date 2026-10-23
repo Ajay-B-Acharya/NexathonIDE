@@ -27,6 +27,7 @@ export interface CollaboratorPresence {
     column: number;
   } | null;
   isTyping?: boolean;
+  isInactive?: boolean;
   lastActive: number;
 }
 
