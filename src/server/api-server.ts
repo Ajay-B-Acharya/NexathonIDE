@@ -3,7 +3,7 @@ import express, { type Request, type Response } from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
-import OpenAI from 'openai';
+import Groq from 'groq-sdk';
 import { supabaseAdmin } from './supabase.js';
 import { WorkspaceService, getLanguageFromPath } from './services/workspaceService.js';
 import type { AIDebugRequest, AIDebugResponse } from './types.js';
@@ -22,24 +22,15 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/terminal', createTerminalRouter());
 
-// AI Provider Setup: Supports Groq (fast inference) or OpenAI
+// AI Provider Setup: Groq (ultra-fast inference)
 const groqApiKey = process.env.GROQ_API_KEY;
-const isRealGroqKey = Boolean(groqApiKey && !groqApiKey.includes('paste_your_real_groq_api_key_here'));
-
-const groq = isRealGroqKey
-  ? new OpenAI({
-      apiKey: groqApiKey,
-      baseURL: 'https://api.groq.com/openai/v1',
-    })
-  : null;
-
-const hasOpenAI = Boolean(
-  process.env.OPENAI_API_KEY &&
-  process.env.OPENAI_API_KEY.trim() &&
-  process.env.OPENAI_API_KEY !== 'your_openai_api_key_here'
+const isRealGroqKey = Boolean(
+  groqApiKey &&
+  !groqApiKey.includes('paste_your_real_groq_api_key_here') &&
+  groqApiKey.trim().length > 0
 );
 
-const openai = hasOpenAI ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+const groq = isRealGroqKey ? new Groq({ apiKey: groqApiKey }) : null;
 
 // In-memory fallback if Supabase is offline
 let supabaseConnected = false;
@@ -75,7 +66,7 @@ app.get('/', (req: Request, res: Response) => {
     status: 'online',
     version: '1.0.0',
     supabaseConnected,
-    aiProvider: groq ? 'groq' : openai ? 'openai' : 'none',
+    aiProvider: groq ? 'groq' : 'none',
     endpoints: {
       health: '/api/health',
       rooms: '/api/rooms',
@@ -91,7 +82,7 @@ app.get('/api/health', (req: Request, res: Response) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     supabaseConnected,
-    aiProvider: groq ? 'groq' : openai ? 'openai' : 'none',
+    aiProvider: groq ? 'groq' : 'none',
   });
 });
 
@@ -312,7 +303,7 @@ const handleUpdateFile = async (req: Request, res: Response) => {
     const { content, path, language } = req.body;
 
     if (supabaseConnected) {
-      const updated = await WorkspaceService.updateFileContent(roomId, fileIdentifier, content, token);
+      const updated = await WorkspaceService.updateFileContent(roomId, fileIdentifier, content, path, language, token);
       if (!updated) return res.status(404).json({ error: 'File not found' });
       return res.json(updated);
     }
@@ -367,7 +358,7 @@ app.delete('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Respo
   }
 });
 
-// AI Debugger (Groq with fallback to OpenAI)
+// AI Debugger (Groq ultra-fast LPU inference)
 app.post('/api/ai/debug', async (req: Request, res: Response) => {
   try {
     const { code, language, error, filePath }: AIDebugRequest = req.body;
@@ -376,56 +367,77 @@ app.post('/api/ai/debug', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Code and language are required' });
     }
 
-    const activeAIClient = groq || openai;
-    const modelName = groq ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
-
-    if (!activeAIClient) {
+    if (!groq) {
       return res.status(503).json({
         error: 'AI service not configured',
-        explanation: 'Neither GROQ_API_KEY nor OPENAI_API_KEY is configured. Please provide an API key in .env.',
-        suggestedFix: null,
+        explanation: 'GROQ_API_KEY is not configured in .env. Please provide a valid Groq API key.',
+        probableCause: 'Missing GROQ_API_KEY configuration',
+        suggestedFix: code,
         confidence: 0,
       });
     }
 
-    const prompt = `You are an expert programming assistant and real-time code debugger. Analyze the following code and error, then provide a clear explanation and suggested fix.
+    const prompt = `You are an expert real-time programming debugger and pair programmer.
+Analyze the following source code and error/issue context.
+You must return valid JSON only with four fields:
+1. "explanation": A clear, concise explanation of the bug and why it occurs.
+2. "probableCause": The root technical cause of the issue.
+3. "suggestedFix": The COMPLETE corrected source code for this entire file, ready to replace the file content directly. Do NOT return markdown or code fences in this field, only raw valid source code.
+4. "confidence": A number between 0.0 and 1.0 indicating confidence in this fix.
 
 File: ${filePath}
 Language: ${language}
 
-Code:
-\`\`\`${language}
+Source Code:
 ${code}
-\`\`\`
 
-${error ? `Error / Console Trace:\n${error}\n` : ''}
+Error / Issue Context:
+${error || 'Check code for syntax errors, bugs, or logic flaws.'}`;
 
-Provide your response strictly in JSON format:
-{
-  "explanation": "Clear explanation of why the issue happens",
-  "suggestedFix": "Fixed code snippet (or full corrected block)",
-  "confidence": 0.95
-}`;
+    let completion;
+    try {
+      completion = await groq.chat.completions.create({
+        model: 'openai/gpt-oss-120b',
+        messages: [
+          { role: 'system', content: 'You are an expert real-time code debugger. You strictly output valid JSON.' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.2,
+        max_tokens: 3000,
+        response_format: { type: 'json_object' },
+      });
+    } catch (modelErr: any) {
+      console.warn('Groq primary model openai/gpt-oss-120b failed, falling back to openai/gpt-oss-20b:', modelErr?.message || modelErr);
+      completion = await groq.chat.completions.create({
+        model: 'openai/gpt-oss-20b',
+        messages: [
+          { role: 'system', content: 'You are an expert real-time code debugger. You strictly output valid JSON.' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.2,
+        max_tokens: 3000,
+        response_format: { type: 'json_object' },
+      });
+    }
 
-    const completion = await activeAIClient.chat.completions.create({
-      model: modelName,
-      messages: [
-        { role: 'system', content: 'You are an expert real-time code debugger. Respond only with valid JSON.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.2,
-      max_tokens: 2000,
-      response_format: { type: 'json_object' },
-    });
+    const rawContent = completion.choices[0]?.message?.content || '{}';
+    const parsed = JSON.parse(rawContent);
 
-    const response = JSON.parse(completion.choices[0].message.content || '{}') as AIDebugResponse;
+    const response: AIDebugResponse = {
+      explanation: parsed.explanation || 'No explanation provided.',
+      probableCause: parsed.probableCause || parsed.explanation || 'Root cause identified in code syntax or logic.',
+      suggestedFix: parsed.suggestedFix || code,
+      confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.95,
+    };
+
     res.json(response);
   } catch (error: any) {
-    console.error('AI debug error:', error);
+    console.error('Groq AI debug error:', error);
     res.status(500).json({
       error: 'AI debugging failed',
-      explanation: error.message || 'Failed to get AI assistance. Please check your API key.',
-      suggestedFix: null,
+      explanation: error.message || 'Failed to get Groq AI assistance. Please check your GROQ_API_KEY.',
+      probableCause: 'AI API request or parsing error',
+      suggestedFix: req.body?.code || '',
       confidence: 0,
     });
   }
