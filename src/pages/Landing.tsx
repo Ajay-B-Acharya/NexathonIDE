@@ -385,27 +385,47 @@ export const Landing: React.FC<LandingProps> = ({
       />
 
       {/* 1. GLASSMORPHIC COMMAND HEADER */}
-      <header className="sticky top-0 z-30 border-b theme-border theme-bg-glass">
+      <header className="sticky top-0 z-30 border-b theme-border theme-bg-glass backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
-          {/* Brand Identity + Live Cluster Telemetry Pill */}
-          <div className="flex items-center gap-4">
+          {/* Left: Brand Identity & Compact Version Badge */}
+          <div className="flex items-center gap-3 shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-[0_0_18px_rgba(99,102,241,0.45)]">
                 <Code2 className="h-4 w-4" />
               </div>
-              <span className="text-sm font-bold tracking-tight theme-text-primary">
+              <span className="text-sm font-bold tracking-tight theme-text-primary whitespace-nowrap">
                 Nexathon<span className="text-indigo-500">IDE</span>
               </span>
-              <span className="hidden md:inline-block rounded border theme-border px-1.5 py-0.5 font-mono text-[10px] theme-text-muted">
-                v2.4.0-crdt
+              <span className="hidden sm:inline-flex items-center rounded-md border theme-border px-2 py-0.5 font-mono text-[10px] theme-text-muted whitespace-nowrap">
+                v2.4 CRDT
               </span>
             </div>
+          </div>
 
+          {/* Center: Cleanly Spaced Navigation Links */}
+          <nav className="hidden lg:flex items-center gap-8 text-xs font-medium theme-text-secondary whitespace-nowrap">
+            <a href="#live-sandbox" className="hover:text-indigo-500 hover:theme-text-primary transition-colors">
+              WASM Sandbox
+            </a>
+            <a href="#comparison" className="hover:text-indigo-500 hover:theme-text-primary transition-colors">
+              Architecture vs Docker
+            </a>
+            <a href="#bento" className="hover:text-indigo-500 hover:theme-text-primary transition-colors">
+              Core Innovations
+            </a>
+            <a href="#telemetry" className="hover:text-indigo-500 hover:theme-text-primary transition-colors">
+              Benchmarks
+            </a>
+          </nav>
+
+          {/* Right: Telemetry Pill + Theme Toggle + Auth / Launch */}
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            {/* Live Cluster Latency Probe Pill */}
             <button
               type="button"
               onClick={runClusterLatencyProbe}
               title="Click to re-probe Yjs WebSocket cluster RTT"
-              className={`hidden lg:inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-mono transition cursor-pointer ${
+              className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-mono transition cursor-pointer whitespace-nowrap shrink-0 ${
                 isDark
                   ? 'border-emerald-500/30 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-950/70'
                   : 'border-emerald-600/30 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
@@ -415,37 +435,16 @@ export const Landing: React.FC<LandingProps> = ({
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
-              <span>
-                {clusterStatus === 'online' ? 'WS CLUSTER' : 'CRDT LOOPBACK'} • {lastRttMs}ms RTT
-              </span>
+              <span>{lastRttMs}ms CRDT</span>
             </button>
-          </div>
 
-          {/* Center Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-medium theme-text-secondary">
-            <a href="#live-sandbox" className="hover:text-indigo-500 transition">
-              Live WASM Sandbox
-            </a>
-            <a href="#comparison" className="hover:text-indigo-500 transition">
-              Architecture vs Docker
-            </a>
-            <a href="#bento" className="hover:text-indigo-500 transition">
-              Core Innovations
-            </a>
-            <a href="#telemetry" className="hover:text-indigo-500 transition">
-              Benchmarks
-            </a>
-          </nav>
-
-          {/* Right Controls: Theme Toggle + Auth / Launch */}
-          <div className="flex items-center gap-2.5">
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
 
             {!existingUser && (
               <button
                 type="button"
                 onClick={onNavigateToLogin}
-                className="hidden sm:inline-flex items-center rounded-lg border theme-border theme-bg-surface-1 px-3 py-1.5 text-xs font-medium theme-text-secondary hover:border-indigo-500/40 hover:theme-text-primary transition cursor-pointer"
+                className="hidden sm:inline-flex items-center rounded-lg border theme-border theme-bg-surface-1 px-3 py-1.5 text-xs font-medium theme-text-secondary hover:border-indigo-500/40 hover:theme-text-primary transition cursor-pointer whitespace-nowrap shrink-0"
               >
                 Sign In
               </button>
@@ -454,7 +453,7 @@ export const Landing: React.FC<LandingProps> = ({
             <button
               type="button"
               onClick={handlePrimaryCTA}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_0_16px_rgba(99,102,241,0.35)] hover:bg-indigo-500 transition cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_0_16px_rgba(99,102,241,0.35)] hover:bg-indigo-500 transition cursor-pointer whitespace-nowrap shrink-0"
             >
               <span>
                 {existingUser ? `Resume (${existingUser.name})` : 'Open Workspace'}

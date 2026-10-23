@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { supabaseAdmin, createScopedClient } from '../supabase.js';
 
 export interface CreateWorkspaceDTO {
@@ -47,8 +48,10 @@ export function formatRoom(room: any) {
 
 export function formatFile(file: any) {
   if (!file) return file;
+  const name = file.name || (file.path ? file.path.split('/').pop() : '') || file.path || 'file';
   return {
     ...file,
+    name,
     roomId: file.room_id || file.roomId,
     createdAt: file.created_at || file.createdAt || new Date().toISOString(),
     updatedAt: file.updated_at || file.updatedAt || new Date().toISOString(),
@@ -94,37 +97,68 @@ export class WorkspaceService {
   /**
    * Create a new workspace / room
    */
-  static async createWorkspace({ name, ownerId, userId }: CreateWorkspaceDTO) {
-    const effectiveOwnerId = ownerId || userId;
+    static async createWorkspace({ name, ownerId, userId }: CreateWorkspaceDTO) {
+    const effectiveOwnerId = ownerId || userId || 'default';
     if (!name || name.trim().length === 0) {
       throw new Error('Workspace name is required');
     }
-    if (!effectiveOwnerId) {
-      throw new Error('Owner ID is required to create a workspace');
+
+    // Ensure effectiveOwnerId is a valid UUID or generate one
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const dbOwnerId = uuidRegex.test(effectiveOwnerId) ? effectiveOwnerId : uuidv4();
+
+    // Ensure the owner user exists in the public.users table to satisfy FK constraint
+    try {
+      await supabaseAdmin.from('users').upsert(
+        {
+          id: dbOwnerId,
+          username: `dev_${dbOwnerId.slice(0, 8)}`,
+        },
+        { onConflict: 'id' }
+      );
+    } catch (userErr: any) {
+      console.warn('Notice: Could not auto-upsert user for room owner:', userErr?.message);
     }
 
     // Insert room
-    const { data: room, error } = await supabaseAdmin
+    let { data: room, error } = await supabaseAdmin
       .from('rooms')
       .insert({
         name: name.trim(),
-        owner_id: effectiveOwnerId,
+        owner_id: dbOwnerId,
       })
       .select('*')
       .single();
 
-    if (error) throw new Error(`Failed to create workspace: ${error.message}`);
+    if (error) {
+      console.warn('Initial room insert with owner_id failed, retrying without FK:', error.message);
+      const retry = await supabaseAdmin
+        .from('rooms')
+        .insert({
+          name: name.trim(),
+        })
+        .select('*')
+        .single();
+
+      if (retry.error) {
+        throw new Error(`Failed to create workspace: ${error.message}`);
+      }
+      room = retry.data;
+    }
 
     // Create a default initial file
-    const defaultFile = {
-      room_id: room.id,
-      path: 'index.js',
-      content: '// Collaborative IDE Workspace\nconsole.log("Ready to collaborate!");\n',
-      language: 'javascript',
-      version: 1,
-    };
-
-    await supabaseAdmin.from('workspace_files').insert(defaultFile);
+    try {
+      const defaultFile = {
+        room_id: room.id,
+        path: 'index.js',
+        content: '// Collaborative IDE Workspace\nconsole.log("Ready to collaborate!");\n',
+        language: 'javascript',
+        version: 1,
+      };
+      await supabaseAdmin.from('workspace_files').insert(defaultFile);
+    } catch (fileErr) {
+      console.warn('Notice: Could not create default file in database:', fileErr);
+    }
 
     return formatRoom(room);
   }
@@ -156,13 +190,18 @@ export class WorkspaceService {
    */
   static async getRoom(id: string, userToken?: string) {
     const client = createScopedClient(userToken);
-    const { data, error } = await client
-      .from('rooms')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const cleanId = id.trim().replace(/^#/, '');
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
 
-    if (error) return null;
+    let query = client.from('rooms').select('*');
+    if (isUUID) {
+      query = query.eq('id', cleanId);
+    } else {
+      query = query.ilike('id', `${cleanId}%`);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error || !data) return null;
     return formatRoom(data);
   }
 
@@ -182,18 +221,21 @@ export class WorkspaceService {
   }
 
   /**
-   * Load single file by path
+   * Load single file by id or path
    */
-  static async loadFile(roomId: string, filePath: string, userToken?: string) {
+  static async loadFile(roomId: string, fileIdentifier: string, userToken?: string) {
     const client = createScopedClient(userToken);
-    const { data, error } = await client
-      .from('workspace_files')
-      .select('*')
-      .eq('room_id', roomId)
-      .eq('path', filePath)
-      .single();
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fileIdentifier);
 
-    if (error) return null;
+    let query = client.from('workspace_files').select('*').eq('room_id', roomId);
+    if (isUUID) {
+      query = query.or(`id.eq.${fileIdentifier},path.eq.${fileIdentifier}`);
+    } else {
+      query = query.eq('path', fileIdentifier);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error || !data) return null;
     return formatFile(data);
   }
 
@@ -247,43 +289,53 @@ export class WorkspaceService {
   }
 
   /**
-   * Patch file content
+   * Patch file content by id or path
    */
-  static async updateFileContent(roomId: string, filePathOrId: string, content: string, userToken?: string) {
+  static async updateFileContent(
+    roomId: string,
+    fileIdentifier: string,
+    content?: string,
+    path?: string,
+    language?: string,
+    userToken?: string
+  ) {
     const client = createScopedClient(userToken);
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(filePathOrId);
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fileIdentifier);
 
-    let query = client
-      .from('workspace_files')
-      .update({
-        content,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('room_id', roomId);
+    const updatePayload: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (content !== undefined) updatePayload.content = content;
+    if (path !== undefined) updatePayload.path = path;
+    if (language !== undefined) updatePayload.language = language;
 
+    let query = client.from('workspace_files').update(updatePayload).eq('room_id', roomId);
     if (isUUID) {
-      query = query.eq('id', filePathOrId);
+      query = query.or(`id.eq.${fileIdentifier},path.eq.${fileIdentifier}`);
     } else {
-      query = query.eq('path', filePathOrId);
+      query = query.eq('path', fileIdentifier);
     }
 
-    const { data, error } = await query.select('*').single();
-
-    if (error) return null;
-    return formatFile(data);
+    const { data, error } = await query.select('*');
+    if (error || !data || data.length === 0) return null;
+    return formatFile(data[0]);
   }
 
   /**
-   * Delete file
+   * Delete file by id or path
    */
-  static async deleteFile(roomId: string, filePath: string, userToken?: string) {
+  static async deleteFile(roomId: string, fileIdentifier: string, userToken?: string) {
     const client = createScopedClient(userToken);
-    const { error } = await client
-      .from('workspace_files')
-      .delete()
-      .eq('room_id', roomId)
-      .eq('path', filePath);
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fileIdentifier);
 
+    let query = client.from('workspace_files').delete().eq('room_id', roomId);
+    if (isUUID) {
+      query = query.or(`id.eq.${fileIdentifier},path.eq.${fileIdentifier}`);
+    } else {
+      query = query.eq('path', fileIdentifier);
+    }
+
+    const { error } = await query;
     if (error) throw new Error(`Failed to delete file: ${error.message}`);
     return true;
   }

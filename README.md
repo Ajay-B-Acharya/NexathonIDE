@@ -7,7 +7,7 @@ A browser-based collaborative development environment with real-time code editin
 - **Real-time Collaborative Editing**: Multiple users can edit the same file simultaneously using Yjs CRDT
 - **Shared Cloud Terminal**: Access a shared terminal session with other collaborators
 - **In-Browser Code Execution**: Run Python (Pyodide) and JavaScript/TypeScript (QuickJS) directly in the browser
-- **AI Debugging Assistant**: Get AI-powered error explanations and code fixes via OpenAI
+- **AI Debugging Assistant**: Get AI-powered error explanations and code fixes via Groq
 - **Workspace Persistence**: Save and restore workspace files using PostgreSQL
 - **User Presence**: See other collaborators' cursors and selections in real-time
 
@@ -20,13 +20,13 @@ A browser-based collaborative development environment with real-time code editin
 - **Execution**: Pyodide (Python), QuickJS (JavaScript/TypeScript)
 - **Backend**: Node.js, Express, WebSocket (ws)
 - **Database**: PostgreSQL
-- **AI**: OpenAI API
+- **AI**: Groq API (`groq-sdk`)
 
 ## Prerequisites
 
 - Node.js 18+
 - PostgreSQL 14+
-- OpenAI API key (optional, for AI debugging)
+- Groq API key (for ultra-fast AI debugging)
 
 ## Quick Start
 
@@ -38,7 +38,7 @@ npm install
 2. **Set up environment variables**
 ```bash
 cp .env.example .env
-# Edit .env with your database URL and OpenAI API key
+# Edit .env with your database URL and Groq API key
 ```
 
 3. **Initialize the database**
@@ -142,9 +142,9 @@ npm run preview
 - AttachAddon bridges terminal I/O to WebSocket
 
 ### AI Debugging
-- Sends code + error context to OpenAI API
-- Returns explanation and suggested fix
-- User must manually apply fixes (no auto-apply)
+- Sends code + error context to Groq API (`groq-sdk`)
+- Returns explanation, probable cause, and complete corrected file
+- User can inspect side-by-side diff and apply fix with atomic Yjs updates
 
 ## Environment Variables
 
@@ -155,7 +155,7 @@ npm run preview
 | `Y_WEBSOCKET_PORT` | Yjs WebSocket server port | `1234` |
 | `VITE_API_URL` | Frontend API base URL | `http://localhost:3001` |
 | `VITE_YJS_WS_URL` | Frontend Yjs WebSocket URL | `ws://localhost:1234` |
-| `OPENAI_API_KEY` | OpenAI API key for AI debugging | (optional) |
+| `GROQ_API_KEY` | Groq API key for AI debugging | (optional) |
 
 ## License
 
