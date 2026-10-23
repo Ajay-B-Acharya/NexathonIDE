@@ -3,7 +3,7 @@ import express, { type Request, type Response } from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
-import Groq from 'groq-sdk';
+import OpenAI from 'openai';
 import { supabaseAdmin } from './supabase.js';
 import { WorkspaceService, getLanguageFromPath } from './services/workspaceService.js';
 import type { AIDebugRequest, AIDebugResponse } from './types.js';
@@ -22,7 +22,7 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/terminal', createTerminalRouter());
 
-// AI Provider Setup: Groq (ultra-fast inference)
+// AI Provider Setup: Groq (ultra-fast inference via OpenAI-compatible endpoint)
 const groqApiKey = process.env.GROQ_API_KEY;
 const isRealGroqKey = Boolean(
   groqApiKey &&
@@ -30,7 +30,12 @@ const isRealGroqKey = Boolean(
   groqApiKey.trim().length > 0
 );
 
-const groq = isRealGroqKey ? new Groq({ apiKey: groqApiKey }) : null;
+const groq = isRealGroqKey
+  ? new OpenAI({
+      apiKey: groqApiKey,
+      baseURL: 'https://api.groq.com/openai/v1',
+    })
+  : null;
 
 // In-memory fallback if Supabase is offline
 let supabaseConnected = false;
