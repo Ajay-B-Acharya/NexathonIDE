@@ -61,19 +61,19 @@ export const AmbientCollaborationCanvas: React.FC<AmbientCollaborationCanvasProp
     updateDimensions();
 
     const PALETTE_DARK = [
-      '#6366f1', // Indigo
+      '#35B8A6', // Restrained Teal
       '#06b6d4', // Cyan
-      '#10b981', // Emerald
-      '#a855f7', // Violet
+      '#3FBF86', // Emerald
+      '#788797', // Slate
       '#38bdf8', // Sky
     ];
 
     const PALETTE_LIGHT = [
-      '#4f46e5', // Deep Indigo
+      '#168C7D', // Primary Accent Teal
       '#0284c7', // Sky Blue
-      '#059669', // Emerald
-      '#7c3aed', // Purple
-      '#6366f1', // Lavender
+      '#218653', // Emerald
+      '#526171', // Slate
+      '#0D9488', // Teal
     ];
 
     const nodeCount = Math.floor(Math.min(65, Math.max(32, (width * height) / 24000)));

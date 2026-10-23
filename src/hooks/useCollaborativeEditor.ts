@@ -2,7 +2,13 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import type * as Monaco from 'monaco-editor';
 import { MonacoBinding } from 'y-monaco';
 import { collaborationClient, FileCollaborationSession } from '../services/collaborationClient';
-import { CollaboratorPresence, ConnectionStatus, UserProfile, WorkspaceFile } from '../types';
+import {
+  CollaboratorPresence,
+  ConnectionStatus,
+  FollowState,
+  UserProfile,
+  WorkspaceFile,
+} from '../types';
 
 interface UseCollaborativeEditorOptions {
   roomId: string;
@@ -11,12 +17,17 @@ interface UseCollaborativeEditorOptions {
   editorInstance: Monaco.editor.IStandaloneCodeEditor | null;
   monacoInstance: typeof Monaco | null;
   onContentChange: (fileId: string, newContent: string) => void;
+  onFollowFileChange?: (targetFilePath: string) => void;
 }
 
-interface UseCollaborativeEditorReturn {
+export interface UseCollaborativeEditorReturn {
   connectionStatus: ConnectionStatus;
   isDocumentSynced: boolean;
   collaborators: CollaboratorPresence[];
+  followState: FollowState | null;
+  startFollowing: (targetUserId: string, targetUserName: string, targetUserColor: string, targetFile?: string) => void;
+  stopFollowing: () => void;
+  reconcileSession: () => void;
   applyContentToSharedDoc: (newFullContent: string) => void;
 }
 
@@ -80,23 +91,30 @@ export function useCollaborativeEditor({
   editorInstance,
   monacoInstance,
   onContentChange,
+  onFollowFileChange,
 }: UseCollaborativeEditorOptions): UseCollaborativeEditorReturn {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [isDocumentSynced, setIsDocumentSynced] = useState<boolean>(false);
   const [collaborators, setCollaborators] = useState<CollaboratorPresence[]>([]);
+  const [followState, setFollowState] = useState<FollowState | null>(null);
 
   const bindingRef = useRef<MonacoBinding | null>(null);
   const sessionRef = useRef<FileCollaborationSession | null>(null);
   const modelsMapRef = useRef<Map<string, Monaco.editor.ITextModel>>(new Map());
+  const lastFollowedLineRef = useRef<number | null>(null);
+
   const onContentChangeRef = useRef(onContentChange);
   onContentChangeRef.current = onContentChange;
+
+  const onFollowFileChangeRef = useRef(onFollowFileChange);
+  onFollowFileChangeRef.current = onFollowFileChange;
 
   useEffect(() => {
     if (!editorInstance || !monacoInstance || !activeFile || !roomId) {
       return;
     }
 
-    // Clean up previous file's MonacoBinding without destroying cached Y.Doc sessions prematurely
+    // Clean up previous file's MonacoBinding without destroying cached Y.Doc sessions
     if (bindingRef.current) {
       bindingRef.current.destroy();
       bindingRef.current = null;
@@ -125,19 +143,53 @@ export function useCollaborativeEditor({
       roomId,
       activeFile.path,
       user,
-      activeFile.content,
-      (status) => setConnectionStatus(status),
-      (list) => {
-        setCollaborators(list);
-        syncCollaboratorCursorStyles(list);
-      },
-      (synced) => setIsDocumentSynced(synced)
+      activeFile.content
     );
 
     sessionRef.current = session;
 
-    // If session is already synced and contains text, ensure model reflects it immediately
-    if (session.provider.synced && session.ytext.length > 0) {
+    // Attach real-time connection status listener
+    const handleStatus = (event: { status: string }) => {
+      if (event.status === 'connected') setConnectionStatus('connected');
+      else if (event.status === 'connecting') setConnectionStatus('connecting');
+      else setConnectionStatus('disconnected');
+    };
+    session.provider.on('status', handleStatus);
+    if (session.provider.wsconnected) {
+      setConnectionStatus('connected');
+    }
+
+    // Attach document sync listener
+    const handleSync = (isSynced: boolean) => {
+      setIsDocumentSynced(isSynced);
+    };
+    session.provider.on('sync', handleSync);
+    setIsDocumentSynced(session.provider.synced);
+
+    // Attach peer awareness listener
+    const handleAwareness = () => {
+      const states = session.provider.awareness.getStates();
+      const list: CollaboratorPresence[] = [];
+      states.forEach((state, clientId) => {
+        if (state && state.user) {
+          list.push({
+            clientId,
+            user: state.user as UserProfile,
+            activeFile: state.activeFile as string | undefined,
+            cursor: state.cursor as { lineNumber: number; column: number } | null | undefined,
+            isTyping: Boolean(state.isTyping),
+            lastActive: (state.lastActive as number) || Date.now(),
+          });
+        }
+      });
+      setCollaborators(list);
+      syncCollaboratorCursorStyles(list);
+    };
+    session.provider.awareness.on('change', handleAwareness);
+    handleAwareness();
+
+    // Ensure model reflects current Y.Text before binding to prevent blank flash
+    if (session.ytext.length > 0) {
       if (model.getValue() !== session.ytext.toString()) {
         model.setValue(session.ytext.toString());
       }
@@ -152,13 +204,13 @@ export function useCollaborativeEditor({
     );
     bindingRef.current = binding;
 
-    // Observe Y.Text changes to update dirty indicators and trigger debounced autosave
+    // Observe Y.Text changes for dirty tracking and debounced autosave
     const handleYTextObserver = () => {
       onContentChangeRef.current(activeFile.id, session.ytext.toString());
     };
     session.ytext.observe(handleYTextObserver);
 
-    // Track local cursor position in awareness without forcing viewport scrolling on peers
+    // Track local cursor position in awareness
     const cursorDisposable = editorInstance.onDidChangeCursorPosition((e) => {
       collaborationClient.updateLocalAwareness(session.provider, user, activeFile.path, {
         lineNumber: e.position.lineNumber,
@@ -167,6 +219,9 @@ export function useCollaborativeEditor({
     });
 
     return () => {
+      session.provider.off('status', handleStatus);
+      session.provider.off('sync', handleSync);
+      session.provider.awareness.off('change', handleAwareness);
       cursorDisposable.dispose();
       session.ytext.unobserve(handleYTextObserver);
       if (bindingRef.current) {
@@ -174,7 +229,43 @@ export function useCollaborativeEditor({
         bindingRef.current = null;
       }
     };
-  }, [roomId, activeFile?.id, activeFile?.path, activeFile?.language, editorInstance, monacoInstance, user]);
+  }, [roomId, activeFile?.id, activeFile?.path, activeFile?.language, editorInstance, monacoInstance, user.id]);
+
+  // Follow Mode: Smoothly scroll and reveal target collaborator's cursor
+  useEffect(() => {
+    if (!followState || !editorInstance || !monacoInstance) return;
+
+    const target = collaborators.find((c) => c.user.id === followState.targetUserId);
+    if (!target) return;
+
+    // If followed collaborator is in a different file, request file switch
+    if (target.activeFile && activeFile && target.activeFile !== activeFile.path) {
+      onFollowFileChangeRef.current?.(target.activeFile);
+      return;
+    }
+
+    if (!target.cursor) return;
+
+    if (target.cursor.lineNumber !== lastFollowedLineRef.current) {
+      lastFollowedLineRef.current = target.cursor.lineNumber;
+      editorInstance.revealPositionInCenterIfOutsideViewport(
+        { lineNumber: target.cursor.lineNumber, column: target.cursor.column },
+        monacoInstance.editor.ScrollType.Smooth
+      );
+    }
+  }, [collaborators, followState, editorInstance, monacoInstance, activeFile?.path]);
+
+  // Break out of Follow Mode on Escape
+  useEffect(() => {
+    if (!editorInstance) return;
+    const keyDisposable = editorInstance.onKeyDown((e) => {
+      if (e.keyCode === 9 /* Escape key in Monaco */) {
+        setFollowState(null);
+        lastFollowedLineRef.current = null;
+      }
+    });
+    return () => keyDisposable.dispose();
+  }, [editorInstance]);
 
   // Dispose all sessions and models when leaving the workspace completely
   useEffect(() => {
@@ -188,6 +279,38 @@ export function useCollaborativeEditor({
       collaborationClient.destroyAllSessions();
     };
   }, []);
+
+  const startFollowing = useCallback(
+    (targetUserId: string, targetUserName: string, targetUserColor: string, targetFile?: string) => {
+      setFollowState({
+        targetUserId,
+        targetUserName,
+        targetUserColor,
+        targetFile: targetFile || activeFile?.path,
+      });
+    },
+    [activeFile?.path]
+  );
+
+  const stopFollowing = useCallback(() => {
+    setFollowState(null);
+    lastFollowedLineRef.current = null;
+  }, []);
+
+  const reconcileSession = useCallback(() => {
+    if (!roomId || !activeFile) return;
+    collaborationClient.reconnectSession(roomId, activeFile.path);
+
+    const session = sessionRef.current;
+    if (session && editorInstance) {
+      const model = editorInstance.getModel();
+      if (model && session.provider.synced && session.ytext.length > 0) {
+        if (model.getValue() !== session.ytext.toString()) {
+          model.setValue(session.ytext.toString());
+        }
+      }
+    }
+  }, [roomId, activeFile, editorInstance]);
 
   const applyContentToSharedDoc = useCallback((newFullContent: string) => {
     const session = sessionRef.current;
@@ -203,6 +326,10 @@ export function useCollaborativeEditor({
     connectionStatus,
     isDocumentSynced,
     collaborators,
+    followState,
+    startFollowing,
+    stopFollowing,
+    reconcileSession,
     applyContentToSharedDoc,
   };
 }

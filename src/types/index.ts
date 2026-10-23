@@ -27,6 +27,7 @@ export interface CollaboratorPresence {
     column: number;
   } | null;
   isTyping?: boolean;
+  isInactive?: boolean;
   lastActive: number;
 }
 
@@ -104,4 +105,29 @@ export interface TerminalMessage {
   isIsolated?: boolean;
   exitCode?: number;
   users?: Array<{ userId: string; username: string; color?: string }>;
+}
+
+export interface EditReservation {
+  id: string;
+  roomId: string;
+  fileId: string;
+  filePath: string;
+  ownerId: string;
+  ownerName: string;
+  ownerColor: string;
+  startLine: number;
+  endLine: number;
+  activeLine?: number;
+  createdAt: number;
+  expiresAt: number;
+  isAutomatic?: boolean;
+  taskDescription?: string;
+}
+
+export interface FollowState {
+  targetUserId: string;
+  targetUserName: string;
+  targetUserColor: string;
+  targetFile?: string;
+  lastLineNumber?: number;
 }

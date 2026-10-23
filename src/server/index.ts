@@ -62,9 +62,9 @@ const yjsServer = spawnProcess(
   { ...process.env, Y_WEBSOCKET_PORT: process.env.Y_WEBSOCKET_PORT || '1234' }
 );
 
-// 2. API Server
+// 2. API Server (with watch for hot reloading changes)
 const apiCmd = fs.existsSync(localTsx) ? nodeBin : npxCmd;
-const apiArgs = fs.existsSync(localTsx) ? [localTsx, apiScript] : ['tsx', apiScript];
+const apiArgs = fs.existsSync(localTsx) ? [localTsx, 'watch', apiScript] : ['tsx', 'watch', apiScript];
 const apiServer = spawnProcess(
   'API Server',
   apiCmd,
@@ -73,9 +73,27 @@ const apiServer = spawnProcess(
   { ...process.env, PORT: process.env.PORT || '3001' }
 );
 
+import os from 'os';
+
+function getLanIpAddress(): string | null {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      if (net.family === 'IPv4' && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return null;
+}
+
+const lanIp = getLanIpAddress();
+
 // 3. Vite Frontend Dev Server
 const viteCmd = fs.existsSync(localVite) ? nodeBin : npxCmd;
-const viteArgs = fs.existsSync(localVite) ? [localVite] : ['vite'];
+const viteArgs = fs.existsSync(localVite)
+  ? [localVite, '--host', '0.0.0.0']
+  : ['vite', '--host', '0.0.0.0'];
 const viteDev = spawnProcess(
   'Vite Frontend',
   viteCmd,
@@ -102,7 +120,18 @@ function shutdown() {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
+const yjsPort = process.env.Y_WEBSOCKET_PORT || '1234';
+const apiPort = process.env.PORT || '3001';
+
 console.log('Servers starting...');
-console.log(`  Yjs WebSocket: ws://localhost:${process.env.Y_WEBSOCKET_PORT || '1234'}`);
-console.log(`  API Server:    http://localhost:${process.env.PORT || '3001'}`);
-console.log('  Frontend:      http://localhost:5173\n');
+console.log(`  Local:`);
+console.log(`    Frontend:      http://localhost:5173`);
+console.log(`    API Server:    http://localhost:${apiPort}`);
+console.log(`    Yjs Collab:    ws://localhost:${yjsPort}`);
+if (lanIp) {
+  console.log(`  Network (Cross-device / LAN):`);
+  console.log(`    Frontend:      http://${lanIp}:5173`);
+  console.log(`    API Server:    http://${lanIp}:${apiPort}`);
+  console.log(`    Yjs Collab:    ws://${lanIp}:${yjsPort}`);
+}
+console.log('');

@@ -3,7 +3,7 @@ import express, { type Request, type Response } from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
-import OpenAI from 'openai';
+import Groq from 'groq-sdk';
 import { supabaseAdmin } from './supabase.js';
 import { WorkspaceService, getLanguageFromPath } from './services/workspaceService.js';
 import type { AIDebugRequest, AIDebugResponse } from './types.js';
@@ -30,12 +30,7 @@ const isRealGroqKey = Boolean(
   groqApiKey.trim().length > 0
 );
 
-const groq = isRealGroqKey
-  ? new OpenAI({
-      apiKey: groqApiKey,
-      baseURL: 'https://api.groq.com/openai/v1',
-    })
-  : null;
+const groq = isRealGroqKey ? new Groq({ apiKey: groqApiKey }) : null;
 
 // In-memory fallback if Supabase is offline
 let supabaseConnected = false;
@@ -274,25 +269,42 @@ app.get('/api/rooms/:id', async (req: Request, res: Response) => {
 });
 
 // Workspace Files
-app.get('/api/rooms/:id/files', async (req: Request, res: Response) => {
+const handleListFiles = async (req: Request, res: Response) => {
   try {
     const token = getBearerToken(req);
-    const id = String(req.params.id);
+    const id = String(req.params.id || req.params.roomId);
 
     if (supabaseConnected) {
       const files = await WorkspaceService.listFiles(id, token);
       return res.json(files);
     }
 
-    const files = Array.from(memoryFiles.values()).filter((f) => f.room_id === id || f.roomId === id);
+    let files = Array.from(memoryFiles.values()).filter((f) => f.room_id === id || f.roomId === id);
+    if (files.length === 0) {
+      const defaultFile = {
+        id: `${id}:index.js`,
+        name: 'index.js',
+        path: 'index.js',
+        content: '// Collaborative Workspace Entrypoint\nconsole.log("Hello from Nexathon IDE!");\n',
+        language: 'javascript',
+        room_id: id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      memoryFiles.set(defaultFile.id, defaultFile);
+      files = [defaultFile];
+    }
     res.json(files);
   } catch (error: any) {
     console.error('Error fetching files:', error);
     res.status(500).json({ error: error.message || 'Failed to fetch files' });
   }
-});
+};
 
-app.get('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
+app.get('/api/rooms/:id/files', handleListFiles);
+app.get('/rooms/:id/files', handleListFiles);
+
+const handleGetFile = async (req: Request, res: Response) => {
   try {
     const token = getBearerToken(req);
     const roomId = String(req.params.roomId);
@@ -320,9 +332,12 @@ app.get('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response
     console.error('Error fetching file:', error);
     res.status(500).json({ error: error.message || 'Failed to fetch file' });
   }
-});
+};
 
-app.post('/api/rooms/:roomId/files', async (req: Request, res: Response) => {
+app.get('/api/rooms/:roomId/files/:filePath', handleGetFile);
+app.get('/rooms/:roomId/files/:filePath', handleGetFile);
+
+const handleCreateFile = async (req: Request, res: Response) => {
   try {
     const token = getBearerToken(req);
     const roomId = String(req.params.roomId);
@@ -369,7 +384,10 @@ app.post('/api/rooms/:roomId/files', async (req: Request, res: Response) => {
     const status = error.message?.includes('CONFLICT') ? 409 : 500;
     res.status(status).json({ error: error.message || 'Failed to save file' });
   }
-});
+};
+
+app.post('/api/rooms/:roomId/files', handleCreateFile);
+app.post('/rooms/:roomId/files', handleCreateFile);
 
 const handleUpdateFile = async (req: Request, res: Response) => {
   try {
@@ -408,9 +426,11 @@ const handleUpdateFile = async (req: Request, res: Response) => {
 };
 
 app.patch('/api/rooms/:roomId/files/:filePath', handleUpdateFile);
+app.patch('/rooms/:roomId/files/:filePath', handleUpdateFile);
 app.put('/api/rooms/:roomId/files/:filePath', handleUpdateFile);
+app.put('/rooms/:roomId/files/:filePath', handleUpdateFile);
 
-app.delete('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
+const handleDeleteFile = async (req: Request, res: Response) => {
   try {
     const token = getBearerToken(req);
     const roomId = String(req.params.roomId);
@@ -432,16 +452,27 @@ app.delete('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Respo
     console.error('Error deleting file:', error);
     res.status(500).json({ error: error.message || 'Failed to delete file' });
   }
-});
+};
+
+app.delete('/api/rooms/:roomId/files/:filePath', handleDeleteFile);
+app.delete('/rooms/:roomId/files/:filePath', handleDeleteFile);
 
 // AI Debugger (Groq ultra-fast LPU inference)
-app.post('/api/ai/debug', async (req: Request, res: Response) => {
+const handleAIDebug = async (req: Request, res: Response) => {
   try {
     const { code, language, error, filePath }: AIDebugRequest = req.body;
 
-    if (!code || !language) {
-      return res.status(400).json({ error: 'Code and language are required' });
+    if (typeof code !== 'string' || !code.trim()) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        explanation: 'No source code was provided to debug. Please open a file containing code.',
+        probableCause: 'Empty or missing code parameter',
+        suggestedFix: '',
+        confidence: 0,
+      });
     }
+
+    const determinedLang = language || (filePath ? getLanguageFromPath(filePath) : 'plaintext');
 
     if (!groq) {
       return res.status(503).json({
@@ -458,11 +489,11 @@ Analyze the following source code and error/issue context.
 You must return valid JSON only with four fields:
 1. "explanation": A clear, concise explanation of the bug and why it occurs.
 2. "probableCause": The root technical cause of the issue.
-3. "suggestedFix": The COMPLETE corrected source code for this entire file, ready to replace the file content directly. Do NOT return markdown or code fences in this field, only raw valid source code.
+3. "suggestedFix": The COMPLETE corrected source code for this entire file, ready to replace the file content directly. Do NOT return markdown code fences in this field, only raw valid source code.
 4. "confidence": A number between 0.0 and 1.0 indicating confidence in this fix.
 
-File: ${filePath}
-Language: ${language}
+File: ${filePath || 'untitled'}
+Language: ${determinedLang}
 
 Source Code:
 ${code}
@@ -470,56 +501,79 @@ ${code}
 Error / Issue Context:
 ${error || 'Check code for syntax errors, bugs, or logic flaws.'}`;
 
-    let completion;
-    try {
-      completion = await groq.chat.completions.create({
-        model: 'openai/gpt-oss-120b',
-        messages: [
-          { role: 'system', content: 'You are an expert real-time code debugger. You strictly output valid JSON.' },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.2,
-        max_tokens: 3000,
-        response_format: { type: 'json_object' },
-      });
-    } catch (modelErr: any) {
-      console.warn('Groq primary model openai/gpt-oss-120b failed, falling back to openai/gpt-oss-20b:', modelErr?.message || modelErr);
-      completion = await groq.chat.completions.create({
-        model: 'openai/gpt-oss-20b',
-        messages: [
-          { role: 'system', content: 'You are an expert real-time code debugger. You strictly output valid JSON.' },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.2,
-        max_tokens: 3000,
-        response_format: { type: 'json_object' },
-      });
+    const candidateModels = [
+      process.env.GROQ_MODEL,
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b',
+      'qwen/qwen3.8-27b',
+    ].filter(Boolean) as string[];
+
+    let completion = null;
+    let lastError: any = null;
+
+    for (const model of candidateModels) {
+      try {
+        completion = await groq.chat.completions.create({
+          model,
+          messages: [
+            { role: 'system', content: 'You are an expert real-time code debugger. You strictly output valid JSON.' },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.2,
+          max_tokens: 3000,
+          response_format: { type: 'json_object' },
+        });
+        if (completion?.choices?.[0]?.message?.content) {
+          break;
+        }
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[Groq] Model ${model} failed (${err?.status || err?.message}), attempting next fallback model...`);
+      }
     }
 
-    const rawContent = completion.choices[0]?.message?.content || '{}';
-    const parsed = JSON.parse(rawContent);
+    if (!completion || !completion.choices?.[0]?.message?.content) {
+      throw lastError || new Error('No Groq models available or responding.');
+    }
+
+    const rawContent = completion.choices[0].message.content || '{}';
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(rawContent);
+    } catch {
+      parsed = { explanation: rawContent, suggestedFix: code };
+    }
+
+    // Clean suggestedFix: strip enclosing markdown code fences if present
+    let cleanFix = parsed.suggestedFix || code;
+    if (typeof cleanFix === 'string') {
+      cleanFix = cleanFix.replace(/^```[a-zA-Z]*\r?\n/, '').replace(/\r?\n```$/, '');
+    }
 
     const response: AIDebugResponse = {
-      explanation: parsed.explanation || 'No explanation provided.',
-      probableCause: parsed.probableCause || parsed.explanation || 'Root cause identified in code syntax or logic.',
-      suggestedFix: parsed.suggestedFix || code,
+      explanation: parsed.explanation || 'Issue diagnosed in code syntax or logic.',
+      probableCause: parsed.probableCause || parsed.explanation || 'Root cause identified.',
+      suggestedFix: cleanFix,
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.95,
     };
 
-    res.json(response);
+    return res.json(response);
   } catch (error: any) {
-    console.error('Groq AI debug error:', error);
-    res.status(500).json({
+    console.error('Groq AI debug error:', error?.message || error);
+    const status = error?.status === 401 ? 401 : error?.status === 429 ? 429 : 500;
+    return res.status(status).json({
       error: 'AI debugging failed',
-      explanation: error.message || 'Failed to get Groq AI assistance. Please check your GROQ_API_KEY.',
-      probableCause: 'AI API request or parsing error',
+      explanation: error?.message || 'Failed to get Groq AI assistance. Please check your GROQ_API_KEY.',
+      probableCause: error?.status ? `Groq API HTTP ${error.status}` : 'AI inference error',
       suggestedFix: req.body?.code || '',
       confidence: 0,
     });
   }
-});
+};
 
-// Initialize Modular Collaborative Terminal WebSocket Server
+app.post('/api/ai/debug', handleAIDebug);
+app.post('/ai/debug', handleAIDebug);
+
 setupTerminalServer(httpServer);
 
 httpServer.listen(PORT, async () => {

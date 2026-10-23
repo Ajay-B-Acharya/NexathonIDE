@@ -23,6 +23,7 @@ import {
   X,
 } from 'lucide-react';
 import { workspaceApi } from '../services/workspaceApi';
+import { getAccessibleRoomIds, addAccessibleRoomId } from '../services/refreshEngine';
 import { UserProfile, WorkspaceRoom } from '../types';
 import { ThemeMode, ThemeToggle } from '../components/ThemeToggle';
 import { SpotlightCard } from '../components/react-bits/cards/SpotlightCard';
@@ -200,6 +201,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
   }, []);
 
   const handleLaunchRoom = (roomId: string, name?: string) => {
+    addAccessibleRoomId(user.id, roomId);
     const matched = rooms.find((r) => r.id === roomId);
     if (matched) {
       onSelectRoom(matched);
@@ -236,6 +238,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
         description: data.description,
         ownerId: user.id,
       });
+      addAccessibleRoomId(user.id, created.id);
       onSelectRoom(created);
     } catch {
       const fallbackRoom: WorkspaceRoom = {
@@ -246,6 +249,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
         updatedAt: new Date().toISOString(),
         ownerId: user.id,
       };
+      addAccessibleRoomId(user.id, fallbackRoom.id);
       onSelectRoom(fallbackRoom);
     }
   };

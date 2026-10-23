@@ -1,19 +1,25 @@
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
-import { CollaboratorPresence, ConnectionStatus, UserProfile } from '../types';
+import { UserProfile } from '../types';
 
-const YJS_WS_URL = (import.meta.env.VITE_YJS_WS_URL as string) || 'ws://localhost:1234';
+import { getYjsWsUrl } from '../config/endpoints';
 
 export interface FileCollaborationSession {
   docKey: string;
   ydoc: Y.Doc;
   provider: WebsocketProvider;
   ytext: Y.Text;
+  serverUrl: string;
   destroy: () => void;
 }
 
 class CollaborationManager {
   private sessions = new Map<string, FileCollaborationSession>();
+  private lastWsUrl: string = '';
+
+  public getLastWsUrl(): string {
+    return this.lastWsUrl || getYjsWsUrl();
+  }
 
   /**
    * Creates or retrieves an isolated Y.Doc and WebsocketProvider per file: `${roomId}:${filePath}`
@@ -23,10 +29,7 @@ class CollaborationManager {
     roomId: string,
     filePath: string,
     user: UserProfile,
-    initialContent: string,
-    onStatusChange?: (status: ConnectionStatus) => void,
-    onCollaboratorsChange?: (collaborators: CollaboratorPresence[]) => void,
-    onSyncChange?: (isSynced: boolean) => void
+    initialContent: string
   ): FileCollaborationSession {
     const normalizedPath = filePath.replace(/^\/+/, '');
     const docKey = `${roomId}:${normalizedPath}`;
@@ -34,15 +37,27 @@ class CollaborationManager {
     const existing = this.sessions.get(docKey);
     if (existing) {
       this.updateLocalAwareness(existing.provider, user, normalizedPath);
-      if (onSyncChange) {
-        onSyncChange(existing.provider.synced);
+      // If already connected and synced but buffer is still empty, seed content
+      if (existing.provider.synced && existing.ytext.length === 0 && initialContent.length > 0) {
+        existing.ydoc.transact(() => {
+          if (existing.ytext.length === 0) {
+            existing.ytext.insert(0, initialContent);
+          }
+        });
       }
       return existing;
     }
 
+    const wsUrl = getYjsWsUrl();
+    this.lastWsUrl = wsUrl;
+
     const ydoc = new Y.Doc();
-    const provider = new WebsocketProvider(YJS_WS_URL, docKey, ydoc, {
+    const provider = new WebsocketProvider(wsUrl, docKey, ydoc, {
       connect: true,
+      // Disable local browser BroadcastChannel to guarantee true client-server WebSocket transport
+      disableBc: true,
+      // Keep resyncInterval disabled (-1) so text updates flow exclusively over WebSocket messages
+      resyncInterval: -1,
     });
     const ytext = ydoc.getText('monaco');
 
@@ -55,53 +70,18 @@ class CollaborationManager {
           }
         });
       }
-      if (onSyncChange) {
-        onSyncChange(isSynced);
-      }
     };
 
     provider.on('sync', handleSync);
-
-    provider.on('status', (event: { status: string }) => {
-      if (!onStatusChange) return;
-      if (event.status === 'connected') onStatusChange('connected');
-      else if (event.status === 'connecting') onStatusChange('connecting');
-      else onStatusChange('disconnected');
-    });
-
     this.updateLocalAwareness(provider, user, normalizedPath);
-
-    const handleAwarenessUpdate = () => {
-      if (!onCollaboratorsChange) return;
-      const states = provider.awareness.getStates();
-      const collaborators: CollaboratorPresence[] = [];
-
-      states.forEach((state, clientId) => {
-        if (state && state.user) {
-          collaborators.push({
-            clientId,
-            user: state.user as UserProfile,
-            activeFile: state.activeFile as string | undefined,
-            cursor: state.cursor as { lineNumber: number; column: number } | null | undefined,
-            isTyping: Boolean(state.isTyping),
-            lastActive: (state.lastActive as number) || Date.now(),
-          });
-        }
-      });
-
-      onCollaboratorsChange(collaborators);
-    };
-
-    provider.awareness.on('change', handleAwarenessUpdate);
-    handleAwarenessUpdate();
 
     const session: FileCollaborationSession = {
       docKey,
       ydoc,
       provider,
       ytext,
+      serverUrl: wsUrl,
       destroy: () => {
-        provider.awareness.off('change', handleAwarenessUpdate);
         provider.off('sync', handleSync);
         provider.disconnect();
         provider.destroy();
@@ -114,11 +94,29 @@ class CollaborationManager {
     return session;
   }
 
+  public getSession(roomId: string, filePath: string): FileCollaborationSession | undefined {
+    const normalizedPath = filePath.replace(/^\/+/, '');
+    const docKey = `${roomId}:${normalizedPath}`;
+    return this.sessions.get(docKey);
+  }
+
+  public reconnectSession(roomId: string, filePath: string): boolean {
+    const session = this.getSession(roomId, filePath);
+    if (!session) return false;
+    if (!session.provider.wsconnected) {
+      session.provider.connect();
+      return true;
+    }
+    return false;
+  }
+
   public updateLocalAwareness(
     provider: WebsocketProvider,
     user: UserProfile,
     activeFile: string,
-    cursor?: { lineNumber: number; column: number } | null
+    cursor?: { lineNumber: number; column: number } | null,
+    isInactive?: boolean,
+    isTyping?: boolean
   ): void {
     provider.awareness.setLocalStateField('user', {
       id: user.id,
@@ -128,6 +126,12 @@ class CollaborationManager {
     provider.awareness.setLocalStateField('activeFile', activeFile);
     if (cursor !== undefined) {
       provider.awareness.setLocalStateField('cursor', cursor);
+    }
+    if (isInactive !== undefined) {
+      provider.awareness.setLocalStateField('isInactive', isInactive);
+    }
+    if (isTyping !== undefined) {
+      provider.awareness.setLocalStateField('isTyping', isTyping);
     }
     provider.awareness.setLocalStateField('lastActive', Date.now());
   }
@@ -139,4 +143,3 @@ class CollaborationManager {
 }
 
 export const collaborationClient = new CollaborationManager();
-
