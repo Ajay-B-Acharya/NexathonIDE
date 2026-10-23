@@ -8,7 +8,7 @@
     --bg-surface-1: #0d101b;
     --bg-surface-2: #121624;
     --bg-elevated: #1a2034;
-    --bg-glass: rgba(13, 16, 27, 0.85);
+    --bg-glass: rgba(13, 16, 27, 0.88);
     --bg-code: #05060a;
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
@@ -22,6 +22,10 @@
     --bg-obsidian: #06080e;
     --bg-active: #1a2034;
     --accent-indigo: #6366f1;
+
+    --glow-color-1: rgba(99, 102, 241, 0.16);
+    --glow-color-2: rgba(168, 85, 247, 0.09);
+    --grid-line: rgba(255, 255, 255, 0.035);
   }
 
   .light {
@@ -30,7 +34,7 @@
     --bg-surface-1: #ffffff;
     --bg-surface-2: #f1f5f9;
     --bg-elevated: #e2e8f0;
-    --bg-glass: rgba(255, 255, 255, 0.86);
+    --bg-glass: rgba(255, 255, 255, 0.92);
     --bg-code: #0f172a;
     --text-primary: #0f172a;
     --text-secondary: #334155;
@@ -44,6 +48,10 @@
     --bg-obsidian: #f8fafc;
     --bg-active: #e2e8f0;
     --accent-indigo: #4f46e5;
+
+    --glow-color-1: rgba(99, 102, 241, 0.08);
+    --glow-color-2: rgba(168, 85, 247, 0.05);
+    --grid-line: rgba(15, 23, 42, 0.045);
   }
 
   body {
@@ -131,19 +139,19 @@
   animation: shimmer 2.2s infinite linear;
 }
 
-/* Ambient Radial Glow Backgrounds */
+/* Ambient Radial Glow Backgrounds (Adaptive for Obsidian Dark & Titanium Light) */
 .bg-obsidian-glow {
-  background-color: #090a0f;
+  background-color: var(--bg-root);
   background-image: 
-    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.16) 0%, transparent 65%),
-    radial-gradient(circle at 85% 20%, rgba(168, 85, 247, 0.08) 0%, transparent 50%);
+    radial-gradient(circle at 50% 0%, var(--glow-color-1) 0%, transparent 65%),
+    radial-gradient(circle at 85% 20%, var(--glow-color-2) 0%, transparent 50%);
 }
 
 .bg-grid-pattern {
   background-size: 32px 32px;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
 }
 
 /* Custom Scrollbars */
