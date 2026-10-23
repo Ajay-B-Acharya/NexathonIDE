@@ -1,118 +1,186 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@import "tailwindcss";
+
+@layer base {
+  :root,
+  .dark {
+    color-scheme: dark;
+    --bg-root: #06080e;
+    --bg-surface-1: #0d101b;
+    --bg-surface-2: #121624;
+    --bg-elevated: #1a2034;
+    --bg-glass: rgba(13, 16, 27, 0.85);
+    --bg-code: #05060a;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --border-hairline: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.15);
+    --accent-primary: #6366f1;
+    --accent-secondary: #a855f7;
+    --shadow-elevated: 0 24px 60px -15px rgba(0, 0, 0, 0.85);
+
+    --bg-obsidian: #06080e;
+    --bg-active: #1a2034;
+    --accent-indigo: #6366f1;
+  }
+
+  .light {
+    color-scheme: light;
+    --bg-root: #f8fafc;
+    --bg-surface-1: #ffffff;
+    --bg-surface-2: #f1f5f9;
+    --bg-elevated: #e2e8f0;
+    --bg-glass: rgba(255, 255, 255, 0.86);
+    --bg-code: #0f172a;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --border-hairline: rgba(15, 23, 42, 0.09);
+    --border-strong: rgba(15, 23, 42, 0.16);
+    --accent-primary: #4f46e5;
+    --accent-secondary: #7c3aed;
+    --shadow-elevated: 0 20px 50px -12px rgba(15, 23, 42, 0.12);
+
+    --bg-obsidian: #f8fafc;
+    --bg-active: #e2e8f0;
+    --accent-indigo: #4f46e5;
+  }
+
+  body {
+    background-color: var(--bg-root);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  code,
+  pre,
+  .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+    font-feature-settings: "liga" 1, "calt" 1;
+  }
 }
 
-:root {
-  --bg: #1e1e1e;
-  --bg-secondary: #252526;
-  --bg-tertiary: #2d2d2d;
-  --border: #333;
-  --text: #d4d4d4;
-  --text-muted: #888;
-  --accent: #0e639c;
-  --accent-hover: #1177bb;
-  --success: #4ec9b0;
-  --error: #f44747;
-  --warning: #cca700;
+/* Semantic Theme Utility Classes */
+.theme-bg-root {
+  background-color: var(--bg-root);
 }
 
-html, body, #root {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
+.theme-bg-surface-1 {
+  background-color: var(--bg-surface-1);
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  font-size: 14px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+.theme-bg-surface-2 {
+  background-color: var(--bg-surface-2);
 }
 
+.theme-bg-elevated {
+  background-color: var(--bg-elevated);
+}
+
+.theme-bg-glass {
+  background-color: var(--bg-glass);
+  backdrop-filter: blur(16px);
+}
+
+.theme-text-primary {
+  color: var(--text-primary);
+}
+
+.theme-text-secondary {
+  color: var(--text-secondary);
+}
+
+.theme-text-muted {
+  color: var(--text-muted);
+}
+
+.theme-border {
+  border-color: var(--border-hairline);
+}
+
+.theme-border-strong {
+  border-color: var(--border-strong);
+}
+
+.theme-shadow {
+  box-shadow: var(--shadow-elevated);
+}
+
+/* Shimmer Keyframes for AST / WASM Evaluation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(99, 102, 241, 0.06) 25%,
+    rgba(168, 85, 247, 0.24) 50%,
+    rgba(99, 102, 241, 0.06) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.2s infinite linear;
+}
+
+/* Ambient Radial Glow Backgrounds */
+.bg-obsidian-glow {
+  background-color: #090a0f;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.16) 0%, transparent 65%),
+    radial-gradient(circle at 85% 20%, rgba(168, 85, 247, 0.08) 0%, transparent 50%);
+}
+
+.bg-grid-pattern {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+}
+
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #444;
-  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.22);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: rgba(99, 102, 241, 0.55);
 }
 
-::-webkit-scrollbar-corner {
-  background: var(--bg);
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
-input, select, button, textarea {
-  font-family: inherit;
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-a {
-  color: var(--accent);
-  text-decoration: none;
+/* Monaco & Xterm Container Overrides */
+.monaco-editor,
+.monaco-editor .margin,
+.monaco-editor-background {
+  background-color: #090a0f !important;
 }
 
-a:hover {
-  text-decoration: underline;
-}
-
-.monaco-editor {
-  background: #1e1e1e !important;
-}
-
-.monaco-editor .margin {
-  background: #1e1e1e !important;
-}
-
-.monaco-editor .line-numbers {
-  color: #858585 !important;
-}
-
-.xterm {
-  background: #1e1e1e !important;
-}
-
-.xterm .xterm-cursor {
-  background: #fff !important;
-}
-
-.xterm .xterm-selection {
-  background: #264f78 !important;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-::selection {
-  background: #264f78;
-  color: #fff;
-}
-
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.xterm .xterm-viewport {
+  background-color: #090a0f !important;
 }

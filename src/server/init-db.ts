@@ -1,6 +1,10 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
 
+try {
+  process.loadEnvFile();
+} catch {}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/collaborative_ide',
   max: 5,

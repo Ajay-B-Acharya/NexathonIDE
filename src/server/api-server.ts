@@ -5,10 +5,14 @@ import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import OpenAI from 'openai';
 import { supabaseAdmin } from './supabase.js';
-import { WorkspaceService } from './services/workspaceService.js';
+import { WorkspaceService, getLanguageFromPath } from './services/workspaceService.js';
 import type { AIDebugRequest, AIDebugResponse } from './types.js';
-import { setupTerminalServer, createTerminalRouter } from './terminal/terminalServer.js';
+import { createTerminalRouter, setupTerminalServer } from './terminal/terminalServer.js';
 import { sessionManager } from './terminal/sessionManager.js';
+
+try {
+  process.loadEnvFile();
+} catch {}
 
 const app = express();
 const httpServer = createServer(app);
@@ -20,7 +24,7 @@ app.use('/api/terminal', createTerminalRouter());
 
 // AI Provider Setup: Supports Groq (fast inference) or OpenAI
 const groqApiKey = process.env.GROQ_API_KEY;
-const isRealGroqKey = groqApiKey && !groqApiKey.includes('paste_your_real_groq_api_key_here');
+const isRealGroqKey = Boolean(groqApiKey && !groqApiKey.includes('paste_your_real_groq_api_key_here'));
 
 const groq = isRealGroqKey
   ? new OpenAI({
@@ -29,9 +33,13 @@ const groq = isRealGroqKey
     })
   : null;
 
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null;
+const hasOpenAI = Boolean(
+  process.env.OPENAI_API_KEY &&
+  process.env.OPENAI_API_KEY.trim() &&
+  process.env.OPENAI_API_KEY !== 'your_openai_api_key_here'
+);
+
+const openai = hasOpenAI ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 // In-memory fallback if Supabase is offline
 let supabaseConnected = false;
@@ -170,7 +178,7 @@ app.get('/api/rooms/:id/files', async (req: Request, res: Response) => {
       return res.json(files);
     }
 
-    const files = Array.from(memoryFiles.values()).filter((f) => f.room_id === id);
+    const files = Array.from(memoryFiles.values()).filter((f) => f.room_id === id || f.roomId === id);
     res.json(files);
   } catch (error: any) {
     console.error('Error fetching files:', error);
@@ -190,7 +198,16 @@ app.get('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response
       return res.json(file);
     }
 
-    const file = memoryFiles.get(`${roomId}:${filePath}`);
+    let file = memoryFiles.get(`${roomId}:${filePath}`);
+    if (!file) {
+      for (const f of memoryFiles.values()) {
+        if ((f.roomId === roomId || f.room_id === roomId) && (f.id === filePath || f.path === filePath)) {
+          file = f;
+          break;
+        }
+      }
+    }
+
     if (!file) return res.status(404).json({ error: 'File not found' });
     res.json(file);
   } catch (error: any) {
@@ -202,35 +219,44 @@ app.get('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response
 app.post('/api/rooms/:roomId/files', async (req: Request, res: Response) => {
   try {
     const token = getBearerToken(req);
-    const { path, content = '', language, expectedVersion } = req.body;
     const roomId = String(req.params.roomId);
+    const rawPath = req.body.path || req.body.filePath || req.body.name;
+    const content = req.body.content || '';
+    const language = req.body.language;
+    const expectedVersion = req.body.expectedVersion;
 
-    if (!path) {
+    if (!rawPath) {
       return res.status(400).json({ error: 'Path is required' });
     }
+
+    const filePath = String(rawPath);
+    const determinedLang = language || getLanguageFromPath(filePath);
 
     if (supabaseConnected) {
       const savedFile = await WorkspaceService.saveFile({
         roomId,
-        path,
+        path: filePath,
         content,
-        language,
+        language: determinedLang,
         expectedVersion,
         userToken: token,
       });
       return res.status(201).json(savedFile);
     }
 
+    const key = `${roomId}:${filePath}`;
+    const existing = memoryFiles.get(key);
     const file = {
-      id: uuidv4(),
+      id: existing?.id || uuidv4(),
+      roomId,
       room_id: roomId,
-      path,
+      path: filePath,
       content,
-      language: language || 'plaintext',
+      language: determinedLang,
       version: 1,
       updated_at: new Date().toISOString(),
     };
-    memoryFiles.set(`${roomId}:${path}`, file);
+    memoryFiles.set(key, file);
     res.status(201).json(file);
   } catch (error: any) {
     console.error('Error creating/updating file:', error);
@@ -239,42 +265,62 @@ app.post('/api/rooms/:roomId/files', async (req: Request, res: Response) => {
   }
 });
 
-app.patch('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
+const handleUpdateFile = async (req: Request, res: Response) => {
   try {
     const token = getBearerToken(req);
     const roomId = String(req.params.roomId);
-    const filePath = String(req.params.filePath);
-    const { content } = req.body;
+    const fileIdentifier = String(req.params.filePath);
+    const { content, path, language } = req.body;
 
     if (supabaseConnected) {
-      const updated = await WorkspaceService.updateFileContent(roomId, filePath, content, token);
+      const updated = await WorkspaceService.updateFileContent(roomId, fileIdentifier, content, token);
       if (!updated) return res.status(404).json({ error: 'File not found' });
       return res.json(updated);
     }
 
-    const file = memoryFiles.get(`${roomId}:${filePath}`);
-    if (!file) return res.status(404).json({ error: 'File not found' });
-    file.content = content;
+    let file = memoryFiles.get(`${roomId}:${fileIdentifier}`);
+    if (!file) {
+      for (const f of memoryFiles.values()) {
+        if ((f.roomId === roomId || f.room_id === roomId) && (f.id === fileIdentifier || f.path === fileIdentifier)) {
+          file = f;
+          break;
+        }
+      }
+    }
+    if (!file) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    if (content !== undefined) file.content = content;
+    if (path !== undefined) file.path = path;
+    if (language !== undefined) file.language = language;
     file.updated_at = new Date().toISOString();
     res.json(file);
   } catch (error: any) {
     console.error('Error updating file:', error);
     res.status(500).json({ error: error.message || 'Failed to update file' });
   }
-});
+};
+
+app.patch('/api/rooms/:roomId/files/:filePath', handleUpdateFile);
+app.put('/api/rooms/:roomId/files/:filePath', handleUpdateFile);
 
 app.delete('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
   try {
     const token = getBearerToken(req);
     const roomId = String(req.params.roomId);
-    const filePath = String(req.params.filePath);
+    const fileIdentifier = String(req.params.filePath);
 
     if (supabaseConnected) {
-      await WorkspaceService.deleteFile(roomId, filePath, token);
+      await WorkspaceService.deleteFile(roomId, fileIdentifier, token);
       return res.status(204).send();
     }
 
-    memoryFiles.delete(`${roomId}:${filePath}`);
+    memoryFiles.delete(`${roomId}:${fileIdentifier}`);
+    for (const [key, f] of memoryFiles.entries()) {
+      if ((f.roomId === roomId || f.room_id === roomId) && (f.id === fileIdentifier || f.path === fileIdentifier)) {
+        memoryFiles.delete(key);
+      }
+    }
     res.status(204).send();
   } catch (error: any) {
     console.error('Error deleting file:', error);
