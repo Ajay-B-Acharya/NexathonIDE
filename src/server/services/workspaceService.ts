@@ -150,6 +150,7 @@ export class WorkspaceService {
     return (data || []).map(formatRoom);
   }
 
+
   /**
    * Get room by ID
    */

@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Lock,
   Flame,
+  FileCode,
 } from 'lucide-react';
 import { executionClient } from '../services/executionClient';
 import { SupportedLanguage, UserProfile } from '../types';
@@ -584,6 +585,72 @@ export const Landing: React.FC<LandingProps> = ({
               Cloud Compute:
             </span>
             <span className="font-semibold text-amber-500">$0 / Unlimited</span>
+          </div>
+        </div>
+        {/* Interactive Faux-IDE Hero Preview (Yjs Multiplayer & WASM Proof) */}
+        <div className="relative mx-auto mt-12 w-full max-w-5xl rounded-xl border theme-border theme-bg-glass backdrop-blur-xl theme-shadow overflow-hidden transition-all duration-300 text-left">
+          {/* Top Chrome / Window Controls */}
+          <div className="flex items-center justify-between px-4 py-3 border-b theme-border theme-bg-surface-2/60">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-rose-500/80" />
+              <span className="w-3 h-3 rounded-full bg-amber-500/80" />
+              <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
+              <span className="ml-3 font-mono text-xs theme-text-muted flex items-center gap-1.5">
+                <FileCode className="w-3.5 h-3.5 text-indigo-400" /> analysis.py
+              </span>
+            </div>
+
+            {/* Multiplayer Presence Indicator (Yjs Proof) */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-mono text-[11px]">
+                <Users className="w-3.5 h-3.5 text-indigo-400" />
+                <span>2 Active Peers</span>
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[11px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Pyodide WASM Active
+              </div>
+            </div>
+          </div>
+
+          {/* Split Workspace Demo */}
+          <div className="grid grid-cols-1 md:grid-cols-12 min-h-[340px] font-mono text-xs">
+            {/* Code Editor */}
+            <div className="md:col-span-7 p-5 bg-black/5 dark:bg-black/25 space-y-2.5 theme-text-primary">
+              <p className="theme-text-muted"># Instant local execution via WebAssembly</p>
+              <p>
+                <span className="text-indigo-600 dark:text-indigo-400">import</span> <span className="text-amber-500 dark:text-amber-400">numpy</span> <span className="text-indigo-600 dark:text-indigo-400">as</span> np
+              </p>
+              <p>
+                dataset = np.random.randn(1000)
+              </p>
+              <p>
+                result = &#123;<span className="text-emerald-600 dark:text-emerald-400">&quot;mean&quot;</span>: float(dataset.mean())&#125;
+              </p>
+              <p className="flex items-center">
+                <span>print(f<span className="text-emerald-600 dark:text-emerald-400">&quot;Calculated local variance: &#123;dataset.var():.4f&#125;&quot;</span>)</span>
+                <span className="inline-block w-1.5 h-3.5 ml-1 bg-indigo-500 animate-pulse" />
+              </p>
+              <p className="theme-text-muted pt-2"># AI Diff Guard &amp; CRDT peer mesh synched</p>
+            </div>
+
+            {/* Live Terminal & Node-PTY Output */}
+            <div className="md:col-span-5 p-5 bg-black/10 dark:bg-black/50 border-t md:border-t-0 md:border-l theme-border flex flex-col justify-between">
+              <div className="space-y-1.5 font-mono">
+                <p className="theme-text-muted">[yjs] Peer mesh synched (room: nexathon-prod)</p>
+                <p className="text-emerald-600 dark:text-emerald-400">&gt;&gt;&gt; Running in browser WebWorker thread...</p>
+                <p className="text-indigo-600 dark:text-indigo-300">&#123;&quot;mean&quot;: 0.0314, &quot;status&quot;: &quot;executed_wasm&quot;&#125;</p>
+                <p className="theme-text-primary">Calculated local variance: 0.9982</p>
+                <p className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 pt-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>AST state vector converged (0 conflicts)</span>
+                </p>
+              </div>
+              <div className="pt-4 border-t theme-border flex items-center justify-between text-[11px] theme-text-muted">
+                <span>Latency: &lt;1ms (Local Silicon)</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">$0 server cost</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>

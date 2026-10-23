@@ -320,6 +320,7 @@ export const Login: React.FC<LoginProps> = ({
                 </p>
               </div>
 
+
               {/* Mode Switcher Tabs (Sign In vs Create Account) */}
               {(authMode === 'signin' || authMode === 'signup') && (
                 <div className="mb-5 grid grid-cols-2 rounded-xl border theme-border theme-bg-surface-2 p-1 text-xs font-semibold">
@@ -681,6 +682,15 @@ export const Login: React.FC<LoginProps> = ({
                   </button>
                 </div>
               )}
+
+              {/* Operational Trust Ribbon */}
+              <div className="mt-5 pt-4 border-t theme-border flex items-center justify-between text-[11px] font-mono theme-text-muted">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  All systems nominal
+                </span>
+                <span>WASM Core 0.26 • Bcrypt + JWT</span>
+              </div>
             </div>
           </div>
 
@@ -707,15 +717,15 @@ export const Login: React.FC<LoginProps> = ({
               <div className="font-mono text-xs space-y-2 rounded-xl theme-bg-code p-4 border theme-border">
                 <div className="flex items-center gap-3">
                   <span className="theme-text-muted w-6 text-right select-none">1</span>
-                  <span className="theme-text-primary"><span className="text-purple-400">import</span> pyodide, yjs</span>
+                  <span className="theme-text-primary"><span className="text-purple-600 dark:text-purple-400 font-semibold">import</span> pyodide, yjs</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="theme-text-muted w-6 text-right select-none">2</span>
-                  <span className="theme-text-primary"><span className="text-purple-400">from</span> runtime <span className="text-purple-400">import</span> CRDTEngine</span>
+                  <span className="theme-text-primary"><span className="text-purple-600 dark:text-purple-400 font-semibold">from</span> runtime <span className="text-purple-600 dark:text-purple-400 font-semibold">import</span> CRDTEngine</span>
                 </div>
                 <div className="relative flex items-center gap-3 py-0.5">
                   <span className="theme-text-muted w-6 text-right select-none">3</span>
-                  <span className="theme-text-primary">engine = CRDTEngine(room_id=<span className="text-emerald-400">"global-mesh"</span>)</span>
+                  <span className="theme-text-primary">engine = CRDTEngine(room_id=<span className="text-emerald-600 dark:text-emerald-400 font-medium">"global-mesh"</span>)</span>
                   {/* Cursor 1: Alex */}
                   <span className="absolute right-20 inline-flex items-center">
                     <span className="h-4 w-0.5 bg-indigo-500 animate-pulse" />
@@ -737,7 +747,7 @@ export const Login: React.FC<LoginProps> = ({
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="theme-text-muted w-6 text-right select-none">5</span>
-                  <span className="text-indigo-400">print</span>(<span className="text-emerald-400">"Converged CRDT Vector with 0 conflicts"</span>)
+                  <span className="text-indigo-600 dark:text-indigo-400 font-medium">print</span>(<span className="text-emerald-600 dark:text-emerald-400">"Converged CRDT Vector with 0 conflicts"</span>)
                 </div>
               </div>
 
