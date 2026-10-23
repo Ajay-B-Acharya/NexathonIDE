@@ -18,6 +18,7 @@ interface TopBarProps {
   roomId: string;
   user: UserProfile;
   connectionStatus: ConnectionStatus;
+  isDocumentSynced?: boolean;
   collaborators: CollaboratorPresence[];
   isRunning: boolean;
   isSaving: boolean;
@@ -36,6 +37,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   roomId,
   user,
   connectionStatus,
+  isDocumentSynced = false,
   collaborators,
   isRunning,
   isSaving,
@@ -49,11 +51,11 @@ export const TopBar: React.FC<TopBarProps> = ({
   onLogout,
 }) => {
   const renderSyncRadarBadge = () => {
-    if (connectionStatus === 'connected') {
+    if (connectionStatus === 'connected' && isDocumentSynced) {
       return (
         <div
           className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-950/40 px-2.5 py-1 text-[11px] font-medium text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
-          title="Yjs CRDT WebSocket Connected"
+          title="Yjs Document Synchronized & Live"
         >
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -64,17 +66,35 @@ export const TopBar: React.FC<TopBarProps> = ({
       );
     }
 
+    if (connectionStatus === 'connected' && !isDocumentSynced) {
+      return (
+        <div
+          className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-950/40 px-2.5 py-1 text-[11px] font-medium text-amber-300"
+          title="Connected to WebSocket, syncing CRDT document state..."
+        >
+          <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
+          <span>Syncing Doc...</span>
+        </div>
+      );
+    }
+
     if (connectionStatus === 'connecting') {
       return (
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-950/40 px-2.5 py-1 text-[11px] font-medium text-amber-300">
+        <div
+          className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-950/40 px-2.5 py-1 text-[11px] font-medium text-amber-300"
+          title="Connecting to collaboration server..."
+        >
           <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
-          <span>Syncing...</span>
+          <span>Connecting...</span>
         </div>
       );
     }
 
     return (
-      <div className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-950/40 px-2.5 py-1 text-[11px] font-medium text-rose-300">
+      <div
+        className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-950/40 px-2.5 py-1 text-[11px] font-medium text-rose-300"
+        title="Disconnected from collaboration server"
+      >
         <WifiOff className="h-3 w-3 text-rose-400" />
         <span>Offline</span>
       </div>

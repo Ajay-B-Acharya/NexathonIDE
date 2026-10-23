@@ -173,7 +173,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     [dbContentSnapshot, persistFileToDatabase]
   );
 
-  const { connectionStatus, collaborators, applyContentToSharedDoc } =
+  const { connectionStatus, isDocumentSynced, collaborators, applyContentToSharedDoc } =
     useCollaborativeEditor({
       roomId: room.id,
       activeFile,
@@ -289,6 +289,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         roomId={room.id}
         user={user}
         connectionStatus={connectionStatus}
+        isDocumentSynced={isDocumentSynced}
         collaborators={collaborators}
         isRunning={isRunning}
         isSaving={isSaving}
