@@ -200,6 +200,8 @@ export const App: React.FC = () => {
     <Workspace
       room={activeRoom}
       user={user}
+      theme={theme}
+      onToggleTheme={setTheme}
       onSwitchWorkspace={() => {
         setActiveRoom(null);
         setView('workspaces');
