@@ -218,8 +218,21 @@ class InBrowserExecutionClient {
         });
       };
 
-      worker.postMessage({ code });
+      const processedCode =
+        language === 'typescript' ? this.stripTypeScriptTypes(code) : code;
+      worker.postMessage({ code: processedCode });
     });
+  }
+
+  private stripTypeScriptTypes(code: string): string {
+    return code
+      .replace(/^\s*(import|export)\s+type\s+[^;]+;/gm, '')
+      .replace(/^\s*interface\s+[A-Za-z0-9_<>,\s]+\s*\{[^}]*\}/gm, '')
+      .replace(/^\s*type\s+[A-Za-z0-9_<>,\s]+\s*=[^;]+;/gm, '')
+      .replace(/\s+as\s+[A-Za-z0-9_<>[\]|&\s]+/g, '')
+      .replace(/:\s*([A-Za-z0-9_<>[\]|&]+)(?=\s*(=|,|\)|\{))/g, '')
+      .replace(/\)\s*:\s*[A-Za-z0-9_<>[\]|&\s]+(?=\s*(=>|\{))/g, ')')
+      .replace(/(function\s+[A-Za-z0-9_]+)\s*<[^>]+>\s*\(/g, '$1(');
   }
 }
 

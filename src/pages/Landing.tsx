@@ -26,6 +26,8 @@ import {
   Lock,
   Flame,
   FileCode,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { executionClient } from '../services/executionClient';
 import { SupportedLanguage, UserProfile } from '../types';
@@ -163,6 +165,7 @@ export const Landing: React.FC<LandingProps> = ({
     SANDBOX_PRESETS.find((p) => p.id === selectedPresetId) || SANDBOX_PRESETS[0];
 
   const [sandboxCode, setSandboxCode] = useState<string>(SANDBOX_PRESETS[0].code);
+  const [heroActiveSlide, setHeroActiveSlide] = useState<'multiplayer' | 'sandbox'>('multiplayer');
   const [isExecutingSandbox, setIsExecutingSandbox] = useState<boolean>(false);
   const [sandboxOutput, setSandboxOutput] = useState<{
     stdout: string;
@@ -385,27 +388,47 @@ export const Landing: React.FC<LandingProps> = ({
       />
 
       {/* 1. GLASSMORPHIC COMMAND HEADER */}
-      <header className="sticky top-0 z-30 border-b theme-border theme-bg-glass">
+      <header className="sticky top-0 z-30 border-b theme-border theme-bg-glass backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
-          {/* Brand Identity + Live Cluster Telemetry Pill */}
-          <div className="flex items-center gap-4">
+          {/* Left: Brand Identity & Compact Version Badge */}
+          <div className="flex items-center gap-3 shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-[0_0_18px_rgba(99,102,241,0.45)]">
                 <Code2 className="h-4 w-4" />
               </div>
-              <span className="text-sm font-bold tracking-tight theme-text-primary">
+              <span className="text-sm font-bold tracking-tight theme-text-primary whitespace-nowrap">
                 Nexathon<span className="text-indigo-500">IDE</span>
               </span>
-              <span className="hidden md:inline-block rounded border theme-border px-1.5 py-0.5 font-mono text-[10px] theme-text-muted">
-                v2.4.0-crdt
+              <span className="hidden sm:inline-flex items-center rounded-md border theme-border px-2 py-0.5 font-mono text-[10px] theme-text-muted whitespace-nowrap">
+                v2.4 CRDT
               </span>
             </div>
+          </div>
 
+          {/* Center: Cleanly Spaced Navigation Links */}
+          <nav className="hidden lg:flex items-center gap-8 text-xs font-medium theme-text-secondary whitespace-nowrap">
+            <a href="#live-sandbox" className="hover:text-indigo-500 hover:theme-text-primary transition-colors">
+              WASM Sandbox
+            </a>
+            <a href="#comparison" className="hover:text-indigo-500 hover:theme-text-primary transition-colors">
+              Architecture vs Docker
+            </a>
+            <a href="#bento" className="hover:text-indigo-500 hover:theme-text-primary transition-colors">
+              Core Innovations
+            </a>
+            <a href="#telemetry" className="hover:text-indigo-500 hover:theme-text-primary transition-colors">
+              Benchmarks
+            </a>
+          </nav>
+
+          {/* Right: Telemetry Pill + Theme Toggle + Auth / Launch */}
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            {/* Live Cluster Latency Probe Pill */}
             <button
               type="button"
               onClick={runClusterLatencyProbe}
               title="Click to re-probe Yjs WebSocket cluster RTT"
-              className={`hidden lg:inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-mono transition cursor-pointer ${
+              className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-mono transition cursor-pointer whitespace-nowrap shrink-0 ${
                 isDark
                   ? 'border-emerald-500/30 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-950/70'
                   : 'border-emerald-600/30 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
@@ -415,37 +438,16 @@ export const Landing: React.FC<LandingProps> = ({
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
-              <span>
-                {clusterStatus === 'online' ? 'WS CLUSTER' : 'CRDT LOOPBACK'} • {lastRttMs}ms RTT
-              </span>
+              <span>{lastRttMs}ms CRDT</span>
             </button>
-          </div>
 
-          {/* Center Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-medium theme-text-secondary">
-            <a href="#live-sandbox" className="hover:text-indigo-500 transition">
-              Live WASM Sandbox
-            </a>
-            <a href="#comparison" className="hover:text-indigo-500 transition">
-              Architecture vs Docker
-            </a>
-            <a href="#bento" className="hover:text-indigo-500 transition">
-              Core Innovations
-            </a>
-            <a href="#telemetry" className="hover:text-indigo-500 transition">
-              Benchmarks
-            </a>
-          </nav>
-
-          {/* Right Controls: Theme Toggle + Auth / Launch */}
-          <div className="flex items-center gap-2.5">
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
 
             {!existingUser && (
               <button
                 type="button"
                 onClick={onNavigateToLogin}
-                className="hidden sm:inline-flex items-center rounded-lg border theme-border theme-bg-surface-1 px-3 py-1.5 text-xs font-medium theme-text-secondary hover:border-indigo-500/40 hover:theme-text-primary transition cursor-pointer"
+                className="hidden sm:inline-flex items-center rounded-lg border theme-border theme-bg-surface-1 px-3 py-1.5 text-xs font-medium theme-text-secondary hover:border-indigo-500/40 hover:theme-text-primary transition cursor-pointer whitespace-nowrap shrink-0"
               >
                 Sign In
               </button>
@@ -454,7 +456,7 @@ export const Landing: React.FC<LandingProps> = ({
             <button
               type="button"
               onClick={handlePrimaryCTA}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_0_16px_rgba(99,102,241,0.35)] hover:bg-indigo-500 transition cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_0_16px_rgba(99,102,241,0.35)] hover:bg-indigo-500 transition cursor-pointer whitespace-nowrap shrink-0"
             >
               <span>
                 {existingUser ? `Resume (${existingUser.name})` : 'Open Workspace'}
@@ -587,433 +589,356 @@ export const Landing: React.FC<LandingProps> = ({
             <span className="font-semibold text-amber-500">$0 / Unlimited</span>
           </div>
         </div>
-        {/* Interactive Faux-IDE Hero Preview (Yjs Multiplayer & WASM Proof) */}
-        <div className="relative mx-auto mt-12 w-full max-w-5xl rounded-xl border theme-border theme-bg-glass backdrop-blur-xl theme-shadow overflow-hidden transition-all duration-300 text-left">
-          {/* Top Chrome / Window Controls */}
-          <div className="flex items-center justify-between px-4 py-3 border-b theme-border theme-bg-surface-2/60">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-rose-500/80" />
-              <span className="w-3 h-3 rounded-full bg-amber-500/80" />
-              <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
-              <span className="ml-3 font-mono text-xs theme-text-muted flex items-center gap-1.5">
-                <FileCode className="w-3.5 h-3.5 text-indigo-400" /> analysis.py
-              </span>
-            </div>
-
-            {/* Multiplayer Presence Indicator (Yjs Proof) */}
+        {/* Unified Interactive Showcase IDE Container with Carousel Effect */}
+        <div
+          id="live-sandbox"
+          className="relative mx-auto mt-10 w-full max-w-5xl rounded-2xl border theme-border theme-bg-glass backdrop-blur-2xl theme-shadow overflow-hidden transition-all duration-300 text-left"
+        >
+          {/* Top Chrome / Window Controls & Carousel Tabs */}
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-b theme-border theme-bg-surface-2/60">
+            {/* Left: macOS Dots + Carousel Mode Tabs */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-mono text-[11px]">
-                <Users className="w-3.5 h-3.5 text-indigo-400" />
-                <span>2 Active Peers</span>
+              <div className="flex items-center gap-1.5 mr-1">
+                <span className="w-3 h-3 rounded-full bg-rose-500/80" />
+                <span className="w-3 h-3 rounded-full bg-amber-500/80" />
+                <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
               </div>
-              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[11px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Pyodide WASM Active
-              </div>
-            </div>
-          </div>
 
-          {/* Split Workspace Demo */}
-          <div className="grid grid-cols-1 md:grid-cols-12 min-h-[340px] font-mono text-xs">
-            {/* Code Editor */}
-            <div className="md:col-span-7 p-5 bg-black/5 dark:bg-black/25 space-y-2.5 theme-text-primary">
-              <p className="theme-text-muted"># Instant local execution via WebAssembly</p>
-              <p>
-                <span className="text-indigo-600 dark:text-indigo-400">import</span> <span className="text-amber-500 dark:text-amber-400">numpy</span> <span className="text-indigo-600 dark:text-indigo-400">as</span> np
-              </p>
-              <p>
-                dataset = np.random.randn(1000)
-              </p>
-              <p>
-                result = &#123;<span className="text-emerald-600 dark:text-emerald-400">&quot;mean&quot;</span>: float(dataset.mean())&#125;
-              </p>
-              <p className="flex items-center">
-                <span>print(f<span className="text-emerald-600 dark:text-emerald-400">&quot;Calculated local variance: &#123;dataset.var():.4f&#125;&quot;</span>)</span>
-                <span className="inline-block w-1.5 h-3.5 ml-1 bg-indigo-500 animate-pulse" />
-              </p>
-              <p className="theme-text-muted pt-2"># AI Diff Guard &amp; CRDT peer mesh synched</p>
-            </div>
-
-            {/* Live Terminal & Node-PTY Output */}
-            <div className="md:col-span-5 p-5 bg-black/10 dark:bg-black/50 border-t md:border-t-0 md:border-l theme-border flex flex-col justify-between">
-              <div className="space-y-1.5 font-mono">
-                <p className="theme-text-muted">[yjs] Peer mesh synched (room: nexathon-prod)</p>
-                <p className="text-emerald-600 dark:text-emerald-400">&gt;&gt;&gt; Running in browser WebWorker thread...</p>
-                <p className="text-indigo-600 dark:text-indigo-300">&#123;&quot;mean&quot;: 0.0314, &quot;status&quot;: &quot;executed_wasm&quot;&#125;</p>
-                <p className="theme-text-primary">Calculated local variance: 0.9982</p>
-                <p className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 pt-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>AST state vector converged (0 conflicts)</span>
-                </p>
-              </div>
-              <div className="pt-4 border-t theme-border flex items-center justify-between text-[11px] theme-text-muted">
-                <span>Latency: &lt;1ms (Local Silicon)</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">$0 server cost</span>
+              {/* Carousel Slide Segmented Control */}
+              <div className="flex items-center rounded-lg border theme-border theme-bg-surface-1 p-0.5 text-xs font-mono">
+                <button
+                  type="button"
+                  onClick={() => setHeroActiveSlide('multiplayer')}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition cursor-pointer ${
+                    heroActiveSlide === 'multiplayer'
+                      ? 'bg-indigo-600 text-white shadow-xs font-semibold'
+                      : 'theme-text-secondary hover:theme-text-primary'
+                  }`}
+                >
+                  <Users className="h-3 w-3" />
+                  <span>1. Collaborative CRDT Mesh</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHeroActiveSlide('sandbox')}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition cursor-pointer ${
+                    heroActiveSlide === 'sandbox'
+                      ? 'bg-indigo-600 text-white shadow-xs font-semibold'
+                      : 'theme-text-secondary hover:theme-text-primary'
+                  }`}
+                >
+                  <Play className="h-3 w-3 fill-current" />
+                  <span>2. Live WASM Sandbox</span>
+                </button>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* 3. LIVE IN-PAGE EXECUTABLE WASM & WORKER SANDBOX */}
-      <section id="live-sandbox" className="relative z-10 mx-auto max-w-6xl px-6 pb-16">
-        <div className="rounded-2xl border theme-border-strong theme-bg-surface-1 theme-shadow overflow-hidden">
-          {/* Sandbox Top Control Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b theme-border theme-bg-surface-2 px-4 py-2.5">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-              <div className="flex items-center gap-1.5 mr-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80" />
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
-              </div>
-
-              {SANDBOX_PRESETS.map((preset, idx) => {
-                const isSelected = preset.id === activePreset.id;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => handleSelectPreset(preset)}
-                    className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1 text-xs font-mono transition cursor-pointer ${
-                      isSelected
-                        ? 'border-indigo-500 bg-indigo-600 text-white shadow-xs'
-                        : 'theme-border theme-bg-surface-1 theme-text-secondary hover:border-indigo-500/40'
-                    }`}
-                  >
-                    <span className="rounded bg-black/20 px-1 py-0.2 text-[9px] font-mono opacity-80">
-                      {idx + 1}
-                    </span>
-                    <span>{preset.filename}</span>
-                  </button>
-                );
-              })}
-            </div>
-
+            {/* Right: Slide-Specific Controls & Next/Prev Slide Arrows */}
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSandboxCode(activePreset.code);
-                  setShowAiDiffDrawer(false);
-                }}
-                title="Reset snippet to default"
-                className="inline-flex items-center gap-1 rounded-lg border theme-border theme-bg-surface-1 px-2.5 py-1 text-xs theme-text-secondary hover:theme-text-primary transition cursor-pointer"
-              >
-                <RotateCcw className="h-3 w-3" />
-                <span>Reset</span>
-              </button>
+              {heroActiveSlide === 'multiplayer' ? (
+                <div className="flex items-center gap-2">
+                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-mono text-[11px]">
+                    <Users className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>2 Active Peers</span>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[11px]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Pyodide WASM Active
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {/* Preset Pills */}
+                  <div className="hidden sm:flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                    {SANDBOX_PRESETS.map((preset, idx) => {
+                      const isSelected = preset.id === activePreset.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => handleSelectPreset(preset)}
+                          className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-mono transition cursor-pointer ${
+                            isSelected
+                              ? 'border-indigo-500 bg-indigo-600 text-white shadow-xs'
+                              : 'theme-border theme-bg-surface-1 theme-text-secondary hover:border-indigo-500/40'
+                          }`}
+                        >
+                          <span>{idx + 1}. {preset.filename}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  void handleRunSandbox(sandboxCode, activePreset.language)
-                }
-                disabled={isExecutingSandbox}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1 text-xs font-semibold text-white shadow-[0_0_15px_rgba(16,185,129,0.35)] hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer"
-              >
-                {isExecutingSandbox ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Play className="h-3.5 w-3.5 fill-current" />
-                )}
-                <span>
-                  {isExecutingSandbox ? 'Executing...' : 'Run in Browser WASM'}
-                </span>
-                <kbd className="hidden sm:inline rounded bg-black/25 px-1 text-[10px] font-mono">
-                  ⌃↵
-                </kbd>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSandboxCode(activePreset.code);
+                      setShowAiDiffDrawer(false);
+                    }}
+                    title="Reset snippet"
+                    className="inline-flex items-center gap-1 rounded-md border theme-border theme-bg-surface-1 px-2 py-0.5 text-[11px] theme-text-secondary hover:theme-text-primary transition cursor-pointer"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void handleRunSandbox(sandboxCode, activePreset.language)}
+                    disabled={isExecutingSandbox}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-[0_0_12px_rgba(16,185,129,0.35)] hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer"
+                  >
+                    {isExecutingSandbox ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Play className="h-3.5 w-3.5 fill-current" />
+                    )}
+                    <span>{isExecutingSandbox ? 'Running...' : 'Run WASM'}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Carousel Prev/Next Arrows */}
+              <div className="flex items-center border-l theme-border pl-2 ml-1 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setHeroActiveSlide((prev: 'multiplayer' | 'sandbox') => prev === 'multiplayer' ? 'sandbox' : 'multiplayer')}
+                  title="Previous Slide"
+                  className="p-1 rounded-md hover:theme-bg-surface-1 theme-text-secondary hover:theme-text-primary transition cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHeroActiveSlide((prev: 'multiplayer' | 'sandbox') => prev === 'multiplayer' ? 'sandbox' : 'multiplayer')}
+                  title="Next Slide"
+                  className="p-1 rounded-md hover:theme-bg-surface-1 theme-text-secondary hover:theme-text-primary transition cursor-pointer"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Interactive Split Editor & Live Execution Output */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[340px]">
-            {/* Left 7 Columns: Editable Code Buffer with Line Numbers */}
-            <div
-              className={`lg:col-span-7 flex flex-col border-b lg:border-b-0 lg:border-r ${
-                isDark
-                  ? 'border-white/10 bg-[#07080c] text-slate-100'
-                  : 'border-slate-200 bg-white text-slate-900'
-              }`}
-            >
+          {/* Carousel Slide 1: Multiplayer CRDT Mesh */}
+          {heroActiveSlide === 'multiplayer' && (
+            <div className="grid grid-cols-1 md:grid-cols-12 min-h-[360px] font-mono text-xs animate-in fade-in duration-200">
+              {/* Code Editor */}
+              <div className="md:col-span-7 p-5 bg-black/5 dark:bg-black/25 space-y-2.5 theme-text-primary">
+                <p className="theme-text-muted"># Instant local execution via WebAssembly</p>
+                <p>
+                  <span className="text-indigo-600 dark:text-indigo-400">import</span> <span className="text-amber-500 dark:text-amber-400">numpy</span> <span className="text-indigo-600 dark:text-indigo-400">as</span> np
+                </p>
+                <p>
+                  dataset = np.random.randn(1000)
+                </p>
+                <p>
+                  result = &#123;<span className="text-emerald-600 dark:text-emerald-400">&quot;mean&quot;</span>: float(dataset.mean())&#125;
+                </p>
+                <p className="flex items-center">
+                  <span>print(f<span className="text-emerald-600 dark:text-emerald-400">&quot;Calculated local variance: &#123;dataset.var():.4f&#125;&quot;</span>)</span>
+                  <span className="inline-block w-1.5 h-3.5 ml-1 bg-indigo-500 animate-pulse" />
+                </p>
+                <p className="theme-text-muted pt-2"># AI Diff Guard &amp; CRDT peer mesh synched</p>
+              </div>
+
+              {/* Live Terminal & Node-PTY Output */}
+              <div className="md:col-span-5 p-5 bg-black/10 dark:bg-black/50 border-t md:border-t-0 md:border-l theme-border flex flex-col justify-between">
+                <div className="space-y-1.5 font-mono">
+                  <p className="theme-text-muted">[yjs] Peer mesh synched (room: nexathon-prod)</p>
+                  <p className="text-emerald-600 dark:text-emerald-400">&gt;&gt;&gt; Running in browser WebWorker thread...</p>
+                  <p className="text-indigo-600 dark:text-indigo-300">&#123;&quot;mean&quot;: 0.0314, &quot;status&quot;: &quot;executed_wasm&quot;&#125;</p>
+                  <p className="theme-text-primary">Calculated local variance: 0.9982</p>
+                  <p className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 pt-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>AST state vector converged (0 conflicts)</span>
+                  </p>
+                </div>
+                <div className="pt-4 border-t theme-border flex items-center justify-between text-[11px] theme-text-muted">
+                  <span>Latency: &lt;1ms (Local Silicon)</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">$0 server cost</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Carousel Slide 2: Live In-Page Executable WASM Sandbox */}
+          {heroActiveSlide === 'sandbox' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[360px] animate-in fade-in duration-200">
+              {/* Left 7 Columns: Editable Code Buffer with Line Numbers */}
               <div
-                className={`flex items-center justify-between border-b px-4 py-1.5 text-[11px] font-mono ${
+                className={`lg:col-span-7 flex flex-col border-b lg:border-b-0 lg:border-r ${
                   isDark
-                    ? 'border-white/10 text-slate-400 bg-[#07080c]'
-                    : 'border-slate-200 text-slate-500 bg-slate-50/80'
+                    ? 'border-white/10 bg-[#07080c] text-slate-100'
+                    : 'border-slate-200 bg-white text-slate-900'
                 }`}
               >
-                <span>
-                  Press{' '}
-                  <kbd
-                    className={`rounded border px-1 ${
-                      isDark
-                        ? 'border-white/20 bg-white/10 text-indigo-300'
-                        : 'border-slate-300 bg-white text-indigo-600'
-                    }`}
-                  >
-                    1
-                  </kbd>
-                  ,{' '}
-                  <kbd
-                    className={`rounded border px-1 ${
-                      isDark
-                        ? 'border-white/20 bg-white/10 text-indigo-300'
-                        : 'border-slate-300 bg-white text-indigo-600'
-                    }`}
-                  >
-                    2
-                  </kbd>
-                  ,{' '}
-                  <kbd
-                    className={`rounded border px-1 ${
-                      isDark
-                        ? 'border-white/20 bg-white/10 text-indigo-300'
-                        : 'border-slate-300 bg-white text-indigo-600'
-                    }`}
-                  >
-                    3
-                  </kbd>{' '}
-                  to switch files •{' '}
-                  <strong className={isDark ? 'text-indigo-400' : 'text-indigo-600'}>
-                    Ctrl+Enter
-                  </strong>{' '}
-                  to run
-                </span>
-                <span className={isDark ? 'text-indigo-400' : 'text-indigo-600'}>
-                  {activePreset.runtimeLabel}
-                </span>
-              </div>
-
-              <div className="relative flex flex-1 font-mono text-xs leading-6 overflow-hidden">
-                {/* Line Numbers Gutter */}
                 <div
-                  className={`select-none border-r px-3 py-3 text-right ${
+                  className={`flex items-center justify-between border-b px-4 py-1.5 text-[11px] font-mono ${
                     isDark
-                      ? 'border-white/5 bg-[#090a0f] text-slate-600'
-                      : 'border-slate-200 bg-slate-100/70 text-slate-400'
+                      ? 'border-white/10 text-slate-400 bg-[#07080c]'
+                      : 'border-slate-200 text-slate-500 bg-slate-50/80'
                   }`}
-                  aria-hidden="true"
                 >
-                  {Array.from({ length: Math.max(codeLineCount, 12) }).map((_, i) => (
-                    <div key={i}>{i + 1}</div>
-                  ))}
+                  <span>
+                    Press <kbd className="rounded border px-1 border-white/20 bg-white/10">1</kbd>, <kbd className="rounded border px-1 border-white/20 bg-white/10">2</kbd>, <kbd className="rounded border px-1 border-white/20 bg-white/10">3</kbd> to switch • <strong className="text-indigo-400">Ctrl+Enter</strong> to run
+                  </span>
+                  <span className="text-indigo-400">{activePreset.runtimeLabel}</span>
                 </div>
 
-                {/* Live Editable Code Textarea */}
-                <textarea
-                  value={sandboxCode}
-                  onChange={(e) => setSandboxCode(e.target.value)}
-                  spellCheck={false}
-                  aria-label="Interactive WASM Code Sandbox"
-                  className={`w-full flex-1 resize-none bg-transparent p-3 font-mono text-xs leading-6 focus:outline-none ${
-                    isDark
-                      ? 'text-slate-100 selection:bg-indigo-500/30'
-                      : 'text-slate-900 selection:bg-indigo-500/20'
-                  }`}
-                />
-              </div>
-            </div>
-
-            {/* Right 5 Columns: Real Execution Telemetry & AI Diff Patch */}
-            <div
-              className={`lg:col-span-5 flex flex-col justify-between p-4 font-mono text-xs ${
-                isDark
-                  ? 'bg-[#0c0f17] text-slate-200'
-                  : 'bg-slate-50/90 text-slate-800 border-t lg:border-t-0 lg:border-l border-slate-200'
-              }`}
-            >
-              <div className="space-y-3">
-                {/* Execution Status Header */}
-                <div
-                  className={`flex items-center justify-between border-b pb-2 font-sans ${
-                    isDark ? 'border-white/10' : 'border-slate-200'
-                  }`}
-                >
-                  <span
-                    className={`text-[11px] font-semibold uppercase tracking-wider ${
-                      isDark ? 'text-slate-400' : 'text-slate-600'
+                <div className="relative flex flex-1 font-mono text-xs leading-6 overflow-hidden">
+                  <div
+                    className={`select-none border-r px-3 py-3 text-right ${
+                      isDark
+                        ? 'border-white/5 bg-[#090a0f] text-slate-600'
+                        : 'border-slate-200 bg-slate-100/70 text-slate-400'
                     }`}
+                    aria-hidden="true"
                   >
-                    Live Execution Stream
-                  </span>
+                    {Array.from({ length: Math.max(codeLineCount, 10) }).map((_, i) => (
+                      <div key={i}>{i + 1}</div>
+                    ))}
+                  </div>
 
-                  <div className="flex items-center gap-2">
-                    {sandboxOutput.exitCode === 0 ? (
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${
-                          isDark
-                            ? 'border-emerald-500/30 bg-emerald-950/60 text-emerald-300'
-                            : 'border-emerald-600/30 bg-emerald-100 text-emerald-800'
-                        }`}
-                      >
-                        <CheckCircle2
-                          className={`h-3 w-3 ${
-                            isDark ? 'text-emerald-400' : 'text-emerald-600'
-                          }`}
-                        />
-                        Exit 0
-                      </span>
-                    ) : (
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${
-                          isDark
-                            ? 'border-rose-500/30 bg-rose-950/60 text-rose-300'
-                            : 'border-rose-300 bg-rose-100 text-rose-800'
-                        }`}
-                      >
-                        <AlertTriangle
-                          className={`h-3 w-3 ${
-                            isDark ? 'text-rose-400' : 'text-rose-600'
-                          }`}
-                        />
+                  <textarea
+                    value={sandboxCode}
+                    onChange={(e) => setSandboxCode(e.target.value)}
+                    spellCheck={false}
+                    aria-label="Interactive WASM Code Sandbox"
+                    className={`w-full flex-1 resize-none bg-transparent p-3 font-mono text-xs leading-6 focus:outline-none min-h-[220px] ${
+                      isDark
+                        ? 'text-slate-100 selection:bg-indigo-500/30'
+                        : 'text-slate-900 selection:bg-indigo-500/20'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Right 5 Columns: Execution Telemetry & AI Diff Drawer */}
+              <div
+                className={`lg:col-span-5 flex flex-col justify-between p-4 font-mono text-xs ${
+                  isDark
+                    ? 'bg-[#0c0f17] text-slate-200'
+                    : 'bg-slate-50/90 text-slate-800 border-t lg:border-t-0 lg:border-l border-slate-200'
+                }`}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b pb-2 font-sans border-white/10">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                      Live Execution Stream
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium border-emerald-500/30 bg-emerald-950/60 text-emerald-300">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
                         Exit {sandboxOutput.exitCode}
                       </span>
-                    )}
-
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono ${
-                        isDark
-                          ? 'border-white/10 bg-[#141824] text-indigo-300'
-                          : 'border-slate-200 bg-white text-indigo-600 shadow-xs'
-                      }`}
-                    >
-                      <Clock className="h-3 w-3" />
-                      {sandboxOutput.durationMs}ms
-                    </span>
-
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] font-mono ${
-                        isDark
-                          ? 'border-white/10 bg-[#141824] text-slate-400'
-                          : 'border-slate-200 bg-white text-slate-600 shadow-xs'
-                      }`}
-                    >
-                      ~{sandboxOutput.heapKb} KB
-                    </span>
-                  </div>
-                </div>
-
-                {/* Stdout Box */}
-                {sandboxOutput.stdout && (
-                  <div
-                    className={`rounded-xl border p-3 ${
-                      isDark
-                        ? 'border-white/10 bg-[#07080c]'
-                        : 'border-slate-200 bg-white shadow-xs'
-                    }`}
-                  >
-                    <div
-                      className={`mb-1 text-[10px] uppercase tracking-wider ${
-                        isDark ? 'text-slate-500' : 'text-slate-400'
-                      }`}
-                    >
-                      stdout
-                    </div>
-                    <pre
-                      className={`whitespace-pre-wrap break-words leading-relaxed font-mono ${
-                        isDark ? 'text-emerald-300' : 'text-emerald-700 font-semibold'
-                      }`}
-                    >
-                      {sandboxOutput.stdout}
-                    </pre>
-                  </div>
-                )}
-
-                {/* Stderr Box + Interactive AI Diff Trigger */}
-                {sandboxOutput.stderr && (
-                  <div
-                    className={`rounded-xl border p-3 space-y-2.5 ${
-                      isDark
-                        ? 'border-rose-500/30 bg-rose-950/20'
-                        : 'border-rose-200 bg-rose-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500">
-                        stderr traceback
+                      <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono border-white/10 bg-[#141824] text-indigo-300">
+                        <Clock className="h-3 w-3" />
+                        {sandboxOutput.durationMs}ms
                       </span>
-                      {activePreset.proposedAiFix && (
+                    </div>
+                  </div>
+
+                  {/* Stdout */}
+                  {sandboxOutput.stdout && (
+                    <div className="rounded-xl border border-white/10 bg-[#07080c] p-3">
+                      <div className="mb-1 text-[10px] uppercase tracking-wider text-slate-500">stdout</div>
+                      <pre className="whitespace-pre-wrap break-words leading-relaxed font-mono text-emerald-400">
+                        {sandboxOutput.stdout}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Stderr */}
+                  {sandboxOutput.stderr && (
+                    <div className="rounded-xl border border-rose-500/30 bg-rose-950/20 p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500">stderr traceback</span>
+                        {activePreset.proposedAiFix && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAiDiffDrawer((prev) => !prev)}
+                            className="inline-flex items-center gap-1 rounded bg-gradient-to-r from-purple-600 to-indigo-600 px-2 py-0.5 font-sans text-[10px] font-semibold text-white cursor-pointer"
+                          >
+                            <Bug className="h-3 w-3" />
+                            <span>Inspect AI Fix</span>
+                          </button>
+                        )}
+                      </div>
+                      <pre className="whitespace-pre-wrap break-words text-[11px] leading-relaxed font-mono text-rose-200">
+                        {sandboxOutput.stderr}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* AI Diff Drawer */}
+                  {showAiDiffDrawer && activePreset.proposedAiFix && (
+                    <div className="rounded-xl border border-purple-500/40 bg-purple-950/20 p-3 space-y-2 font-sans">
+                      <div className="flex items-center justify-between">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-300">
+                          <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+                          AI Diff Guard Diagnosis
+                        </span>
                         <button
                           type="button"
-                          onClick={() => setShowAiDiffDrawer((prev) => !prev)}
-                          className="inline-flex items-center gap-1 rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 px-2.5 py-1 font-sans text-[11px] font-semibold text-white shadow-[0_0_12px_rgba(168,85,247,0.4)] hover:from-purple-500 hover:to-indigo-500 transition cursor-pointer"
+                          onClick={() => {
+                            const fixed = activePreset.proposedAiFix!.fixedCode;
+                            setSandboxCode(fixed);
+                            setShowAiDiffDrawer(false);
+                            void handleRunSandbox(fixed, activePreset.language);
+                          }}
+                          className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-emerald-500 cursor-pointer"
                         >
-                          <Bug className="h-3 w-3" />
-                          <span>Inspect AI Diff Patch</span>
+                          <Check className="h-3 w-3" />
+                          <span>Apply Patch</span>
                         </button>
-                      )}
+                      </div>
+                      <p className="text-[11px] text-slate-300">{activePreset.proposedAiFix.explanation}</p>
                     </div>
-                    <pre
-                      className={`whitespace-pre-wrap break-words text-[11px] leading-relaxed font-mono ${
-                        isDark ? 'text-rose-200' : 'text-rose-800'
-                      }`}
-                    >
-                      {sandboxOutput.stderr}
-                    </pre>
-                  </div>
-                )}
+                  )}
+                </div>
 
-                {/* Interactive AI Diff Guard Preview inside Sandbox */}
-                {showAiDiffDrawer && activePreset.proposedAiFix && (
-                  <div
-                    className={`rounded-xl border p-3 space-y-2 font-sans ${
-                      isDark
-                        ? 'border-purple-500/40 bg-purple-950/20'
-                        : 'border-purple-200 bg-purple-50/80'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`inline-flex items-center gap-1 text-[11px] font-bold ${
-                          isDark ? 'text-purple-300' : 'text-purple-700'
-                        }`}
-                      >
-                        <Sparkles className="h-3.5 w-3.5 text-purple-500" />
-                        AI Diff Guard Diagnosis
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const fixed = activePreset.proposedAiFix!.fixedCode;
-                          setSandboxCode(fixed);
-                          setShowAiDiffDrawer(false);
-                          void handleRunSandbox(fixed, activePreset.language);
-                        }}
-                        className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-500 transition cursor-pointer"
-                      >
-                        <Check className="h-3 w-3" />
-                        <span>Apply Patch & Re-Run</span>
-                      </button>
-                    </div>
-                    <p
-                      className={`text-[11px] leading-relaxed ${
-                        isDark ? 'text-slate-300' : 'text-slate-700'
-                      }`}
-                    >
-                      {activePreset.proposedAiFix.explanation}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div
-                className={`mt-4 flex items-center justify-between border-t pt-2.5 font-sans text-[11px] ${
-                  isDark
-                    ? 'border-white/10 text-slate-400'
-                    : 'border-slate-200 text-slate-500'
-                }`}
-              >
-                <span>Worker Watchdog: 10,000ms Auto-Timeout</span>
-                <span
-                  className={`font-mono ${
-                    isDark ? 'text-indigo-400' : 'text-indigo-600'
-                  }`}
-                >
-                  CRDT Sync Ready
-                </span>
+                <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-2.5 font-sans text-[11px] text-slate-400">
+                  <span>Worker Watchdog: 10s Timeout</span>
+                  <span className="font-mono text-indigo-400">Pyodide 0.26 WASM</span>
+                </div>
               </div>
             </div>
+          )}
+
+          {/* Bottom Carousel Navigation Bar with Slide Switcher Prompt */}
+          <div className="flex items-center justify-between px-4 py-2 border-t theme-border theme-bg-surface-2/40 text-xs">
+            {/* Dots */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setHeroActiveSlide('multiplayer')}
+                className={`h-2 rounded-full transition-all cursor-pointer ${
+                  heroActiveSlide === 'multiplayer' ? 'w-6 bg-indigo-500' : 'w-2 bg-slate-400/40 hover:bg-slate-400'
+                }`}
+                title="Slide 1: Collaborative CRDT Mesh"
+              />
+              <button
+                type="button"
+                onClick={() => setHeroActiveSlide('sandbox')}
+                className={`h-2 rounded-full transition-all cursor-pointer ${
+                  heroActiveSlide === 'sandbox' ? 'w-6 bg-indigo-500' : 'w-2 bg-slate-400/40 hover:bg-slate-400'
+                }`}
+                title="Slide 2: Live In-Browser WASM Sandbox"
+              />
+            </div>
+
+            {/* Quick Slide Switch Link */}
+            <button
+              type="button"
+              onClick={() => setHeroActiveSlide((prev: 'multiplayer' | 'sandbox') => prev === 'multiplayer' ? 'sandbox' : 'multiplayer')}
+              className="inline-flex items-center gap-1.5 font-mono text-[11px] text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
+            >
+              <span>
+                {heroActiveSlide === 'multiplayer'
+                  ? 'Switch to Slide 2: Run Live Code in Browser →'
+                  : '← Switch to Slide 1: Multiplayer CRDT Mesh'}
+              </span>
+            </button>
           </div>
         </div>
       </section>
