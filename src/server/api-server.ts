@@ -1,13 +1,15 @@
 import express, { type Request, type Response } from 'express';
 import { createServer } from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
 import cors from 'cors';
 import { Pool } from 'pg';
-import { v4 as uuidv4 } from 'uuid';
 import OpenAI from 'openai';
-import type { Room, WorkspaceFile, User, AIDebugRequest, AIDebugResponse } from './types.js';
-import { setupTerminalServer, createTerminalRouter } from './terminal/terminalServer.js';
+import type { AIDebugRequest, AIDebugResponse } from '../types/index.js';
+import { createTerminalRouter, setupTerminalServer } from './terminal/terminalServer.js';
 import { sessionManager } from './terminal/sessionManager.js';
+
+try {
+  process.loadEnvFile();
+} catch {}
 
 const app = express();
 const httpServer = createServer(app);
@@ -22,9 +24,8 @@ const pool = new Pool({
   max: 20,
 });
 
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null;
+const hasOpenAI = Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() && process.env.OPENAI_API_KEY !== 'your_openai_api_key_here');
+const openai = hasOpenAI ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 let dbConnected = false;
 const memoryUsers = new Map<string, any>();
@@ -99,7 +100,7 @@ app.get('/api/health', (req: Request, res: Response) => {
 
 app.post('/api/users', async (req: Request, res: Response) => {
   try {
-    const { username, avatarUrl } = req.body;
+    const { username, avatar_url } = req.body;
     if (!username) {
       return res.status(400).json({ error: 'Username is required' });
     }
@@ -107,101 +108,144 @@ app.post('/api/users', async (req: Request, res: Response) => {
     if (dbConnected) {
       const result = await pool.query(
         'INSERT INTO users (username, avatar_url) VALUES ($1, $2) ON CONFLICT (username) DO UPDATE SET avatar_url = $2 RETURNING *',
-        [username, avatarUrl || null]
+        [username, avatar_url]
       );
       return res.json(result.rows[0]);
     }
 
-    let user = Array.from(memoryUsers.values()).find(u => u.username === username);
+    let user = memoryUsers.get(username);
     if (!user) {
-      user = { id: uuidv4(), username, avatar_url: avatarUrl || null, created_at: new Date().toISOString() };
-      memoryUsers.set(user.id, user);
+      user = {
+        id: `usr_${crypto.randomUUID().slice(0, 8)}`,
+        username,
+        avatar_url,
+        created_at: new Date().toISOString(),
+      };
+      memoryUsers.set(username, user);
+    } else if (avatar_url) {
+      user.avatar_url = avatar_url;
     }
     res.json(user);
   } catch (error) {
-    console.error('Error creating user:', error);
-    res.status(500).json({ error: 'Failed to create user' });
+    console.error('Error creating/updating user:', error);
+    res.status(500).json({ error: 'Failed to create/update user' });
   }
 });
 
-app.get('/api/users/:id', async (req: Request, res: Response) => {
+app.get('/api/rooms', async (req: Request, res: Response) => {
   try {
     if (dbConnected) {
-      const result = await pool.query('SELECT * FROM users WHERE id = $1', [req.params.id]);
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-      return res.json(result.rows[0]);
+      const result = await pool.query('SELECT * FROM rooms ORDER BY created_at DESC');
+      return res.json(result.rows);
     }
-
-    const user = memoryUsers.get(req.params.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    res.json(user);
+    res.json(Array.from(memoryRooms.values()));
   } catch (error) {
-    console.error('Error fetching user:', error);
-    res.status(500).json({ error: 'Failed to fetch user' });
+    console.error('Error fetching rooms:', error);
+    res.status(500).json({ error: 'Failed to fetch rooms' });
   }
 });
 
 app.post('/api/rooms', async (req: Request, res: Response) => {
   try {
-    const { name, ownerId } = req.body;
-    if (!name || !ownerId) {
-      return res.status(400).json({ error: 'Name and ownerId are required' });
+    const { name, owner_id } = req.body;
+    if (!name) {
+      return res.status(400).json({ error: 'Room name is required' });
     }
     
     if (dbConnected) {
       const result = await pool.query(
         'INSERT INTO rooms (name, owner_id) VALUES ($1, $2) RETURNING *',
-        [name, ownerId]
+        [name, owner_id || null]
       );
-      return res.status(201).json(result.rows[0]);
+      
+      const newRoom = result.rows[0];
+      
+      const defaultFiles = [
+        { path: 'main.py', content: '# Welcome to your Python collaborative workspace!\n\ndef calculate_fibonacci(n):\n    if n <= 0:\n        return []\n    elif n == 1:\n        return [0]\n    fib = [0, 1]\n    while len(fib) < n:\n        fib.append(fib[-1] + fib[-2])\n    return fib\n\nif __name__ == "__main__":\n    print("Fibonacci Sequence (first 10 numbers):")\n    print(calculate_fibonacci(10))\n' },
+        { path: 'index.js', content: '// Welcome to your JavaScript collaborative workspace!\n\nfunction processData(items) {\n    return items\n        .map(x => x * 2)\n        .filter(x => x > 5);\n}\n\nconst testData = [1, 2, 3, 4, 5];\nconsole.log("Processed Results:", processData(testData));\n' },
+        { path: 'README.md', content: `# Collaborative Workspace\n\nThis workspace is synced across all connected peers in real time using Yjs CRDTs.\n\n### Features\n- Real-time peer-to-peer editing\n- Pyodide client-side Python execution\n- QuickJS client-side JavaScript execution\n- Shared interactive cloud terminal\n- AI Debugger with syntax error diagnostics\n` },
+      ];
+      
+      for (const file of defaultFiles) {
+        await pool.query(
+          'INSERT INTO workspace_files (room_id, path, content, language) VALUES ($1, $2, $3, $4)',
+          [newRoom.id, file.path, file.content, getLanguageFromPath(file.path)]
+        );
+      }
+      
+      return res.status(201).json(newRoom);
     }
 
-    const room = { id: uuidv4(), name, owner_id: ownerId, created_at: new Date().toISOString() };
-    memoryRooms.set(room.id, room);
-    res.status(201).json(room);
+    const roomId = `room_${crypto.randomUUID().slice(0, 8)}`;
+    const newRoom = {
+      id: roomId,
+      name,
+      owner_id: owner_id || null,
+      created_at: new Date().toISOString(),
+    };
+    memoryRooms.set(roomId, newRoom);
+
+    const defaultFiles = [
+      { path: 'main.py', content: '# Welcome to your Python collaborative workspace!\n\ndef calculate_fibonacci(n):\n    if n <= 0:\n        return []\n    elif n == 1:\n        return [0]\n    fib = [0, 1]\n    while len(fib) < n:\n        fib.append(fib[-1] + fib[-2])\n    return fib\n\nif __name__ == "__main__":\n    print("Fibonacci Sequence (first 10 numbers):")\n    print(calculate_fibonacci(10))\n' },
+      { path: 'index.js', content: '// Welcome to your JavaScript collaborative workspace!\n\nfunction processData(items) {\n    return items\n        .map(x => x * 2)\n        .filter(x => x > 5);\n}\n\nconst testData = [1, 2, 3, 4, 5];\nconsole.log("Processed Results:", processData(testData));\n' },
+      { path: 'README.md', content: `# Collaborative Workspace\n\nThis workspace is synced across all connected peers in real time using Yjs CRDTs.\n\n### Features\n- Real-time peer-to-peer editing\n- Pyodide client-side Python execution\n- QuickJS client-side JavaScript execution\n- Shared interactive cloud terminal\n- AI Debugger with syntax error diagnostics\n` },
+    ];
+
+    for (const file of defaultFiles) {
+      const fileId = `file_${crypto.randomUUID().slice(0, 8)}`;
+      memoryFiles.set(`${roomId}:${file.path}`, {
+        id: fileId,
+        roomId,
+        path: file.path,
+        content: file.content,
+        language: getLanguageFromPath(file.path),
+        updated_at: new Date().toISOString(),
+      });
+    }
+
+    res.status(201).json(newRoom);
   } catch (error) {
     console.error('Error creating room:', error);
     res.status(500).json({ error: 'Failed to create room' });
   }
 });
 
-app.get('/api/rooms/:id', async (req: Request, res: Response) => {
+app.get('/api/rooms/:roomId', async (req: Request, res: Response) => {
   try {
+    const roomId = String(req.params.roomId);
+    
     if (dbConnected) {
-      const result = await pool.query('SELECT * FROM rooms WHERE id = $1', [req.params.id]);
-      if (result.rows.length === 0) {
+      const roomResult = await pool.query('SELECT * FROM rooms WHERE id = $1', [roomId]);
+      if (roomResult.rows.length === 0) {
         return res.status(404).json({ error: 'Room not found' });
       }
-      return res.json(result.rows[0]);
+      
+      const filesResult = await pool.query('SELECT * FROM workspace_files WHERE room_id = $1 ORDER BY path ASC', [roomId]);
+      const room = roomResult.rows[0];
+      room.files = filesResult.rows;
+      return res.json(room);
     }
 
-    let room = memoryRooms.get(req.params.id);
+    const room = memoryRooms.get(roomId);
     if (!room) {
-      room = { id: req.params.id, name: `Collaborative Room`, owner_id: 'default', created_at: new Date().toISOString() };
-      memoryRooms.set(room.id, room);
+      return res.status(404).json({ error: 'Room not found' });
     }
-    res.json(room);
+    const files = Array.from(memoryFiles.values()).filter((f: any) => f.roomId === roomId);
+    res.json({ ...room, files });
   } catch (error) {
     console.error('Error fetching room:', error);
     res.status(500).json({ error: 'Failed to fetch room' });
   }
 });
 
-app.get('/api/rooms/:id/files', async (req: Request, res: Response) => {
+app.get('/api/rooms/:roomId/files', async (req: Request, res: Response) => {
   try {
+    const roomId = String(req.params.roomId);
     if (dbConnected) {
-      const result = await pool.query(
-        'SELECT * FROM workspace_files WHERE room_id = $1 ORDER BY path',
-        [req.params.id]
-      );
+      const result = await pool.query('SELECT * FROM workspace_files WHERE room_id = $1 ORDER BY path ASC', [roomId]);
       return res.json(result.rows);
     }
-
-    const files = Array.from(memoryFiles.values()).filter(f => f.room_id === req.params.id);
+    const files = Array.from(memoryFiles.values()).filter((f: any) => f.roomId === roomId);
     res.json(files);
   } catch (error) {
     console.error('Error fetching files:', error);
@@ -209,81 +253,53 @@ app.get('/api/rooms/:id/files', async (req: Request, res: Response) => {
   }
 });
 
-app.get('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
-  try {
-    const roomId = req.params.roomId;
-    const filePath = req.params.filePath;
-    
-    if (dbConnected) {
-      const result = await pool.query(
-        'SELECT * FROM workspace_files WHERE room_id = $1 AND path = $2',
-        [roomId, filePath]
-      );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'File not found' });
-      }
-      return res.json(result.rows[0]);
-    }
-
-    const file = memoryFiles.get(`${roomId}:${filePath}`);
-    if (!file) {
-      return res.status(404).json({ error: 'File not found' });
-    }
-    res.json(file);
-  } catch (error) {
-    console.error('Error fetching file:', error);
-    res.status(500).json({ error: 'Failed to fetch file' });
-  }
-});
-
 app.post('/api/rooms/:roomId/files', async (req: Request, res: Response) => {
   try {
-    const { path, content = '', language } = req.body;
-    const roomId = req.params.roomId;
+    const roomId = String(req.params.roomId);
+    const { path: filePath, content = '', language } = req.body;
     
-    if (!path) {
-      return res.status(400).json({ error: 'Path is required' });
+    if (!filePath) {
+      return res.status(400).json({ error: 'File path is required' });
     }
     
-    const fileLanguage = language || getLanguageFromPath(path);
+    const determinedLang = language || getLanguageFromPath(filePath);
     
     if (dbConnected) {
       const result = await pool.query(
-        `INSERT INTO workspace_files (room_id, path, content, language) 
-         VALUES ($1, $2, $3, $4) 
-         ON CONFLICT (room_id, path) DO UPDATE SET content = $3, language = $4, updated_at = NOW() 
-         RETURNING *`,
-        [roomId, path, content, fileLanguage]
+        'INSERT INTO workspace_files (room_id, path, content, language) VALUES ($1, $2, $3, $4) ON CONFLICT (room_id, path) DO UPDATE SET content = $3, language = $4, updated_at = NOW() RETURNING *',
+        [roomId, filePath, content, determinedLang]
       );
       return res.status(201).json(result.rows[0]);
     }
 
+    const key = `${roomId}:${filePath}`;
+    const existing = memoryFiles.get(key);
     const file = {
-      id: uuidv4(),
-      room_id: roomId,
-      path,
+      id: existing?.id || `file_${crypto.randomUUID().slice(0, 8)}`,
+      roomId,
+      path: filePath,
       content,
-      language: fileLanguage,
+      language: determinedLang,
       updated_at: new Date().toISOString(),
     };
-    memoryFiles.set(`${roomId}:${path}`, file);
+    memoryFiles.set(key, file);
     res.status(201).json(file);
   } catch (error) {
     console.error('Error creating/updating file:', error);
-    res.status(500).json({ error: 'Failed to save file' });
+    res.status(500).json({ error: 'Failed to create/update file' });
   }
 });
 
-app.patch('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
+const handleUpdateFile = async (req: Request, res: Response) => {
   try {
-    const roomId = req.params.roomId;
-    const filePath = req.params.filePath;
-    const { content } = req.body;
+    const roomId = String(req.params.roomId);
+    const fileIdentifier = String(req.params.filePath);
+    const { content, path, language } = req.body;
     
     if (dbConnected) {
       const result = await pool.query(
-        'UPDATE workspace_files SET content = $1, updated_at = NOW() WHERE room_id = $2 AND path = $3 RETURNING *',
-        [content, roomId, filePath]
+        'UPDATE workspace_files SET content = COALESCE($1, content), path = COALESCE($4, path), language = COALESCE($5, language), updated_at = NOW() WHERE room_id = $2 AND (path = $3 OR id::text = $3) RETURNING *',
+        [content, roomId, fileIdentifier, path || null, language || null]
       );
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'File not found' });
@@ -291,30 +307,51 @@ app.patch('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Respon
       return res.json(result.rows[0]);
     }
 
-    const file = memoryFiles.get(`${roomId}:${filePath}`);
+    let file = memoryFiles.get(`${roomId}:${fileIdentifier}`);
+    if (!file) {
+      for (const [key, f] of memoryFiles.entries()) {
+        if (f.roomId === roomId && (f.id === fileIdentifier || f.path === fileIdentifier)) {
+          file = f;
+          break;
+        }
+      }
+    }
     if (!file) {
       return res.status(404).json({ error: 'File not found' });
     }
-    file.content = content;
+    if (content !== undefined) file.content = content;
+    if (path !== undefined) file.path = path;
+    if (language !== undefined) file.language = language;
     file.updated_at = new Date().toISOString();
     res.json(file);
   } catch (error) {
     console.error('Error updating file:', error);
     res.status(500).json({ error: 'Failed to update file' });
   }
-});
+};
+
+app.patch('/api/rooms/:roomId/files/:filePath', handleUpdateFile);
+app.put('/api/rooms/:roomId/files/:filePath', handleUpdateFile);
 
 app.delete('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
   try {
-    const roomId = req.params.roomId;
-    const filePath = req.params.filePath;
+    const roomId = String(req.params.roomId);
+    const fileIdentifier = String(req.params.filePath);
     
     if (dbConnected) {
-      await pool.query('DELETE FROM workspace_files WHERE room_id = $1 AND path = $2', [roomId, filePath]);
+      await pool.query(
+        'DELETE FROM workspace_files WHERE room_id = $1 AND (path = $2 OR id::text = $2)',
+        [roomId, fileIdentifier]
+      );
       return res.status(204).send();
     }
 
-    memoryFiles.delete(`${roomId}:${filePath}`);
+    memoryFiles.delete(`${roomId}:${fileIdentifier}`);
+    for (const [key, f] of memoryFiles.entries()) {
+      if (f.roomId === roomId && (f.id === fileIdentifier || f.path === fileIdentifier)) {
+        memoryFiles.delete(key);
+      }
+    }
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting file:', error);

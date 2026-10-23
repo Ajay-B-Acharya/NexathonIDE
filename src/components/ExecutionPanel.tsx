@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Square, Terminal, Loader2, CheckCircle2, AlertCircle, Copy, Check, Clock, Trash2 } from 'lucide-react';
-import type { ExecutionResult } from '../types';
+import type { ExecutionResult, SupportedLanguage } from '../types';
 import { executePythonCode, getPyodide, isPyodideReady } from '../execution/pythonRunner';
 import { formatExecutionResult } from '../execution/executionOutput';
 
@@ -86,6 +86,12 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
     });
 
     return {
+      stdout,
+      stderr,
+      exitCode: stderr ? 1 : 0,
+      executionTimeMs: duration,
+      language: 'javascript' as SupportedLanguage,
+      timestamp: new Date().toISOString(),
       output: formatted.output,
       error: formatted.error,
       executionTime: formatted.executionTime,
@@ -108,6 +114,12 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
           onProgress: (msg) => setPyodideStatus(msg),
         });
         result = {
+          stdout: res.output || '',
+          stderr: res.error || '',
+          exitCode: res.error ? 1 : 0,
+          executionTimeMs: res.executionTime,
+          language: 'python',
+          timestamp: new Date().toISOString(),
           output: res.output,
           error: res.error,
           executionTime: res.executionTime,
@@ -118,14 +130,24 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
         throw new Error(`In-browser execution is supported for Python, JavaScript, and TypeScript. For ${file.language}, use the Shared Terminal.`);
       }
 
-      setOutput(result.output);
-      setError(result.error || null);
-      setExecutionTime(result.executionTime);
+      setOutput(result.output || result.stdout || '');
+      setError(result.error || result.stderr || null);
+      setExecutionTime(result.executionTime ?? result.executionTimeMs ?? 0);
       onExecutionComplete?.(result);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Execution failed';
       setError(errorMsg);
-      onExecutionComplete?.({ output: '', error: errorMsg, executionTime: 0 });
+      onExecutionComplete?.({
+        stdout: '',
+        stderr: errorMsg,
+        exitCode: 1,
+        executionTimeMs: 0,
+        language: (file?.language as SupportedLanguage) || 'javascript',
+        timestamp: new Date().toISOString(),
+        output: '',
+        error: errorMsg,
+        executionTime: 0,
+      });
     } finally {
       setRunning(false);
     }
