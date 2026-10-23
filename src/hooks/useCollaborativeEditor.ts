@@ -5,6 +5,7 @@ import { collaborationClient, FileCollaborationSession } from '../services/colla
 import {
   CollaboratorPresence,
   ConnectionStatus,
+  EditReservation,
   FollowState,
   UserProfile,
   WorkspaceFile,
@@ -24,7 +25,11 @@ export interface UseCollaborativeEditorReturn {
   connectionStatus: ConnectionStatus;
   isDocumentSynced: boolean;
   collaborators: CollaboratorPresence[];
+  reservations: EditReservation[];
   followState: FollowState | null;
+  reserveLines: (startLine: number, endLine: number, taskDescription?: string) => boolean;
+  releaseReservation: (reservationId: string) => void;
+  updateReservationRange: (reservationId: string, startLine: number, endLine: number) => boolean;
   startFollowing: (targetUserId: string, targetUserName: string, targetUserColor: string, targetFile?: string) => void;
   stopFollowing: () => void;
   reconcileSession: () => void;
@@ -96,12 +101,16 @@ export function useCollaborativeEditor({
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [isDocumentSynced, setIsDocumentSynced] = useState<boolean>(false);
   const [collaborators, setCollaborators] = useState<CollaboratorPresence[]>([]);
+  const [reservations, setReservations] = useState<EditReservation[]>([]);
   const [followState, setFollowState] = useState<FollowState | null>(null);
 
   const bindingRef = useRef<MonacoBinding | null>(null);
   const sessionRef = useRef<FileCollaborationSession | null>(null);
   const modelsMapRef = useRef<Map<string, Monaco.editor.ITextModel>>(new Map());
   const lastFollowedLineRef = useRef<number | null>(null);
+  const reservationsRef = useRef<EditReservation[]>([]);
+  reservationsRef.current = reservations;
+  const decorationIdsRef = useRef<string[]>([]);
 
   const onContentChangeRef = useRef(onContentChange);
   onContentChangeRef.current = onContentChange;
@@ -188,6 +197,21 @@ export function useCollaborativeEditor({
     session.provider.awareness.on('change', handleAwareness);
     handleAwareness();
 
+    // Attach shared edit reservations listener
+    const handleReservationsObserver = () => {
+      const list: EditReservation[] = [];
+      const now = Date.now();
+      session.reservationsMap.forEach((res) => {
+        if (res && res.filePath === activeFile.path && res.expiresAt > now) {
+          list.push(res);
+        }
+      });
+      list.sort((a, b) => a.startLine - b.startLine);
+      setReservations(list);
+    };
+    session.reservationsMap.observe(handleReservationsObserver);
+    handleReservationsObserver();
+
     // Ensure model reflects current Y.Text before binding to prevent blank flash
     if (session.ytext.length > 0) {
       if (model.getValue() !== session.ytext.toString()) {
@@ -218,11 +242,37 @@ export function useCollaborativeEditor({
       });
     });
 
+    // Model Content Guardian: If a local edit somehow occurs on a peer-reserved region, revert it immediately
+    const contentDisposable = editorInstance.onDidChangeModelContent((e) => {
+      const now = Date.now();
+      const peerLocks = reservationsRef.current.filter(
+        (r) => r.ownerId !== user.id && r.filePath === activeFile.path && r.expiresAt > now
+      );
+      if (peerLocks.length === 0) return;
+
+      const hasUnauthorizedEdit = e.changes.some((change) => {
+        const start = change.range.startLineNumber;
+        const end = change.range.endLineNumber;
+        return peerLocks.some((lock) => !(end < lock.startLine || start > lock.endLine));
+      });
+
+      if (hasUnauthorizedEdit) {
+        // Instantly revert to Y.Text authoritative state
+        const authoritative = session.ytext.toString();
+        const curModel = editorInstance.getModel();
+        if (curModel && curModel.getValue() !== authoritative) {
+          curModel.setValue(authoritative);
+        }
+      }
+    });
+
     return () => {
       session.provider.off('status', handleStatus);
       session.provider.off('sync', handleSync);
       session.provider.awareness.off('change', handleAwareness);
+      session.reservationsMap.unobserve(handleReservationsObserver);
       cursorDisposable.dispose();
+      contentDisposable.dispose();
       session.ytext.unobserve(handleYTextObserver);
       if (bindingRef.current) {
         bindingRef.current.destroy();
@@ -230,6 +280,69 @@ export function useCollaborativeEditor({
       }
     };
   }, [roomId, activeFile?.id, activeFile?.path, activeFile?.language, editorInstance, monacoInstance, user.id]);
+
+  // Render Monaco visual decorations for active reservations (Teal for owner, Amber for peers)
+  useEffect(() => {
+    if (!editorInstance || !monacoInstance || !activeFile) return;
+
+    const now = Date.now();
+    const active = reservations.filter(
+      (r) => r.filePath === activeFile.path && r.expiresAt > now
+    );
+
+    const newDecorations: Monaco.editor.IModelDeltaDecoration[] = [];
+
+    active.forEach((r) => {
+      const isMine = r.ownerId === user.id;
+
+      newDecorations.push({
+        range: new monacoInstance.Range(r.startLine, 1, r.endLine, 1),
+        options: {
+          isWholeLine: true,
+          className: isMine ? 'reservation-owner-line' : 'reservation-peer-line',
+          glyphMarginClassName: isMine ? 'reservation-glyph-owner' : 'reservation-glyph-peer',
+          glyphMarginHoverMessage: {
+            value: isMine
+              ? `🔒 **My Reserved Section** (Lines ${r.startLine}–${r.endLine})`
+              : `🔒 **Reserved by ${r.ownerName}** (Lines ${r.startLine}–${r.endLine})\nProtected from unauthorized editing.`,
+          },
+          hoverMessage: {
+            value: isMine
+              ? `✨ **My Reserved Code Region** (Lines ${r.startLine}–${r.endLine})`
+              : `🔒 **Reserved by ${r.ownerName}** (Lines ${r.startLine}–${r.endLine})\nProtected from unauthorized editing.`,
+          },
+        },
+      });
+    });
+
+    decorationIdsRef.current = editorInstance.deltaDecorations(
+      decorationIdsRef.current,
+      newDecorations
+    );
+  }, [reservations, editorInstance, monacoInstance, activeFile?.path, user.id]);
+
+  // Periodic Lease Auto-Renewal & Expired Lease Cleanup
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      const session = sessionRef.current;
+      if (!session || !activeFile) return;
+      const now = Date.now();
+
+      session.reservationsMap.forEach((res, key) => {
+        if (res.ownerId === user.id && res.filePath === activeFile.path) {
+          // Fast auto-renew while actively connected
+          session.reservationsMap.set(key, {
+            ...res,
+            expiresAt: now + 60_000,
+          });
+        } else if (res.expiresAt <= now) {
+          session.reservationsMap.delete(key);
+        }
+      });
+    }, 10_000);
+
+    return () => window.clearInterval(interval);
+  }, [user.id, activeFile?.path]);
 
   // Follow Mode: Smoothly scroll and reveal target collaborator's cursor
   useEffect(() => {
@@ -280,6 +393,97 @@ export function useCollaborativeEditor({
     };
   }, []);
 
+  const reserveLines = useCallback(
+    (startLine: number, endLine: number, taskDescription?: string) => {
+      const session = sessionRef.current;
+      if (!session || !activeFile) return false;
+      const sLine = Math.max(1, Math.min(startLine, endLine));
+      const eLine = Math.max(startLine, endLine);
+      const now = Date.now();
+
+      // Check non-overlapping with active peer reservations
+      const hasConflict = reservationsRef.current.some(
+        (r) =>
+          r.ownerId !== user.id &&
+          r.filePath === activeFile.path &&
+          r.expiresAt > now &&
+          !(eLine < r.startLine || sLine > r.endLine)
+      );
+      if (hasConflict) return false;
+
+      // Delete any prior reservation owned by this user on this file
+      session.reservationsMap.forEach((r, key) => {
+        if (r.ownerId === user.id && r.filePath === activeFile.path) {
+          session.reservationsMap.delete(key);
+        }
+      });
+
+      const resId = `res_${user.id}_${Date.now()}`;
+      const newRes: EditReservation = {
+        id: resId,
+        roomId,
+        fileId: activeFile.id,
+        filePath: activeFile.path,
+        ownerId: user.id,
+        ownerName: user.name,
+        ownerColor: user.color || '#35B8A6',
+        startLine: sLine,
+        endLine: eLine,
+        activeLine: sLine,
+        createdAt: now,
+        expiresAt: now + 60_000,
+        taskDescription,
+      };
+      session.reservationsMap.set(resId, newRes);
+      return true;
+    },
+    [roomId, activeFile, user]
+  );
+
+  const releaseReservation = useCallback((reservationId: string) => {
+    const session = sessionRef.current;
+    if (!session) return;
+    if (session.reservationsMap.has(reservationId)) {
+      const res = session.reservationsMap.get(reservationId);
+      if (res && res.ownerId === user.id) {
+        session.reservationsMap.delete(reservationId);
+      }
+    }
+  }, [user.id]);
+
+  const updateReservationRange = useCallback(
+    (reservationId: string, startLine: number, endLine: number) => {
+      const session = sessionRef.current;
+      if (!session || !activeFile) return false;
+      const res = session.reservationsMap.get(reservationId);
+      if (!res || res.ownerId !== user.id) return false;
+
+      const sLine = Math.max(1, Math.min(startLine, endLine));
+      const eLine = Math.max(startLine, endLine);
+      const now = Date.now();
+
+      // Verify non-overlapping with peers
+      const hasConflict = reservationsRef.current.some(
+        (r) =>
+          r.id !== reservationId &&
+          r.ownerId !== user.id &&
+          r.filePath === activeFile.path &&
+          r.expiresAt > now &&
+          !(eLine < r.startLine || sLine > r.endLine)
+      );
+      if (hasConflict) return false;
+
+      session.reservationsMap.set(reservationId, {
+        ...res,
+        startLine: sLine,
+        endLine: eLine,
+        expiresAt: now + 60_000,
+      });
+      return true;
+    },
+    [activeFile, user.id]
+  );
+
   const startFollowing = useCallback(
     (targetUserId: string, targetUserName: string, targetUserColor: string, targetFile?: string) => {
       setFollowState({
@@ -326,7 +530,11 @@ export function useCollaborativeEditor({
     connectionStatus,
     isDocumentSynced,
     collaborators,
+    reservations,
     followState,
+    reserveLines,
+    releaseReservation,
+    updateReservationRange,
     startFollowing,
     stopFollowing,
     reconcileSession,

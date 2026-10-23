@@ -131,3 +131,5 @@ export interface FollowState {
   targetFile?: string;
   lastLineNumber?: number;
 }
+
+
