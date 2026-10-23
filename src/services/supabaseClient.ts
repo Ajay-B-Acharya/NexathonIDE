@@ -113,6 +113,43 @@ export async function signInWithEmail(email: string, password: string) {
   };
 }
 
+export async function sendPasswordResetEmail(email: string) {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase is not configured. Please check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env');
+  }
+
+  const trimmedEmail = email.trim().toLowerCase();
+  const redirectTo = `${window.location.origin}/`;
+
+  const { data, error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+    redirectTo,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function updateUserPassword(newPassword: string) {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase is not configured. Please check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env');
+  }
+
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return {
+    user: data.user ? mapSupabaseUserToProfile(data.user) : null,
+  };
+}
+
 export async function signOutUser() {
   if (!isSupabaseConfigured) return;
   const { error } = await supabase.auth.signOut();
