@@ -12,6 +12,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'monaco-editor/esm/vs/editor/editor.api.js': 'monaco-editor',
+      'monaco-editor/esm/vs/editor/editor.api': 'monaco-editor',
     },
   },
   server: {
@@ -44,11 +46,12 @@ export default defineConfig({
           }
         },
       },
+      external: [],
     },
   },
   optimizeDeps: {
     include: ['yjs', 'y-monaco', 'y-websocket', 'y-protocols/awareness', 'y-protocols/sync'],
-    exclude: ['@xterm/xterm', 'monaco-editor/esm/vs/editor/editor.api.js'],
+    exclude: ['@xterm/xterm'],
   },
   worker: {
     format: 'es',

@@ -13,6 +13,7 @@ export interface UserProfile {
   color: string;
   avatarUrl?: string;
   username?: string;
+  email?: string;
 }
 
 export type User = UserProfile;

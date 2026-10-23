@@ -1,10 +1,10 @@
 /**
- * Backward-Compatibility Wrapper
+ * Backward-Compatibility & Re-export Wrapper
  * 
- * The authoritative collaboration backend has been migrated to the dedicated modular
- * folder: `collaboration-backend/` (entry point: `collaboration-backend/server.ts`).
+ * The authoritative collaboration backend is located in:
+ * `collaboration-backend/` (entry point: `collaboration-backend/server.ts`).
  * 
- * This file re-exports the server implementation to preserve backward compatibility
+ * This file preserves backward compatibility for existing scripts, tests, and imports
  * without duplicating code or creating competing server processes.
  */
 

@@ -16,6 +16,62 @@ export interface Room {
 
 const rooms = new Map<string, Room>();
 
+const saveDebounceTimers = new Map<string, NodeJS.Timeout>();
+
+async function tryLoadPersistedDoc(roomName: string, doc: Y.Doc) {
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roomName);
+  if (!isUUID) return;
+
+  try {
+    const { supabaseAdmin } = await import('../../src/server/supabase.js');
+    if (!supabaseAdmin) return;
+    const { data } = await supabaseAdmin
+      .from('yjs_documents')
+      .select('document_state')
+      .eq('room_id', roomName)
+      .single();
+
+    if (data?.document_state) {
+      const raw = data.document_state;
+      const hex = typeof raw === 'string' && raw.startsWith('\\x') ? raw.slice(2) : raw;
+      const buf = Buffer.isBuffer(raw) ? raw : Buffer.from(hex, 'hex');
+      Y.applyUpdate(doc, new Uint8Array(buf));
+      console.log(`[RoomManager] Loaded persisted Supabase state for room: ${roomName}`);
+    }
+  } catch {
+    // No previous state or error loading
+  }
+}
+
+function scheduleDocSave(roomId: string, doc: Y.Doc) {
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roomId);
+  if (!isUUID) return;
+
+  const existingTimer = saveDebounceTimers.get(roomId);
+  if (existingTimer) clearTimeout(existingTimer);
+
+  const timer = setTimeout(async () => {
+    try {
+      const { supabaseAdmin } = await import('../../src/server/supabase.js');
+      if (!supabaseAdmin) return;
+      const state = Y.encodeStateAsUpdate(doc);
+      const buffer = Buffer.from(state);
+      await supabaseAdmin
+        .from('yjs_documents')
+        .upsert({
+          room_id: roomId,
+          document_state: '\\x' + buffer.toString('hex'),
+          updated_at: new Date().toISOString(),
+        });
+      console.log(`[RoomManager] Saved state snapshot for room ${roomId}`);
+    } catch (err) {
+      console.error(`[RoomManager] Error saving document state for room ${roomId}:`, err);
+    }
+  }, 2000);
+
+  saveDebounceTimers.set(roomId, timer);
+}
+
 /**
  * Retrieves an existing room or creates an isolated new collaboration room with Y.Doc and Awareness.
  */
@@ -39,9 +95,12 @@ export function getOrCreateRoom(roomName: string, gc: boolean = true): Room {
     lastActive: Date.now(),
   };
 
+  void tryLoadPersistedDoc(roomName, doc);
+
   // Wire document update broadcaster
   doc.on('update', (update: Uint8Array, origin: any) => {
     room!.lastActive = Date.now();
+    scheduleDocSave(roomName, doc);
     broadcastDocUpdate(room!, update, origin);
   });
 

@@ -1347,6 +1347,19 @@ export const Landing: React.FC<LandingProps> = ({
                   Continue to Rooms →
                 </button>
               </div>
+
+              <div className="pt-2 text-center border-t theme-border mt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    onNavigateToLogin();
+                  }}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
+                >
+                  Or sign in with Supabase Email & Password →
+                </button>
+              </div>
             </form>
           </div>
         </div>
