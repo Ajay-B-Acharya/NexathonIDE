@@ -11,11 +11,12 @@ node_modules
 dist
 dist-ssr
 *.local
-.env
-.env.local
 
 # Environment variables (contains secrets — keep out of version control)
 .env
+.env.local
+.env.production
+.env.development
 .env.*
 !.env.example
 .codex
