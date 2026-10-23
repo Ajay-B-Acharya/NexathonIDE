@@ -655,7 +655,7 @@ httpServer.on('error', (err: any) => {
   }
 });
 
-httpServer.listen(PORT, async () => {
+httpServer.listen(PORT, '0.0.0.0', async () => {
   await verifyDatabaseConnection();
   console.log(`API server running on port ${PORT}`);
   console.log(`Terminal WebSocket available at ws://localhost:${PORT}/ws/terminal`);
