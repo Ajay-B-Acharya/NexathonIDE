@@ -62,9 +62,9 @@ const yjsServer = spawnProcess(
   { ...process.env, Y_WEBSOCKET_PORT: process.env.Y_WEBSOCKET_PORT || '1234' }
 );
 
-// 2. API Server
+// 2. API Server (with watch for hot reloading changes)
 const apiCmd = fs.existsSync(localTsx) ? nodeBin : npxCmd;
-const apiArgs = fs.existsSync(localTsx) ? [localTsx, apiScript] : ['tsx', apiScript];
+const apiArgs = fs.existsSync(localTsx) ? [localTsx, 'watch', apiScript] : ['tsx', 'watch', apiScript];
 const apiServer = spawnProcess(
   'API Server',
   apiCmd,
@@ -101,8 +101,3 @@ function shutdown() {
 
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
-
-console.log('Servers starting...');
-console.log(`  Yjs WebSocket: ws://localhost:${process.env.Y_WEBSOCKET_PORT || '1234'}`);
-console.log(`  API Server:    http://localhost:${process.env.PORT || '3001'}`);
-console.log('  Frontend:      http://localhost:5173\n');

@@ -21,14 +21,42 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
+  const isMountedRef = useRef(true);
 
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
 
+  // Helper to safely close any active or connecting WebSocket
+  const safelyCloseWebSocket = (ws: WebSocket | null) => {
+    if (!ws) return;
+    ws.onopen = null;
+    ws.onmessage = null;
+    ws.onerror = null;
+    ws.onclose = null;
+
+    if (ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.close(1000, 'Normal Closure');
+      } catch {}
+    } else if (ws.readyState === WebSocket.CONNECTING) {
+      // Avoid browser warning: "WebSocket is closed before the connection is established"
+      ws.onopen = () => {
+        try {
+          ws.close(1000, 'Closed after connection established');
+        } catch {}
+      };
+    }
+  };
+
   const connectWebSocket = useCallback(() => {
-    if (!termRef.current) return;
+    if (!isMountedRef.current || !roomId) return;
+
+    if (reconnectTimerRef.current) {
+      window.clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
 
     if (wsRef.current) {
-      wsRef.current.close();
+      safelyCloseWebSocket(wsRef.current);
       wsRef.current = null;
     }
 
@@ -37,35 +65,51 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
       'ws://localhost:3001/ws/terminal';
     const wsUrl = `${baseWsUrl}?roomId=${encodeURIComponent(
       roomId
-    )}&userId=${encodeURIComponent(user.id)}`;
+    )}&userId=${encodeURIComponent(user?.id || 'anonymous')}&username=${encodeURIComponent(
+      user?.name || 'Developer'
+    )}`;
 
     setStatus('connecting');
-    const ws = new WebSocket(wsUrl);
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch (err) {
+      console.error('[TerminalPanel] Failed to construct WebSocket:', err);
+      setStatus('error');
+      return;
+    }
+
     wsRef.current = ws;
 
     ws.onopen = () => {
+      if (!isMountedRef.current || wsRef.current !== ws) return;
       setStatus('connected');
       termRef.current?.writeln(
-        `\x1b[38;2;16;185;129m● [Nexathon Cloud PTY] Connected to room ${roomId} as ${user.name}\x1b[0m\r\n`
+        `\x1b[38;2;16;185;129m● [Nexathon Cloud PTY] Connected to room ${roomId} as ${user?.name || 'Developer'}\x1b[0m\r\n`
       );
-      if (fitAddonRef.current && termRef.current) {
-        fitAddonRef.current.fit();
-        ws.send(
-          JSON.stringify({
-            type: 'resize',
-            cols: termRef.current.cols,
-            rows: termRef.current.rows,
-          })
-        );
+
+      if (fitAddonRef.current && termRef.current && containerRef.current) {
+        try {
+          fitAddonRef.current.fit();
+          ws.send(
+            JSON.stringify({
+              type: 'resize',
+              cols: termRef.current.cols,
+              rows: termRef.current.rows,
+            })
+          );
+        } catch {}
       }
     };
 
     ws.onmessage = (event: MessageEvent) => {
+      if (!isMountedRef.current || wsRef.current !== ws) return;
       if (typeof event.data === 'string') {
         try {
-          const parsed = JSON.parse(event.data) as { type?: string; data?: string };
-          if (parsed.type === 'output' && typeof parsed.data === 'string') {
-            termRef.current?.write(parsed.data);
+          const parsed = JSON.parse(event.data) as { type?: string; data?: string; payload?: string };
+          const textData = parsed.data ?? parsed.payload;
+          if (typeof textData === 'string') {
+            termRef.current?.write(textData);
             return;
           }
         } catch {
@@ -76,21 +120,30 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
     };
 
     ws.onerror = () => {
+      if (!isMountedRef.current || wsRef.current !== ws) return;
       setStatus('error');
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
+      if (!isMountedRef.current || wsRef.current !== ws) return;
       setStatus('disconnected');
+
+      const reasonMsg = event.reason ? ` (${event.reason})` : '';
       termRef.current?.writeln(
-        '\r\n\x1b[33m[Nexathon Cloud PTY] Connection closed. Reconnecting in 4s...\x1b[0m'
+        `\r\n\x1b[33m[Nexathon Cloud PTY] Connection closed${reasonMsg}. Reconnecting in 4s...\x1b[0m`
       );
+
       reconnectTimerRef.current = window.setTimeout(() => {
-        connectWebSocket();
+        if (isMountedRef.current) {
+          connectWebSocket();
+        }
       }, 4000);
     };
-  }, [roomId, user.id, user.name]);
+  }, [roomId, user?.id, user?.name]);
 
+  // Terminal lifecycle (mounts once)
   useEffect(() => {
+    isMountedRef.current = true;
     if (!containerRef.current) return;
 
     const term = new Terminal({
@@ -109,7 +162,9 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(containerRef.current);
-    fitAddon.fit();
+    try {
+      fitAddon.fit();
+    } catch {}
 
     termRef.current = term;
     fitAddonRef.current = fitAddon;
@@ -127,12 +182,10 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
     });
 
     const resizeObserver = new ResizeObserver(() => {
-      if (fitAddonRef.current) {
+      if (fitAddonRef.current && containerRef.current && containerRef.current.clientWidth > 0) {
         try {
           fitAddonRef.current.fit();
-        } catch {
-          // Ignore fit errors when hidden
-        }
+        } catch {}
       }
     });
 
@@ -140,29 +193,30 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
     connectWebSocket();
 
     return () => {
+      isMountedRef.current = false;
       if (reconnectTimerRef.current) {
         window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
       }
       resizeObserver.disconnect();
       dataDisposable.dispose();
       resizeDisposable.dispose();
-      if (wsRef.current) {
-        wsRef.current.onclose = null;
-        wsRef.current.close();
-      }
+      safelyCloseWebSocket(wsRef.current);
+      wsRef.current = null;
       term.dispose();
+      termRef.current = null;
+      fitAddonRef.current = null;
     };
   }, [connectWebSocket]);
 
   useEffect(() => {
-    if (isVisible && fitAddonRef.current) {
-      window.setTimeout(() => {
+    if (isVisible && fitAddonRef.current && containerRef.current && containerRef.current.clientWidth > 0) {
+      const timer = window.setTimeout(() => {
         try {
           fitAddonRef.current?.fit();
-        } catch {
-          // Safe guard
-        }
-      }, 50);
+        } catch {}
+      }, 60);
+      return () => window.clearTimeout(timer);
     }
   }, [isVisible]);
 

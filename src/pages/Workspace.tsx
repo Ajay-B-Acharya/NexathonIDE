@@ -455,7 +455,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
               {activeBottomTab === 'ai-debugger' && (
                 <AIDebuggerPanel
-                  activeFile={activeFile}
+                  activeFile={
+                    activeFile && editorInstance
+                      ? { ...activeFile, content: editorInstance.getValue() }
+                      : activeFile
+                  }
                   initialError={aiErrorSeed}
                   onApplyFixToEditor={(fixedCode) => {
                     applyContentToSharedDoc(fixedCode);

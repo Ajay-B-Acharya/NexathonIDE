@@ -15,8 +15,8 @@ export const aiDebuggerApi = {
     if (!response.ok) {
       let errorDetail = `AI Debugger request failed (${response.status})`;
       try {
-        const errData = (await response.json()) as { message?: string; error?: string };
-        errorDetail = errData.message || errData.error || errorDetail;
+        const errData = (await response.json()) as { message?: string; error?: string; explanation?: string };
+        errorDetail = errData.explanation || errData.message || errData.error || errorDetail;
       } catch {
         // Fallback to statusText
       }
@@ -26,4 +26,3 @@ export const aiDebuggerApi = {
     return (await response.json()) as AIDebugResponse;
   },
 };
-
