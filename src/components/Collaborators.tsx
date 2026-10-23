@@ -6,7 +6,7 @@ interface CollaboratorsProps {
   collaborators: CollaboratorPresence[];
   currentUserId: string;
   followState?: FollowState | null;
-  onFollowCollaborator?: (userId: string, name: string, color: string) => void;
+  onFollowCollaborator?: (userId: string, name: string, color: string, activeFile?: string) => void;
   onStopFollowing?: () => void;
 }
 
@@ -42,11 +42,12 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
             .slice(0, 2)
             .toUpperCase();
 
+          const fileName = collab.activeFile ? collab.activeFile.split('/').pop() : '';
           const tooltipText = isMe
             ? `${collab.user.name} (You)`
             : isFollowed
             ? `Following ${collab.user.name} • Click to Stop Following`
-            : `${collab.user.name} • Click to Follow (Ln ${collab.cursor?.lineNumber || 1})`;
+            : `${collab.user.name}${fileName ? ` • ${fileName}` : ''} • Click to Follow (Ln ${collab.cursor?.lineNumber || 1})`;
 
           return (
             <button
@@ -61,7 +62,8 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
                   onFollowCollaborator?.(
                     collab.user.id,
                     collab.user.name,
-                    collab.user.color
+                    collab.user.color,
+                    collab.activeFile
                   );
                 }
               }}
@@ -97,6 +99,7 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
         {uniqueCollaborators.slice(0, 3).map((collab) => {
           const isMe = collab.user.id === currentUserId;
           const isFollowed = followState?.targetUserId === collab.user.id;
+          const fileName = collab.activeFile ? collab.activeFile.split('/').pop() : '';
 
           return (
             <button
@@ -111,7 +114,8 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
                   onFollowCollaborator?.(
                     collab.user.id,
                     collab.user.name,
-                    collab.user.color
+                    collab.user.color,
+                    collab.activeFile
                   );
                 }
               }}
@@ -131,6 +135,11 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
               <span className="max-w-[70px] truncate font-medium theme-text-primary">
                 {collab.user.name}
               </span>
+              {fileName && (
+                <span className="rounded bg-indigo-500/10 border border-indigo-500/30 px-1 py-0.2 text-[9.5px] font-mono text-indigo-400 max-w-[65px] truncate">
+                  {fileName}
+                </span>
+              )}
               {collab.cursor && (
                 <span className="rounded theme-bg-surface-1 border theme-border px-1 py-0.2 text-[10px] font-mono theme-text-secondary">
                   Ln {collab.cursor.lineNumber}

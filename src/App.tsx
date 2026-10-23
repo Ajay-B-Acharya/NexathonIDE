@@ -77,6 +77,62 @@ export const App: React.FC = () => {
     syncRoute(nextView, room, replace);
   }, []);
 
+  // Synchronize browser URL query param with activeRoom ID
+  useEffect(() => {
+    if (activeRoom) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('room') !== activeRoom.id) {
+        url.searchParams.set('room', activeRoom.id);
+        window.history.replaceState(null, '', url.toString());
+      }
+    } else {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('room') && view !== 'workspace') {
+        url.searchParams.delete('room');
+        window.history.replaceState(null, '', url.toString());
+      }
+    }
+  }, [activeRoom, view]);
+
+  // Handle deep-link to room on initial load
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetRoomId = urlParams.get('room');
+    if (!targetRoomId) return;
+
+    let currentUser = user;
+    if (!currentUser) {
+      const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const randomColor = GUEST_COLORS[Math.floor(Math.random() * GUEST_COLORS.length)];
+      currentUser = {
+        id: `usr_guest_${randomSuffix.toLowerCase()}`,
+        name: `dev_${randomSuffix.toLowerCase()}`,
+        color: randomColor,
+      };
+      saveStoredUser(currentUser);
+      setUser(currentUser);
+    }
+
+    workspaceApi
+      .getRoom(targetRoomId)
+      .then((room) => {
+        setActiveRoom(room);
+        setView('workspace');
+      })
+      .catch(() => {
+        const fallbackRoom: WorkspaceRoom = {
+          id: targetRoomId,
+          name: 'Collaborative Workspace',
+          description: 'Live shared editing room',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          ownerId: currentUser.id,
+        };
+        setActiveRoom(fallbackRoom);
+        setView('workspace');
+      });
+  }, []);
+
   // Synchronize `.dark` / `.light` class on `document.documentElement`
   useEffect(() => {
     const root = document.documentElement;

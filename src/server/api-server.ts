@@ -279,7 +279,21 @@ const handleListFiles = async (req: Request, res: Response) => {
       return res.json(files);
     }
 
-    const files = Array.from(memoryFiles.values()).filter((f) => f.room_id === id || f.roomId === id);
+    let files = Array.from(memoryFiles.values()).filter((f) => f.room_id === id || f.roomId === id);
+    if (files.length === 0) {
+      const defaultFile = {
+        id: `${id}:index.js`,
+        name: 'index.js',
+        path: 'index.js',
+        content: '// Collaborative Workspace Entrypoint\nconsole.log("Hello from Nexathon IDE!");\n',
+        language: 'javascript',
+        room_id: id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      memoryFiles.set(defaultFile.id, defaultFile);
+      files = [defaultFile];
+    }
     res.json(files);
   } catch (error: any) {
     console.error('Error fetching files:', error);

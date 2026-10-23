@@ -116,8 +116,10 @@ export interface EditReservation {
   ownerColor: string;
   startLine: number;
   endLine: number;
+  activeLine?: number;
   createdAt: number;
   expiresAt: number;
+  isAutomatic?: boolean;
   taskDescription?: string;
 }
 

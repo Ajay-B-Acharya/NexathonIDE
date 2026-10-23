@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Play,
   Save,
@@ -8,11 +8,12 @@ import {
   Loader2,
   FolderGit2,
   LogOut,
-  ChevronRight,
   RotateCw,
   Check,
   Shield,
   Eye,
+  Share2,
+  AlertCircle,
 } from 'lucide-react';
 import { CollaboratorPresence, ConnectionStatus, FollowState, UserProfile } from '../types';
 import { Collaborators } from './Collaborators';
@@ -29,6 +30,7 @@ interface TopBarProps {
   collaborators: CollaboratorPresence[];
   isRunning: boolean;
   isSaving: boolean;
+  saveStatus?: 'saved' | 'saving' | 'dirty' | 'error';
   hasUnsavedChanges: boolean;
   isExplorerOpen: boolean;
   isRefreshing?: boolean;
@@ -36,7 +38,7 @@ interface TopBarProps {
   activeReservationsCount?: number;
   followState?: FollowState | null;
   onRefreshWorkspace?: () => void;
-  onFollowCollaborator?: (userId: string, name: string, color: string) => void;
+  onFollowCollaborator?: (userId: string, name: string, color: string, activeFile?: string) => void;
   onStopFollowing?: () => void;
   onToggleExplorer: () => void;
   onRunCode: () => void;
@@ -57,6 +59,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   collaborators,
   isRunning,
   isSaving,
+  saveStatus = 'saved',
   hasUnsavedChanges,
   isExplorerOpen,
   isRefreshing = false,
@@ -73,7 +76,16 @@ export const TopBar: React.FC<TopBarProps> = ({
   onSwitchWorkspace,
   onLogout,
 }) => {
-  const renderSyncRadarBadge = () => {
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleCopyShareLink = () => {
+    const url = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(roomId)}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2200);
+  };
+
+  const renderConnectionStatus = () => {
     if (connectionStatus === 'connected' && isDocumentSynced) {
       return (
         <div
@@ -153,18 +165,15 @@ export const TopBar: React.FC<TopBarProps> = ({
           <span className="text-xs font-semibold theme-text-primary group-hover:text-teal-600 dark:group-hover:text-teal-300 transition max-w-[160px] truncate">
             {roomName}
           </span>
-          <ChevronRight className="h-3 w-3 theme-text-secondary opacity-60" />
-          <span className="rounded border theme-border theme-bg-surface-1 px-1.5 py-0.5 text-[10px] font-mono theme-text-secondary">
-            #{roomId.slice(0, 6)}
-          </span>
         </button>
 
-        {renderSyncRadarBadge()}
+        {renderConnectionStatus()}
 
         {/* Edit Reservations Counter Pill */}
         {activeReservationsCount > 0 && (
           <div
             className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-950/40 px-2 py-0.5 text-[11px] font-medium text-teal-300"
+
             title={`${activeReservationsCount} active code section reservation(s)`}
           >
             <Shield className="h-3 w-3 text-teal-400" />
@@ -172,10 +181,11 @@ export const TopBar: React.FC<TopBarProps> = ({
           </div>
         )}
 
-        {/* Follow Mode Indicator Pill */}
+        {/* Active Follow Mode Indicator */}
         {followState && (
           <div
             className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/40 bg-teal-950/40 px-2.5 py-0.5 text-[11px] font-medium text-teal-300"
+
             title={`Following ${followState.targetUserName}`}
           >
             <Eye className="h-3 w-3 text-teal-400" />
@@ -187,19 +197,20 @@ export const TopBar: React.FC<TopBarProps> = ({
             >
               Stop
             </button>
+
           </div>
         )}
       </div>
 
-      {/* Center: Command Bar Primary Actions */}
+      {/* Center: Action Buttons (Refresh, Save, Run, AI Debugger, Share) */}
       <div className="flex items-center gap-2">
-        {/* Safe Targeted Refresh Button */}
+        {/* Targeted Refresh Button */}
         <button
           type="button"
           onClick={onRefreshWorkspace}
           disabled={isRefreshing}
-          title="Refresh Workspace Files & Reconcile Sync (Safe targeted refresh)"
-          className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition cursor-pointer disabled:opacity-50 ${
+          title="Refresh workspace files and reconcile Yjs connection"
+          className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition cursor-pointer shadow-xs ${
             refreshStatus === 'success'
               ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300'
               : refreshStatus === 'error'
@@ -209,6 +220,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           {isRefreshing ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin text-teal-500" />
+
           ) : refreshStatus === 'success' ? (
             <Check className="h-3.5 w-3.5 text-emerald-400" />
           ) : (
@@ -223,21 +235,41 @@ export const TopBar: React.FC<TopBarProps> = ({
           </span>
         </button>
 
-        {/* Save Action Button */}
+        {/* Save Action Button with Truthful State */}
         <button
           type="button"
           onClick={onSaveFile}
           disabled={isSaving}
-          title="Save Active File to PostgreSQL (Ctrl+S)"
-          className="inline-flex items-center gap-2 rounded-lg border theme-border theme-bg-surface-2 px-3 py-1.5 text-xs font-medium theme-text-primary hover:border-teal-500/30 hover:theme-bg-elevated disabled:opacity-50 transition cursor-pointer shadow-xs"
+title="Save Active File to Storage (Ctrl+S)"
+          className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition cursor-pointer shadow-xs ${
+            saveStatus === 'error'
+              ? 'border-rose-500/40 bg-rose-500/10 text-rose-400'
+              : saveStatus === 'saving' || isSaving
+              ? 'border-teal-500/40 bg-teal-500/10 text-teal-300'
+              : hasUnsavedChanges || saveStatus === 'dirty'
+              ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+              : 'theme-border theme-bg-surface-2 theme-text-primary hover:border-teal-500/30'
+          }`}
         >
-          {isSaving ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-teal-600 dark:text-teal-400" />
+          {isSaving || saveStatus === 'saving' ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-teal-400" />
+          ) : saveStatus === 'error' ? (
+            <AlertCircle className="h-3.5 w-3.5 text-rose-400" />
+          ) : hasUnsavedChanges || saveStatus === 'dirty' ? (
+            <Save className="h-3.5 w-3.5 text-amber-400" />
           ) : (
-            <Save className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+            <Check className="h-3.5 w-3.5 text-emerald-400" />
           )}
-          <span>Save</span>
-          {hasUnsavedChanges && (
+          <span>
+            {isSaving || saveStatus === 'saving'
+              ? 'Saving...'
+              : saveStatus === 'error'
+              ? 'Save Failed (Retry)'
+              : hasUnsavedChanges || saveStatus === 'dirty'
+              ? 'Save'
+              : 'Saved'}
+          </span>
+          {(hasUnsavedChanges || saveStatus === 'dirty') && (
             <span
               className="h-2 w-2 rounded-full bg-amber-400"
               title="Unsaved changes"
@@ -253,8 +285,8 @@ export const TopBar: React.FC<TopBarProps> = ({
           type="button"
           onClick={onRunCode}
           disabled={isRunning}
-          title="Run Code in Browser Sandbox (Ctrl+Enter)"
-          className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer shadow-xs"
+title="Run Code in Sandbox (Ctrl+Enter)"
+          className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer"
         >
           {isRunning ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -277,6 +309,25 @@ export const TopBar: React.FC<TopBarProps> = ({
           <Sparkles className="h-3.5 w-3.5 text-teal-600 dark:text-teal-300" />
           <span className="hidden sm:inline">AI Debugger</span>
         </button>
+
+        {/* 1-Click Share & Invite Button */}
+        <button
+          type="button"
+          onClick={handleCopyShareLink}
+          title="Copy Live Collaboration URL to Clipboard"
+          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition cursor-pointer shadow-xs ${
+            copiedLink
+              ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-400'
+              : 'border-cyan-500/30 bg-cyan-950/30 text-cyan-300 hover:bg-cyan-900/40 hover:border-cyan-500/50'
+          }`}
+        >
+          {copiedLink ? (
+            <Check className="h-3.5 w-3.5 text-emerald-400" />
+          ) : (
+            <Share2 className="h-3.5 w-3.5 text-cyan-400" />
+          )}
+          <span className="hidden sm:inline">{copiedLink ? 'Link Copied!' : 'Share'}</span>
+        </button>
       </div>
 
       {/* Right: Live Collaborator Avatars with Click-to-Follow, Theme Toggle & Logout */}
@@ -294,6 +345,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         )}
 
         <div className="h-5 w-px theme-border" />
+
         <button
           type="button"
           onClick={onLogout}

@@ -64,7 +64,21 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   onEditorReady,
 }) => {
   const [selectedRange, setSelectedRange] = useState<{ startLine: number; endLine: number } | null>(null);
+  const [blockedNotice, setBlockedNotice] = useState<{
+    ownerName: string;
+    ownerColor: string;
+    startLine: number;
+    endLine: number;
+    activeLine: number;
+  } | null>(null);
+
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  const reservationsRef = useRef(reservations);
+  reservationsRef.current = reservations;
+  const activeFileRef = useRef(activeFile);
+  activeFileRef.current = activeFile;
+  const blockedNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const isDark = theme !== 'light';
 
   const myReservation = reservations.find(
@@ -113,6 +127,64 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
           startLine: Math.min(sel.startLineNumber, sel.endLineNumber),
           endLine: Math.max(sel.startLineNumber, sel.endLineNumber),
         });
+      }
+    });
+
+    // Feature 1 & 2 Enforcement: Intercept keystrokes to prevent editing peer-reserved sections
+    editor.onKeyDown((e) => {
+      // Allow pure navigation & view keys
+      const isNav = [
+        monaco.KeyCode.UpArrow,
+        monaco.KeyCode.DownArrow,
+        monaco.KeyCode.LeftArrow,
+        monaco.KeyCode.RightArrow,
+        monaco.KeyCode.PageUp,
+        monaco.KeyCode.PageDown,
+        monaco.KeyCode.Home,
+        monaco.KeyCode.End,
+        monaco.KeyCode.Escape,
+      ].includes(e.keyCode);
+
+      if (isNav) return;
+
+      // Allow clipboard copy (Ctrl+C / Cmd+C)
+      if ((e.ctrlKey || e.metaKey) && e.keyCode === monaco.KeyCode.KeyC) {
+        return;
+      }
+
+      const pos = editor.getPosition();
+      const sel = editor.getSelection();
+      if (!pos) return;
+
+      const startLine = sel ? Math.min(sel.startLineNumber, sel.endLineNumber) : pos.lineNumber;
+      const endLine = sel ? Math.max(sel.startLineNumber, sel.endLineNumber) : pos.lineNumber;
+
+      const now = Date.now();
+      const peerLock = reservationsRef.current.find(
+        (r) =>
+          r.filePath === activeFileRef.current?.path &&
+          r.ownerId !== currentUserId &&
+          r.expiresAt > now &&
+          !(endLine < r.startLine || startLine > r.endLine)
+      );
+
+      if (peerLock) {
+        // Intercept & block modification in peer's reserved section!
+        e.preventDefault();
+        e.stopPropagation();
+
+        setBlockedNotice({
+          ownerName: peerLock.ownerName,
+          ownerColor: peerLock.ownerColor,
+          startLine: peerLock.startLine,
+          endLine: peerLock.endLine,
+          activeLine: peerLock.activeLine || peerLock.startLine,
+        });
+
+        if (blockedNoticeTimerRef.current) clearTimeout(blockedNoticeTimerRef.current);
+        blockedNoticeTimerRef.current = setTimeout(() => {
+          setBlockedNotice(null);
+        }, 3000);
       }
     });
 
@@ -278,17 +350,69 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
         </div>
       </div>
 
-      {/* Advisory Conflict Banner */}
-      {activeConflictReservation && (
-        <div className="flex items-center justify-between border-b border-amber-500/30 bg-amber-950/60 px-3 py-1.5 text-xs text-amber-200 animate-fadeIn">
+      {/* Blocked Edit Alert Banner (Features 1 & 2) */}
+      {blockedNotice && (
+        <div
+          className="flex items-center justify-between border-b px-3 py-1.5 text-xs animate-fadeIn font-medium text-white shadow-md"
+          style={{
+            backgroundColor: `${blockedNotice.ownerColor}22`,
+            borderColor: blockedNotice.ownerColor,
+          }}
+        >
           <div className="flex items-center gap-2">
-            <ShieldAlert className="h-4 w-4 text-amber-400 shrink-0" />
+            <ShieldAlert
+              className="h-4 w-4 shrink-0 animate-bounce"
+              style={{ color: blockedNotice.ownerColor }}
+            />
             <span>
-              <strong>Reserved Section Notice:</strong> Lines{' '}
+              <strong>Line Locked:</strong> Lines {blockedNotice.startLine}–{blockedNotice.endLine}{' '}
+              (active: line {blockedNotice.activeLine}) are currently reserved by{' '}
+              <span
+                className="px-1.5 py-0.5 rounded text-[11px] font-bold text-white shadow-sm inline-block"
+                style={{ backgroundColor: blockedNotice.ownerColor }}
+              >
+                {blockedNotice.ownerName}
+              </span>
+              . Keystrokes are locked to prevent conflicts until they move to another line or workspace section.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setBlockedNotice(null)}
+            className="text-xs opacity-75 hover:opacity-100 px-1 cursor-pointer"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Advisory / Active Reservation Notice */}
+      {!blockedNotice && activeConflictReservation && (
+        <div
+          className="flex items-center justify-between border-b px-3 py-1.5 text-xs animate-fadeIn text-white/90"
+          style={{
+            backgroundColor: `${activeConflictReservation.ownerColor}18`,
+            borderColor: `${activeConflictReservation.ownerColor}55`,
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <ShieldAlert
+              className="h-4 w-4 shrink-0"
+              style={{ color: activeConflictReservation.ownerColor }}
+            />
+            <span>
+              <strong>Reserved Workspace:</strong> Lines{' '}
               {activeConflictReservation.startLine}–{activeConflictReservation.endLine} are
-              currently reserved by <strong>{activeConflictReservation.ownerName}</strong>
-              {activeConflictReservation.taskDescription ? ` (${activeConflictReservation.taskDescription})` : ''}.
-              Please coordinate before editing this section.
+              reserved by{' '}
+              <span
+                className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-white inline-flex items-center gap-1 shadow-sm"
+                style={{ backgroundColor: activeConflictReservation.ownerColor }}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-white inline-block animate-ping" />
+                {activeConflictReservation.ownerName}
+              </span>
+              {activeConflictReservation.taskDescription ? ` (${activeConflictReservation.taskDescription})` : ''}
+              . This 10-line workspace window is locked to prevent collisions.
             </span>
           </div>
         </div>
