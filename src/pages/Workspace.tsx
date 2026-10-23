@@ -67,6 +67,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [aiErrorSeed, setAiErrorSeed] = useState<string>('');
 
   const [filePendingDelete, setFilePendingDelete] = useState<WorkspaceFile | null>(null);
+  const [folderPendingDelete, setFolderPendingDelete] = useState<string | null>(null);
+  const [emptyFolders, setEmptyFolders] = useState<Set<string>>(new Set());
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
 
   const [editorInstance, setEditorInstance] =
@@ -335,7 +337,11 @@ clearFileDraft(room.id, fileId);
     connectionStatus,
     isDocumentSynced,
     collaborators,
+    reservations,
     followState,
+    reserveLines,
+    releaseReservation,
+    updateReservationRange,
     startFollowing,
     stopFollowing,
     reconcileSession,
@@ -485,6 +491,97 @@ clearFileDraft(room.id, fileId);
     }
   };
 
+  const handleCreateFolder = async (folderPath: string) => {
+    const clean = folderPath.replace(/^\/+/, '').replace(/\/+$/, '');
+    if (!clean) return;
+    setEmptyFolders((prev) => new Set(prev).add(clean));
+    const keepPath = `${clean}/.gitkeep`;
+    try {
+      const created = await workspaceApi.createFile(room.id, {
+        path: keepPath,
+        content: '',
+        language: detectLanguageFromPath(keepPath),
+      });
+      setFiles((prev) => [...prev, created]);
+      latestContentRef.current[created.id] = created.content;
+      setDbContentSnapshot((prev) => ({ ...prev, [created.id]: created.content }));
+    } catch (err) {
+      console.warn('Backend folder placeholder notice:', err);
+    }
+  };
+
+  const handleRenameFolder = async (oldFolderPath: string, newFolderPath: string) => {
+    const cleanOld = oldFolderPath.replace(/^\/+/, '').replace(/\/+$/, '');
+    const cleanNew = newFolderPath.replace(/^\/+/, '').replace(/\/+$/, '');
+    if (!cleanOld || !cleanNew || cleanOld === cleanNew) return;
+
+    const oldPrefix = cleanOld + '/';
+    const newPrefix = cleanNew + '/';
+
+    setEmptyFolders((prev) => {
+      const next = new Set<string>();
+      prev.forEach((f) => {
+        if (f === cleanOld) next.add(cleanNew);
+        else if (f.startsWith(oldPrefix)) next.add(f.replace(oldPrefix, newPrefix));
+        else next.add(f);
+      });
+      return next;
+    });
+
+    const matchingFiles = files.filter((f) => f.path.startsWith(oldPrefix) || f.path === cleanOld);
+    for (const file of matchingFiles) {
+      const updatedPath = file.path.startsWith(oldPrefix)
+        ? file.path.replace(oldPrefix, newPrefix)
+        : cleanNew;
+      const updatedName = updatedPath.split('/').pop() || updatedPath;
+      const updatedLang = detectLanguageFromPath(updatedPath);
+      try {
+        const updated = await workspaceApi.updateFile(room.id, file.id, {
+          path: updatedPath,
+          name: updatedName,
+          language: updatedLang,
+        });
+        setFiles((prev) => prev.map((f) => (f.id === file.id ? updated : f)));
+      } catch (err) {
+        console.error('Failed to rename file in folder:', err);
+      }
+    }
+  };
+
+  const handleConfirmDeleteFolder = async () => {
+    if (!folderPendingDelete) return;
+    const targetFolder = folderPendingDelete.replace(/^\/+/, '').replace(/\/+$/, '');
+    const prefix = targetFolder + '/';
+
+    setEmptyFolders((prev) => {
+      const next = new Set(prev);
+      next.delete(targetFolder);
+      Array.from(next).forEach((f) => {
+        if (f.startsWith(prefix)) next.delete(f);
+      });
+      return next;
+    });
+
+    const matchingFiles = files.filter((f) => f.path.startsWith(prefix) || f.path === targetFolder);
+    const matchingIds = new Set(matchingFiles.map((f) => f.id));
+
+    for (const file of matchingFiles) {
+      try {
+        await workspaceApi.deleteFile(room.id, file.id);
+      } catch (err) {
+        console.warn('Failed to delete file in folder:', err);
+      }
+    }
+
+    setFiles((prev) => prev.filter((f) => !matchingIds.has(f.id)));
+    setOpenFileIds((prev) => prev.filter((id) => !matchingIds.has(id)));
+    if (activeFileId && matchingIds.has(activeFileId)) {
+      const remaining = openFileIds.filter((id) => !matchingIds.has(id));
+      setActiveFileId(remaining.length > 0 ? remaining[0] : null);
+    }
+    setFolderPendingDelete(null);
+  };
+
   const handleLanguageChange = (file: WorkspaceFile, language: SupportedLanguage) => {
     setFiles((prev) =>
       prev.map((f) => (f.id === file.id ? { ...f, language } : f))
@@ -520,6 +617,7 @@ clearFileDraft(room.id, fileId);
         isExplorerOpen={isExplorerOpen}
         isRefreshing={isRefreshing}
         refreshStatus={refreshStatus}
+        activeReservationsCount={reservations.length}
         followState={followState}
         onRefreshWorkspace={() => void handleRefreshWorkspace()}
         onFollowCollaborator={handleFollowCollaborator}
@@ -545,12 +643,19 @@ clearFileDraft(room.id, fileId);
             >
               <FileExplorer
                 files={files}
+                emptyFolders={emptyFolders}
                 activeFileId={activeFileId}
                 dirtyFileIds={dirtyFileIds}
                 onSelectFile={handleSelectFile}
                 onCreateFile={handleCreateFile}
+                onCreateFolder={handleCreateFolder}
                 onRenameFile={handleRenameFile}
+                onRenameFolder={handleRenameFolder}
                 onRequestDeleteFile={(file) => setFilePendingDelete(file)}
+                onRequestDeleteFolder={(folderPath) => setFolderPendingDelete(folderPath)}
+                onRefresh={() => void handleRefreshWorkspace()}
+                isRefreshing={isRefreshing}
+                workspaceName={room.name}
               />
             </div>
 
@@ -569,12 +674,16 @@ clearFileDraft(room.id, fileId);
             openFiles={openFiles}
             activeFile={activeFile}
             dirtyFileIds={dirtyFileIds}
+            reservations={reservations}
             followState={followState}
             currentUserId={user.id}
             theme={theme}
             onSelectTab={(file) => handleSelectFile(file)}
             onCloseTab={handleCloseTab}
             onLanguageChange={handleLanguageChange}
+            onReserveSelection={reserveLines}
+            onReleaseReservation={releaseReservation}
+            onUpdateReservationRange={updateReservationRange}
             onStopFollowing={stopFollowing}
             onEditorReady={(editor, monaco) => {
               setEditorInstance(editor);
@@ -712,6 +821,18 @@ clearFileDraft(room.id, fileId);
           variant="danger"
           onConfirm={() => void handleConfirmDeleteFile()}
           onCancel={() => setFilePendingDelete(null)}
+        />
+      )}
+
+      {folderPendingDelete && (
+        <ConfirmModal
+          isOpen={Boolean(folderPendingDelete)}
+          title="Delete Folder"
+          description={`Are you sure you want to permanently delete folder "${folderPendingDelete}" and all its contents? This will permanently remove all files inside this folder for all collaborators.`}
+          confirmLabel="Delete Folder"
+          variant="danger"
+          onConfirm={() => void handleConfirmDeleteFolder()}
+          onCancel={() => setFolderPendingDelete(null)}
         />
       )}
 

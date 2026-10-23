@@ -22,7 +22,6 @@ interface EditorPaneProps {
   activeFile: WorkspaceFile | null;
   dirtyFileIds: Set<string>;
   reservations?: EditReservation[];
-  activeConflictReservation?: EditReservation | null;
   followState?: FollowState | null;
   currentUserId?: string;
   theme?: ThemeMode;
@@ -54,7 +53,6 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   activeFile,
   dirtyFileIds,
   reservations = [],
-  activeConflictReservation = null,
   followState = null,
   currentUserId = '',
   theme = 'dark',
@@ -70,10 +68,8 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   const [selectedRange, setSelectedRange] = useState<{ startLine: number; endLine: number } | null>(null);
   const [blockedNotice, setBlockedNotice] = useState<{
     ownerName: string;
-    ownerColor: string;
     startLine: number;
     endLine: number;
-    activeLine: number;
   } | null>(null);
 
   const [boxCoords, setBoxCoords] = useState<{
@@ -81,16 +77,20 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
     height: number;
     startLine: number;
     endLine: number;
+    rightOffset: number;
   } | null>(null);
   const [dragEdge, setDragEdge] = useState<'top' | 'bottom' | null>(null);
   const [dragLines, setDragLines] = useState<{ startLine: number; endLine: number } | null>(null);
 
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const reservationsRef = useRef(reservations);
-  reservationsRef.current = reservations;
   const activeFileRef = useRef(activeFile);
-  activeFileRef.current = activeFile;
   const blockedNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    reservationsRef.current = reservations;
+    activeFileRef.current = activeFile;
+  }, [reservations, activeFile]);
 
   const isDark = theme !== 'light';
 
@@ -112,23 +112,36 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
     try {
       const top1 = editor.getTopForLineNumber(start);
       const top2 = editor.getTopForLineNumber(end + 1);
-      const height = Math.max(22, top2 - top1);
+      const height = Math.max(20, top2 - top1);
       const top = top1 - editor.getScrollTop();
+
+      const layout = editor.getLayoutInfo();
+      // Position neatly to the right of content area, just before minimap or scrollbar
+      const minimapWidth = (layout.minimap && layout.minimap.minimapWidth) || 0;
+      const rightOffset = minimapWidth > 0 ? minimapWidth + 16 : 28;
 
       setBoxCoords({
         top,
         height,
         startLine: start,
         endLine: end,
+        rightOffset,
       });
     } catch {
-      // Ignore during file/model transition
+      // Ignore during file or model transition
     }
   }, [myReservation, dragLines]);
 
   useEffect(() => {
     updateBoxCoords();
   }, [updateBoxCoords, reservations, activeFile?.id]);
+
+  // Window resize & layout change listeners to maintain handle alignment
+  useEffect(() => {
+    const handleResize = () => updateBoxCoords();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [updateBoxCoords]);
 
   // Handle interactive drag-to-expand on reservation top or bottom handle
   const handleStartDrag = (edge: 'top' | 'bottom', e: React.MouseEvent) => {
@@ -138,8 +151,8 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
     if (!editor || !myReservation) return;
 
     setDragEdge(edge);
-    let curStart = myReservation.startLine;
-    let curEnd = myReservation.endLine;
+    let curStart = dragLines ? dragLines.startLine : myReservation.startLine;
+    let curEnd = dragLines ? dragLines.endLine : myReservation.endLine;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       const target = editor.getTargetAtClientPoint(moveEvent.clientX, moveEvent.clientY);
@@ -203,6 +216,18 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
     window.addEventListener('mouseup', onMouseUp);
   };
 
+  const showBlockedAlert = (peer: EditReservation) => {
+    setBlockedNotice({
+      ownerName: peer.ownerName,
+      startLine: peer.startLine,
+      endLine: peer.endLine,
+    });
+    if (blockedNoticeTimerRef.current) clearTimeout(blockedNoticeTimerRef.current);
+    blockedNoticeTimerRef.current = setTimeout(() => {
+      setBlockedNotice(null);
+    }, 3500);
+  };
+
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monaco.editor.defineTheme('nexathon-obsidian', {
@@ -248,7 +273,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
       }
     });
 
-    // Feature 1 & 2 Enforcement: Intercept keystrokes to prevent editing peer-reserved sections
+    // Editor-Level Protection: Intercept keystrokes to prevent editing peer-reserved sections
     editor.onKeyDown((e) => {
       // Allow pure navigation & view keys
       const isNav = [
@@ -290,25 +315,33 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
         // Intercept & block modification in peer's reserved section!
         e.preventDefault();
         e.stopPropagation();
-
-        setBlockedNotice({
-          ownerName: peerLock.ownerName,
-          ownerColor: peerLock.ownerColor,
-          startLine: peerLock.startLine,
-          endLine: peerLock.endLine,
-          activeLine: peerLock.activeLine || peerLock.startLine,
-        });
-
-        if (blockedNoticeTimerRef.current) clearTimeout(blockedNoticeTimerRef.current);
-        blockedNoticeTimerRef.current = setTimeout(() => {
-          setBlockedNotice(null);
-        }, 3000);
+        showBlockedAlert(peerLock);
       }
     });
 
+    // Paste event protection
+    editor.onDidPaste((e) => {
+      const startLine = e.range.startLineNumber;
+      const endLine = e.range.endLineNumber;
+      const now = Date.now();
+      const peerLock = reservationsRef.current.find(
+        (r) =>
+          r.filePath === activeFileRef.current?.path &&
+          r.ownerId !== currentUserId &&
+          r.expiresAt > now &&
+          !(endLine < r.startLine || startLine > r.endLine)
+      );
+      if (peerLock) {
+        editor.trigger('keyboard', 'undo', null);
+        showBlockedAlert(peerLock);
+      }
+    });
+
+    // Keep handles updated across all editor events
     editor.onDidScrollChange(() => updateBoxCoords());
     editor.onDidChangeCursorPosition(() => updateBoxCoords());
     editor.onDidChangeModelContent(() => updateBoxCoords());
+    editor.onDidLayoutChange(() => updateBoxCoords());
     updateBoxCoords();
 
     onEditorReady(editor, monaco);
@@ -473,30 +506,15 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
         </div>
       </div>
 
-      {/* Blocked Edit Alert Banner (Features 1 & 2) */}
+      {/* Blocked Edit Alert Banner */}
       {blockedNotice && (
-        <div
-          className="flex items-center justify-between border-b px-3 py-1.5 text-xs animate-fadeIn font-medium text-white shadow-md"
-          style={{
-            backgroundColor: `${blockedNotice.ownerColor}22`,
-            borderColor: blockedNotice.ownerColor,
-          }}
-        >
+        <div className="flex items-center justify-between border-b border-amber-500/50 bg-amber-950/90 px-3 py-1.5 text-xs font-medium text-amber-200 animate-fadeIn shadow-md">
           <div className="flex items-center gap-2">
-            <ShieldAlert
-              className="h-4 w-4 shrink-0 animate-bounce"
-              style={{ color: blockedNotice.ownerColor }}
-            />
+            <ShieldAlert className="h-4 w-4 shrink-0 text-amber-400 animate-bounce" />
             <span>
-              <strong>Line Locked:</strong> Lines {blockedNotice.startLine}–{blockedNotice.endLine}{' '}
-              (active: line {blockedNotice.activeLine}) are currently reserved by{' '}
-              <span
-                className="px-1.5 py-0.5 rounded text-[11px] font-bold text-white shadow-sm inline-block"
-                style={{ backgroundColor: blockedNotice.ownerColor }}
-              >
-                {blockedNotice.ownerName}
-              </span>
-              . Keystrokes are locked to prevent conflicts until they move to another line or workspace section.
+              <strong>Line Locked:</strong> Lines {blockedNotice.startLine}–{blockedNotice.endLine} are reserved by{' '}
+              <span className="font-bold text-white underline">{blockedNotice.ownerName}</span>.
+              Keystrokes are locked to prevent edit conflicts.
             </span>
           </div>
           <button
@@ -506,38 +524,6 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
           >
             <X className="h-3.5 w-3.5" />
           </button>
-        </div>
-      )}
-
-      {/* Advisory / Active Reservation Notice */}
-      {!blockedNotice && activeConflictReservation && (
-        <div
-          className="flex items-center justify-between border-b px-3 py-1.5 text-xs animate-fadeIn text-white/90"
-          style={{
-            backgroundColor: `${activeConflictReservation.ownerColor}18`,
-            borderColor: `${activeConflictReservation.ownerColor}55`,
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <ShieldAlert
-              className="h-4 w-4 shrink-0"
-              style={{ color: activeConflictReservation.ownerColor }}
-            />
-            <span>
-              <strong>Reserved Workspace:</strong> Lines{' '}
-              {activeConflictReservation.startLine}–{activeConflictReservation.endLine} are
-              reserved by{' '}
-              <span
-                className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-white inline-flex items-center gap-1 shadow-sm"
-                style={{ backgroundColor: activeConflictReservation.ownerColor }}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-white inline-block animate-ping" />
-                {activeConflictReservation.ownerName}
-              </span>
-              {activeConflictReservation.taskDescription ? ` (${activeConflictReservation.taskDescription})` : ''}
-              . This 10-line workspace window is locked to prevent collisions.
-            </span>
-          </div>
         </div>
       )}
 
@@ -561,7 +547,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
         </div>
       )}
 
-      {/* Monaco Editor Container */}
+      {/* Monaco Editor Container with Overlay Handles */}
       <div className="relative flex-1 overflow-hidden">
         <Editor
           height="100%"
@@ -581,48 +567,68 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
             padding: { top: 12 },
             renderLineHighlight: 'all',
             glyphMargin: true,
+            dragAndDrop: false,
           }}
         />
 
-        {/* Interactive Draggable Reservation Box Overlay & Handles */}
-        {boxCoords && myReservation && boxCoords.top + boxCoords.height > -50 && boxCoords.top < 3000 && (
+        {/* Compact, Subtle Draggable Reservation Handles & Right Bracket Rail */}
+        {boxCoords && myReservation && boxCoords.top + boxCoords.height > -30 && boxCoords.top < 3500 && (
           <>
-            {/* Top Draggable Handle (Compact & Shifted to Right) */}
+            {/* Visual Rail connecting Top & Bottom Handles along right margin */}
+            <div
+              className="pointer-events-none absolute z-20 border-r-2 border-teal-500/40 border-dashed"
+              style={{
+                top: `${boxCoords.top}px`,
+                height: `${boxCoords.height}px`,
+                right: `${boxCoords.rightOffset + 11}px`,
+              }}
+            />
+
+            {/* Top Draggable Handle: Substantially compact, sleek, positioned on right margin */}
             <div
               onMouseDown={(e) => handleStartDrag('top', e)}
-              className={`pointer-events-auto absolute right-24 z-30 flex items-center gap-1 px-1.5 py-0.5 rounded bg-teal-600/90 hover:bg-teal-500 text-white text-[10px] font-medium shadow-md cursor-ns-resize select-none transition-all ${
-                dragEdge === 'top' ? 'scale-110 ring-2 ring-teal-300 bg-teal-500' : 'hover:scale-105'
+              className={`group pointer-events-auto absolute z-30 flex items-center justify-center w-6 h-3.5 rounded-full bg-teal-900/90 dark:bg-teal-950/90 border border-teal-400/60 shadow-sm cursor-ns-resize select-none transition-all hover:bg-teal-700 hover:border-teal-300 hover:scale-110 before:absolute before:-inset-2 before:content-[''] ${
+                dragEdge === 'top' ? 'scale-110 ring-2 ring-teal-400 bg-teal-600' : 'opacity-85 hover:opacity-100'
               }`}
-              style={{ top: `${Math.max(4, boxCoords.top - 10)}px` }}
-              title="Click and drag upwards to expand the reservation to earlier lines"
+              style={{
+                top: `${Math.max(4, boxCoords.top - 7)}px`,
+                right: `${boxCoords.rightOffset}px`,
+              }}
+              title="Click and drag upwards to expand reservation to earlier lines"
             >
-              <ChevronsUp className="h-3 w-3" />
-              <span>▲ Ln {boxCoords.startLine}</span>
+              <ChevronsUp className="h-2.5 w-2.5 text-teal-200" />
+              {/* Dynamic Line Indicator visible on hover or drag */}
+              <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-teal-950 border border-teal-500/50 text-[10px] font-mono font-semibold text-teal-200 whitespace-nowrap shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                ▲ Ln {boxCoords.startLine}
+              </span>
             </div>
 
-            {/* Bottom Draggable Handle (Compact & Shifted to Right) */}
+            {/* Bottom Draggable Handle: Substantially compact, sleek, positioned on right margin */}
             <div
               onMouseDown={(e) => handleStartDrag('bottom', e)}
-              className={`pointer-events-auto absolute right-24 z-30 flex items-center gap-1 px-1.5 py-0.5 rounded bg-teal-600/90 hover:bg-teal-500 text-white text-[10px] font-medium shadow-md cursor-ns-resize select-none transition-all ${
-                dragEdge === 'bottom' ? 'scale-110 ring-2 ring-teal-300 bg-teal-500' : 'hover:scale-105'
+              className={`group pointer-events-auto absolute z-30 flex items-center justify-center w-6 h-3.5 rounded-full bg-teal-900/90 dark:bg-teal-950/90 border border-teal-400/60 shadow-sm cursor-ns-resize select-none transition-all hover:bg-teal-700 hover:border-teal-300 hover:scale-110 before:absolute before:-inset-2 before:content-[''] ${
+                dragEdge === 'bottom' ? 'scale-110 ring-2 ring-teal-400 bg-teal-600' : 'opacity-85 hover:opacity-100'
               }`}
-              style={{ top: `${boxCoords.top + boxCoords.height - 8}px` }}
-              title="Click and drag downwards to expand the reservation to as many lines as needed"
+              style={{
+                top: `${boxCoords.top + boxCoords.height - 7}px`,
+                right: `${boxCoords.rightOffset}px`,
+              }}
+              title="Click and drag downwards to expand reservation to more lines"
             >
-              <ChevronsDown className="h-3 w-3" />
-              <span>▼ Ln {boxCoords.endLine}</span>
+              <ChevronsDown className="h-2.5 w-2.5 text-teal-200" />
+              {/* Dynamic Line Indicator visible on hover or drag */}
+              <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-teal-950 border border-teal-500/50 text-[10px] font-mono font-semibold text-teal-200 whitespace-nowrap shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                ▼ Ln {boxCoords.endLine}
+              </span>
             </div>
 
-            {/* Floating Reservation Quick-Adjustment Toolbar */}
-            <div className="pointer-events-auto absolute right-14 top-2.5 z-30 flex items-center gap-2 rounded-lg border border-teal-500/40 bg-slate-900/95 backdrop-blur-md px-3 py-1.5 text-xs text-teal-200 shadow-xl select-none animate-fadeIn">
-              <Shield className="h-3.5 w-3.5 text-teal-400 shrink-0" />
-              <span className="font-semibold text-white">
+            {/* Compact Floating Quick-Adjustment Control at top right */}
+            <div className="pointer-events-auto absolute right-16 top-2 z-30 flex items-center gap-1.5 rounded-md border border-teal-500/40 bg-slate-900/90 backdrop-blur-md px-2.5 py-1 text-xs text-teal-200 shadow-lg select-none">
+              <Shield className="h-3 w-3 text-teal-400 shrink-0" />
+              <span className="font-medium text-white text-[11px]">
                 Lines {boxCoords.startLine}–{boxCoords.endLine}
               </span>
-              <span className="text-[10px] text-teal-300/80">
-                ({boxCoords.endLine - boxCoords.startLine + 1} lines reserved)
-              </span>
-              <div className="h-3.5 w-px bg-white/20" />
+              <div className="h-3 w-px bg-white/20 mx-0.5" />
               <button
                 type="button"
                 onClick={() => {
@@ -630,22 +636,10 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
                   if (onUpdateReservationRange) onUpdateReservationRange(myReservation.id, boxCoords.startLine, newEnd);
                   else if (onReserveSelection) onReserveSelection(boxCoords.startLine, newEnd);
                 }}
-                className="px-1.5 py-0.5 rounded bg-teal-800/80 hover:bg-teal-700 text-[10px] font-bold text-white transition cursor-pointer"
-                title="Add 5 lines to your reservation"
+                className="px-1.5 py-0.5 rounded bg-teal-800/80 hover:bg-teal-700 text-[10px] font-semibold text-white transition cursor-pointer"
+                title="Add 5 lines to reservation"
               >
-                +5 Lines
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const newEnd = boxCoords.endLine + 10;
-                  if (onUpdateReservationRange) onUpdateReservationRange(myReservation.id, boxCoords.startLine, newEnd);
-                  else if (onReserveSelection) onReserveSelection(boxCoords.startLine, newEnd);
-                }}
-                className="px-1.5 py-0.5 rounded bg-teal-800/80 hover:bg-teal-700 text-[10px] font-bold text-white transition cursor-pointer"
-                title="Add 10 lines to your reservation"
-              >
-                +10 Lines
+                +5
               </button>
               {boxCoords.endLine - boxCoords.startLine >= 5 && (
                 <button
@@ -655,17 +649,17 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
                     if (onUpdateReservationRange) onUpdateReservationRange(myReservation.id, boxCoords.startLine, newEnd);
                     else if (onReserveSelection) onReserveSelection(boxCoords.startLine, newEnd);
                   }}
-                  className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 transition cursor-pointer"
+                  className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-semibold text-slate-300 transition cursor-pointer"
                   title="Shrink reservation by 5 lines"
                 >
-                  -5 Lines
+                  -5
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => onReleaseReservation?.(myReservation.id)}
-                className="px-2 py-0.5 rounded bg-rose-950/80 border border-rose-500/40 hover:bg-rose-900 text-[10px] font-bold text-rose-200 transition cursor-pointer ml-1"
-                title="Release reservation back to dynamic cursor"
+                className="px-1.5 py-0.5 rounded bg-rose-950/80 border border-rose-500/40 hover:bg-rose-900 text-[10px] font-semibold text-rose-200 transition cursor-pointer ml-0.5"
+                title="Release reservation"
               >
                 Release
               </button>
@@ -673,7 +667,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
           </>
         )}
 
-        {/* Drag-Selection Quick Reserve Pill (when user drags mouse across lines in Monaco) */}
+        {/* Drag-Selection Quick Reserve Pill */}
         {selectedRange && selectedRange.endLine > selectedRange.startLine && (
           <div className="pointer-events-auto absolute left-1/2 -translate-x-1/2 top-3 z-30 flex items-center gap-2.5 rounded-lg border border-teal-500/50 bg-teal-950/95 backdrop-blur-md px-3.5 py-1.5 text-xs text-white shadow-2xl animate-fadeIn">
             <Shield className="h-4 w-4 text-teal-400 animate-pulse shrink-0" />

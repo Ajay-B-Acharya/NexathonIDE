@@ -26,6 +26,19 @@ export const server = http.createServer((req, res) => {
 
 export const wss = new WebSocketServer({ server });
 
+// Attach default safety error listeners to prevent unhandled node event crashes
+server.on('error', (err: any) => {
+  if (err.code === 'EADDRINUSE') {
+    console.warn(`[Collaboration Server] Port ${PORT} already occupied; active collaboration server instance detected.`);
+  } else {
+    console.error('[Collaboration Server] HTTP server error:', err?.message || err);
+  }
+});
+
+wss.on('error', (err: any) => {
+  console.warn('[Collaboration Server] WebSocket server error:', err?.message || err);
+});
+
 // Register connection routing and heartbeats
 registerConnectionHandler(wss);
 
@@ -33,9 +46,14 @@ registerConnectionHandler(wss);
  * Start the collaboration server on the given port.
  */
 export function startServer(port: number = PORT): Promise<http.Server> {
-  return new Promise((resolve) => {
-    server.listen(port, () => {
-      console.log(`[Collaboration Server] Listening on ws://localhost:${port}`);
+  return new Promise((resolve, reject) => {
+    const errorHandler = (err: any) => {
+      reject(err);
+    };
+    server.once('error', errorHandler);
+    server.listen(port, '0.0.0.0', () => {
+      server.removeListener('error', errorHandler);
+      console.log(`[Collaboration Server] Listening on ws://0.0.0.0:${port}`);
       resolve(server);
     });
   });
@@ -69,7 +87,11 @@ const isMainScript = process.argv[1] && (
 );
 
 if (isMainScript) {
-  startServer(PORT);
+  startServer(PORT).catch((err) => {
+    if (err?.code !== 'EADDRINUSE') {
+      console.error('[Collaboration Server] Startup failed:', err?.message || err);
+    }
+  });
 }
 
 const handleShutdown = async () => {
