@@ -49,7 +49,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['yjs', 'y-monaco', 'y-websocket', 'y-protocols/awareness'],
+    include: ['yjs', 'y-monaco', 'y-websocket', 'y-protocols/awareness', 'y-protocols/sync'],
     exclude: ['@xterm/xterm'],
   },
   worker: {

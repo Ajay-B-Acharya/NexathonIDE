@@ -8,21 +8,24 @@ const projectRoot = path.resolve(__dirname, '../..');
 
 console.log('Starting Collaborative IDE servers...\n');
 
-const yjsServer = spawn('npx', ['tsx', path.join(__dirname, 'yjs-server.ts')], {
+const isWin = process.platform === 'win32';
+const npxCmd = isWin ? 'npx.cmd' : 'npx';
+
+const yjsServer = spawn(npxCmd, ['tsx', path.join(__dirname, 'yjs-server.ts')], {
   stdio: 'inherit',
-  shell: true,
+  shell: isWin,
   env: { ...process.env, Y_WEBSOCKET_PORT: '1234' },
 });
 
-const apiServer = spawn('npx', ['tsx', path.join(__dirname, 'api-server.ts')], {
+const apiServer = spawn(npxCmd, ['tsx', path.join(__dirname, 'api-server.ts')], {
   stdio: 'inherit',
-  shell: true,
+  shell: isWin,
   env: { ...process.env, PORT: '3001' },
 });
 
-const viteDev = spawn('npx', ['vite'], {
+const viteDev = spawn(npxCmd, ['vite'], {
   stdio: 'inherit',
-  shell: true,
+  shell: isWin,
   cwd: projectRoot,
 });
 
