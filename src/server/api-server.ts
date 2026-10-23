@@ -122,6 +122,28 @@ app.get('/api/users/:id', async (req: Request, res: Response) => {
 });
 
 // Rooms / Workspaces
+app.get('/api/rooms', async (req: Request, res: Response) => {
+  try {
+    const token = getBearerToken(req);
+
+    if (supabaseConnected) {
+      const rooms = await WorkspaceService.listRooms(token);
+      return res.json(rooms);
+    }
+
+    const rooms = Array.from(memoryRooms.values()).map((r) => ({
+      ...r,
+      createdAt: r.created_at || r.createdAt || new Date().toISOString(),
+      updatedAt: r.updated_at || r.updatedAt || new Date().toISOString(),
+      ownerId: r.owner_id || r.ownerId || 'default',
+    }));
+    res.json(rooms);
+  } catch (error: any) {
+    console.error('Error listing rooms:', error);
+    res.status(500).json({ error: error.message || 'Failed to list rooms' });
+  }
+});
+
 app.post('/api/rooms', async (req: Request, res: Response) => {
   try {
     const { name, ownerId, userId } = req.body;
