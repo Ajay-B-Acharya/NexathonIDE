@@ -15,13 +15,13 @@ import {
   Users,
   Command,
   X,
+  Menu,
   Loader2,
   Activity,
   RotateCcw,
   Clock,
   Bug,
   Check,
-  Radio,
   AlertTriangle,
   Lock,
   Flame,
@@ -140,12 +140,12 @@ console.log("Allocated per node (safe fallback):", perNode);`,
 ];
 
 const CURSOR_COLORS = [
-  { hex: '#6366f1', name: 'Indigo' },
+  { hex: '#168c7d', name: 'Teal' },
   { hex: '#10b981', name: 'Emerald' },
+  { hex: '#06b6d4', name: 'Cyan' },
+  { hex: '#3b82f6', name: 'Blue' },
   { hex: '#f59e0b', name: 'Amber' },
   { hex: '#ec4899', name: 'Rose' },
-  { hex: '#a855f7', name: 'Violet' },
-  { hex: '#06b6d4', name: 'Cyan' },
 ];
 
 export const Landing: React.FC<LandingProps> = ({
@@ -194,6 +194,7 @@ export const Landing: React.FC<LandingProps> = ({
 
   // Onboarding Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [handleName, setHandleName] = useState('');
   const [selectedColor, setSelectedColor] = useState(CURSOR_COLORS[0].hex);
   const [isLaunchingDemo, setIsLaunchingDemo] = useState(false);
@@ -366,71 +367,72 @@ export const Landing: React.FC<LandingProps> = ({
       }`}
     >
       {/* Clean Architectural Grid Background */}
+      {/* Ambient Visual Canvas */}
       <AmbientCollaborationCanvas theme={theme} />
 
-      {/* Atmospheric Aurora Light Cones (Linear & Vercel depth) */}
-      <div
-        className={`pointer-events-none fixed -top-44 left-1/2 h-[450px] w-[1000px] -translate-x-1/2 rounded-full blur-[140px] transition-opacity duration-700 ${
-          isDark
-            ? 'bg-gradient-to-b from-indigo-500/25 via-purple-600/15 to-transparent opacity-100'
-            : 'bg-gradient-to-b from-indigo-400/20 via-purple-300/15 to-transparent opacity-85'
-        }`}
-      />
-      <div
-        className={`pointer-events-none fixed top-24 left-1/4 h-[350px] w-[500px] -translate-x-1/2 rounded-full blur-[130px] transition-opacity duration-700 ${
-          isDark ? 'bg-emerald-500/10 opacity-70' : 'bg-emerald-400/10 opacity-60'
-        }`}
-      />
-      <div
-        className={`pointer-events-none fixed top-32 right-1/4 h-[350px] w-[500px] translate-x-1/2 rounded-full blur-[130px] transition-opacity duration-700 ${
-          isDark ? 'bg-purple-600/12 opacity-80' : 'bg-purple-400/10 opacity-60'
-        }`}
-      />
-
-      {/* 1. GLASSMORPHIC COMMAND HEADER */}
-      <header className="sticky top-0 z-30 border-b theme-border theme-bg-glass backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
-          {/* Left: Brand Identity & Compact Version Badge */}
+      {/* 1. COMMAND HEADER */}
+      <header className="sticky top-0 z-40 border-b theme-border bg-[var(--bg-root)]/90 backdrop-blur-xl transition-all duration-200">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3">
+          {/* Left: Brand Identity */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-[0_0_18px_rgba(99,102,241,0.45)]">
-                <Code2 className="h-4 w-4" />
+            <a href="#" className="group flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-600 text-white shadow-xs transition-transform duration-200 group-hover:scale-105">
+                <Code2 className="h-5 w-5" />
               </div>
-              <span className="text-sm font-bold tracking-tight theme-text-primary whitespace-nowrap">
-                Nexathon<span className="text-indigo-500">IDE</span>
-              </span>
-              <span className="hidden sm:inline-flex items-center rounded-md border theme-border px-2 py-0.5 font-mono text-[10px] theme-text-muted whitespace-nowrap">
-                v2.4 CRDT
-              </span>
-            </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-extrabold tracking-tight theme-text-primary">
+                    Nexathon<span className="text-teal-600 dark:text-teal-400">IDE</span>
+                  </span>
+                  <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/20 bg-teal-500/10 px-2 py-0.5 font-mono text-[10px] font-medium text-teal-600 dark:text-teal-400">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    </span>
+                    v2.4 CRDT
+                  </span>
+                </div>
+              </div>
+            </a>
           </div>
 
-          {/* Center: Cleanly Spaced Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-8 text-xs font-medium theme-text-secondary whitespace-nowrap">
-            <a href="#live-sandbox" className="hover:text-indigo-500 hover:theme-text-primary transition-colors">
+          {/* Center: Floating Capsule Navigation Tabs */}
+          <nav className="hidden lg:flex items-center gap-1 rounded-full border theme-border bg-slate-900/30 dark:bg-black/20 p-1 backdrop-blur-md">
+            <a
+              href="#live-sandbox"
+              className="rounded-full px-4 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary hover:bg-white/[0.08] dark:hover:bg-white/[0.08] transition-all"
+            >
               WASM Sandbox
             </a>
-            <a href="#comparison" className="hover:text-indigo-500 hover:theme-text-primary transition-colors">
-              Architecture vs Docker
+            <a
+              href="#comparison"
+              className="rounded-full px-4 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary hover:bg-white/[0.08] dark:hover:bg-white/[0.08] transition-all"
+            >
+              Docker vs WASM
             </a>
-            <a href="#bento" className="hover:text-indigo-500 hover:theme-text-primary transition-colors">
+            <a
+              href="#bento"
+              className="rounded-full px-4 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary hover:bg-white/[0.08] dark:hover:bg-white/[0.08] transition-all"
+            >
               Core Innovations
             </a>
-            <a href="#telemetry" className="hover:text-indigo-500 hover:theme-text-primary transition-colors">
-              Benchmarks
+            <a
+              href="#telemetry"
+              className="rounded-full px-4 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary hover:bg-white/[0.08] dark:hover:bg-white/[0.08] transition-all"
+            >
+              Cluster Telemetry
             </a>
           </nav>
 
-          {/* Right: Telemetry Pill + Theme Toggle + Auth / Launch */}
+          {/* Right: Latency Meter + Theme Toggle + Auth / Action CTAs */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            {/* Live Cluster Latency Probe Pill */}
+            {/* Interactive Cluster Latency Probe Pill */}
             <button
               type="button"
               onClick={runClusterLatencyProbe}
-              title="Click to re-probe Yjs WebSocket cluster RTT"
-              className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-mono transition cursor-pointer whitespace-nowrap shrink-0 ${
+              title="Click to test Yjs WebSocket cluster round-trip latency"
+              className={`hidden sm:inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-mono transition-all cursor-pointer whitespace-nowrap shrink-0 hover:scale-[1.02] active:scale-[0.98] ${
                 isDark
-                  ? 'border-emerald-500/30 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-950/70'
+                  ? 'border-emerald-500/30 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/40 hover:border-emerald-500/50 shadow-xs'
                   : 'border-emerald-600/30 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
               }`}
             >
@@ -447,7 +449,7 @@ export const Landing: React.FC<LandingProps> = ({
               <button
                 type="button"
                 onClick={onNavigateToLogin}
-                className="hidden sm:inline-flex items-center rounded-lg border theme-border theme-bg-surface-1 px-3 py-1.5 text-xs font-medium theme-text-secondary hover:border-indigo-500/40 hover:theme-text-primary transition cursor-pointer whitespace-nowrap shrink-0"
+                className="hidden sm:inline-flex items-center rounded-xl border theme-border bg-slate-900/40 dark:bg-slate-800/40 px-3.5 py-1.5 text-xs font-medium theme-text-secondary hover:border-teal-500/40 hover:theme-text-primary hover:bg-white/[0.04] transition cursor-pointer whitespace-nowrap shrink-0"
               >
                 Sign In
               </button>
@@ -456,57 +458,123 @@ export const Landing: React.FC<LandingProps> = ({
             <button
               type="button"
               onClick={handlePrimaryCTA}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_0_16px_rgba(99,102,241,0.35)] hover:bg-indigo-500 transition cursor-pointer whitespace-nowrap shrink-0"
+              className="group relative inline-flex items-center gap-2 rounded-xl bg-teal-600 hover:bg-teal-500 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap shrink-0"
             >
               <span>
-                {existingUser ? `Resume (${existingUser.name})` : 'Open Workspace'}
+                {existingUser ? `Resume (${existingUser.name})` : 'Launch Cloud IDE'}
               </span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+            </button>
+
+            {/* Mobile Navigation Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              className="lg:hidden inline-flex items-center justify-center rounded-xl border theme-border p-2 theme-text-secondary hover:theme-text-primary hover:bg-white/[0.05] transition cursor-pointer"
+              aria-label="Toggle mobile menu"
+            >
+              {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </button>
           </div>
         </div>
+
+        {/* Responsive Mobile Drawer */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden border-t theme-border bg-[var(--bg-root)]/95 backdrop-blur-2xl px-6 py-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <nav className="flex flex-col gap-2 text-sm font-medium">
+              <a
+                href="#live-sandbox"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-lg hover:bg-white/[0.06] theme-text-secondary hover:theme-text-primary transition"
+              >
+                WASM Sandbox
+              </a>
+              <a
+                href="#comparison"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-lg hover:bg-white/[0.06] theme-text-secondary hover:theme-text-primary transition"
+              >
+                Docker vs WASM
+              </a>
+              <a
+                href="#bento"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-lg hover:bg-white/[0.06] theme-text-secondary hover:theme-text-primary transition"
+              >
+                Core Innovations
+              </a>
+              <a
+                href="#telemetry"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-lg hover:bg-white/[0.06] theme-text-secondary hover:theme-text-primary transition"
+              >
+                Cluster Telemetry
+              </a>
+            </nav>
+            <div className="pt-2 border-t theme-border flex items-center justify-between">
+              <button
+                type="button"
+                onClick={runClusterLatencyProbe}
+                className="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400"
+              >
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                {lastRttMs}ms CRDT Ping
+              </button>
+              {!existingUser && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onNavigateToLogin();
+                  }}
+                  className="text-xs font-semibold theme-text-primary hover:text-teal-400"
+                >
+                  Sign In →
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* 2. HERO SECTION */}
-      <section className="relative z-10 mx-auto max-w-7xl px-6 pt-14 pb-8 text-center">
-        <div
-          className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-1 text-xs font-medium backdrop-blur-md shadow-xs ${
-            isDark
-              ? 'border-indigo-500/30 bg-[#141824]/90 text-indigo-300'
-              : 'border-indigo-500/25 bg-indigo-50/90 text-indigo-700'
-          }`}
-        >
-          <Radio className="h-3.5 w-3.5 text-indigo-500 animate-pulse" />
-          <span>
-            Multi-File Yjs State Vectors • Pyodide 0.26 WASM • Autonomous AI Diff Guard
+      {/* 2. REFINED HERO SECTION */}
+      <section className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 pt-12 sm:pt-16 pb-8 text-center">
+        {/* Eyebrow Announcement Pill */}
+        <div className="inline-flex items-center gap-2 rounded-full border theme-border theme-bg-surface-2 px-4 py-1.5 text-xs font-medium theme-text-secondary shadow-xs mb-6 cursor-default">
+          <span className="relative flex h-2 w-2">
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
           </span>
+          <span className="font-semibold text-emerald-500">Nexathon 2.0 Engine</span>
+          <span className="opacity-40">•</span>
+          <span>Sub-15ms CRDT Synchronization & Pyodide WASM</span>
+          <Sparkles className="h-3.5 w-3.5 text-teal-500 ml-0.5" />
         </div>
 
-        <h1 className="mx-auto max-w-4xl text-4xl sm:text-5xl lg:text-[58px] font-extrabold tracking-tight theme-text-primary leading-[1.08]">
-          Distributed Code Synchronization.{' '}
-          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 bg-clip-text text-transparent">
-            Zero-Install Browser WASM.
+        {/* Master Editorial Headline */}
+        <h1 className="mx-auto max-w-5xl text-4xl sm:text-6xl lg:text-[70px] font-extrabold tracking-tight sm:tracking-tighter theme-text-primary leading-[1.06]">
+          Distributed Real-Time Coding.{' '}
+          <span className="block mt-1.5 sm:mt-2.5 text-teal-600 dark:text-teal-400">
+            Zero Cold Starts. Pure In-Browser WASM.
           </span>
         </h1>
 
-        <p className="mx-auto mt-4 max-w-2xl text-sm sm:text-base theme-text-secondary leading-relaxed">
-          Engineered with isolated per-file <code className="font-mono text-indigo-500">Y.Doc</code>{' '}
-          buffers, Web Worker & Pyodide execution heaps, bidirectional{' '}
-          <code className="font-mono text-indigo-500">node-pty</code> terminal streams, and atomic
-          CRDT diff verification.
+        {/* Crafted Persuasive Subheadline */}
+        <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg lg:text-xl font-normal leading-relaxed theme-text-secondary text-balance">
+          Experience conflict-free peer collaboration with Yjs state vectors, instant in-browser Pyodide & QuickJS WebAssembly runtimes, and automated AI diff guards — with zero installation.
         </p>
 
         {/* Primary & 1-Click Guest CTAs */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5">
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
           <button
             type="button"
             onClick={handlePrimaryCTA}
-            className="inline-flex items-center gap-2.5 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_0_25px_rgba(99,102,241,0.4)] hover:bg-indigo-500 transition cursor-pointer"
+            className="group relative inline-flex items-center gap-3 rounded-2xl bg-teal-600 hover:bg-teal-500 px-7 py-3.5 text-sm font-semibold text-white shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
           >
             <span>
-              {existingUser ? 'Resume Active Workspace →' : 'Launch Full Cloud IDE'}
+              {existingUser ? 'Resume Active Workspace' : 'Launch Full Cloud IDE'}
             </span>
-            <kbd className="rounded border border-white/20 bg-black/25 px-1.5 py-0.5 text-[10px] font-mono text-indigo-100">
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            <kbd className="rounded-md border border-white/25 bg-black/25 px-2 py-0.5 text-[11px] font-mono text-teal-100 shadow-xs">
               ⌘K
             </kbd>
           </button>
@@ -515,16 +583,16 @@ export const Landing: React.FC<LandingProps> = ({
             type="button"
             onClick={() => void handleGuestDemoClick()}
             disabled={isLaunchingDemo}
-            className={`inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold transition cursor-pointer ${
+            className={`group inline-flex items-center gap-2.5 rounded-2xl border px-6 py-3.5 text-sm font-semibold transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
               isDark
-                ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/40'
-                : 'border-emerald-600/30 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/40 hover:border-emerald-400/60 shadow-xs'
+                : 'border-emerald-600/30 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 shadow-xs'
             }`}
           >
             {isLaunchingDemo ? (
-              <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+              <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
             ) : (
-              <Zap className="h-4 w-4 text-emerald-500 fill-current" />
+              <Zap className="h-4 w-4 text-emerald-400 fill-current group-hover:scale-110 transition-transform" />
             )}
             <span>
               {isLaunchingDemo
@@ -535,58 +603,58 @@ export const Landing: React.FC<LandingProps> = ({
         </div>
 
         {/* Real-Time Benchmark Metrics Strip */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-xs font-mono">
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-3 text-xs font-mono">
           <div
-            className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 ${
+            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all hover:scale-[1.02] ${
               isDark
-                ? 'border-white/10 bg-[#121624] text-slate-200'
+                ? 'border-white/10 bg-[#121624]/90 text-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.3)]'
                 : 'border-slate-200/90 bg-white/95 shadow-xs text-slate-800'
             }`}
           >
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
               WASM Cold Start:
             </span>
-            <span className="font-semibold text-emerald-500">4.2ms</span>
+            <span className="font-semibold text-emerald-400">4.2ms</span>
           </div>
           <div
-            className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 ${
+            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all hover:scale-[1.02] ${
               isDark
-                ? 'border-white/10 bg-[#121624] text-slate-200'
+                ? 'border-white/10 bg-[#121624]/90 text-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.3)]'
                 : 'border-slate-200/90 bg-white/95 shadow-xs text-slate-800'
             }`}
           >
-            <span className="flex h-2 w-2 rounded-full bg-indigo-500" />
+            <span className="flex h-2 w-2 rounded-full bg-teal-500" />
             <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
               CRDT Convergence:
             </span>
-            <span className="font-semibold text-indigo-500">Sub-15ms p99</span>
+            <span className="font-semibold text-teal-600 dark:text-teal-400">Sub-15ms p99</span>
           </div>
           <div
-            className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 ${
+            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all hover:scale-[1.02] ${
               isDark
-                ? 'border-white/10 bg-[#121624] text-slate-200'
+                ? 'border-white/10 bg-[#121624]/90 text-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.3)]'
                 : 'border-slate-200/90 bg-white/95 shadow-xs text-slate-800'
             }`}
           >
-            <span className="flex h-2 w-2 rounded-full bg-purple-500" />
+            <span className="flex h-2 w-2 rounded-full bg-teal-500" />
             <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
               Execution Privacy:
             </span>
-            <span className="font-semibold text-purple-500">100% In-Browser</span>
+            <span className="font-semibold text-teal-600 dark:text-teal-400">100% In-Browser</span>
           </div>
           <div
-            className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 ${
+            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all hover:scale-[1.02] ${
               isDark
-                ? 'border-white/10 bg-[#121624] text-slate-200'
+                ? 'border-white/10 bg-[#121624]/90 text-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.3)]'
                 : 'border-slate-200/90 bg-white/95 shadow-xs text-slate-800'
             }`}
           >
-            <span className="flex h-2 w-2 rounded-full bg-amber-500" />
+            <span className="flex h-2 w-2 rounded-full bg-amber-400" />
             <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
               Cloud Compute:
             </span>
-            <span className="font-semibold text-amber-500">$0 / Unlimited</span>
+            <span className="font-semibold text-amber-400">$0 / Unlimited</span>
           </div>
         </div>
         {/* Unified Interactive Showcase IDE Container with Carousel Effect */}
@@ -611,7 +679,7 @@ export const Landing: React.FC<LandingProps> = ({
                   onClick={() => setHeroActiveSlide('multiplayer')}
                   className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition cursor-pointer ${
                     heroActiveSlide === 'multiplayer'
-                      ? 'bg-indigo-600 text-white shadow-xs font-semibold'
+                      ? 'bg-teal-600 text-white shadow-xs font-semibold'
                       : 'theme-text-secondary hover:theme-text-primary'
                   }`}
                 >
@@ -623,7 +691,7 @@ export const Landing: React.FC<LandingProps> = ({
                   onClick={() => setHeroActiveSlide('sandbox')}
                   className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition cursor-pointer ${
                     heroActiveSlide === 'sandbox'
-                      ? 'bg-indigo-600 text-white shadow-xs font-semibold'
+                      ? 'bg-teal-600 text-white shadow-xs font-semibold'
                       : 'theme-text-secondary hover:theme-text-primary'
                   }`}
                 >
@@ -637,8 +705,8 @@ export const Landing: React.FC<LandingProps> = ({
             <div className="flex items-center gap-2">
               {heroActiveSlide === 'multiplayer' ? (
                 <div className="flex items-center gap-2">
-                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-mono text-[11px]">
-                    <Users className="w-3.5 h-3.5 text-indigo-400" />
+                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 font-mono text-[11px]">
+                    <Users className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                     <span>2 Active Peers</span>
                   </div>
                   <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[11px]">
@@ -659,8 +727,8 @@ export const Landing: React.FC<LandingProps> = ({
                           onClick={() => handleSelectPreset(preset)}
                           className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-mono transition cursor-pointer ${
                             isSelected
-                              ? 'border-indigo-500 bg-indigo-600 text-white shadow-xs'
-                              : 'theme-border theme-bg-surface-1 theme-text-secondary hover:border-indigo-500/40'
+                              ? 'border-teal-500 bg-teal-600 text-white shadow-xs'
+                              : 'theme-border theme-bg-surface-1 theme-text-secondary hover:border-teal-500/40'
                           }`}
                         >
                           <span>{idx + 1}. {preset.filename}</span>
@@ -685,7 +753,7 @@ export const Landing: React.FC<LandingProps> = ({
                     type="button"
                     onClick={() => void handleRunSandbox(sandboxCode, activePreset.language)}
                     disabled={isExecutingSandbox}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-[0_0_12px_rgba(16,185,129,0.35)] hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-xs hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer"
                   >
                     {isExecutingSandbox ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -726,7 +794,7 @@ export const Landing: React.FC<LandingProps> = ({
               <div className="md:col-span-7 p-5 bg-black/5 dark:bg-black/25 space-y-2.5 theme-text-primary">
                 <p className="theme-text-muted"># Instant local execution via WebAssembly</p>
                 <p>
-                  <span className="text-indigo-600 dark:text-indigo-400">import</span> <span className="text-amber-500 dark:text-amber-400">numpy</span> <span className="text-indigo-600 dark:text-indigo-400">as</span> np
+                  <span className="text-teal-600 dark:text-teal-400">import</span> <span className="text-amber-500 dark:text-amber-400">numpy</span> <span className="text-teal-600 dark:text-teal-400">as</span> np
                 </p>
                 <p>
                   dataset = np.random.randn(1000)
@@ -736,7 +804,7 @@ export const Landing: React.FC<LandingProps> = ({
                 </p>
                 <p className="flex items-center">
                   <span>print(f<span className="text-emerald-600 dark:text-emerald-400">&quot;Calculated local variance: &#123;dataset.var():.4f&#125;&quot;</span>)</span>
-                  <span className="inline-block w-1.5 h-3.5 ml-1 bg-indigo-500 animate-pulse" />
+                  <span className="inline-block w-1.5 h-3.5 ml-1 bg-teal-500 animate-pulse" />
                 </p>
                 <p className="theme-text-muted pt-2"># AI Diff Guard &amp; CRDT peer mesh synched</p>
               </div>
@@ -746,7 +814,7 @@ export const Landing: React.FC<LandingProps> = ({
                 <div className="space-y-1.5 font-mono">
                   <p className="theme-text-muted">[yjs] Peer mesh synched (room: nexathon-prod)</p>
                   <p className="text-emerald-600 dark:text-emerald-400">&gt;&gt;&gt; Running in browser WebWorker thread...</p>
-                  <p className="text-indigo-600 dark:text-indigo-300">&#123;&quot;mean&quot;: 0.0314, &quot;status&quot;: &quot;executed_wasm&quot;&#125;</p>
+                  <p className="text-teal-600 dark:text-teal-300">&#123;&quot;mean&quot;: 0.0314, &quot;status&quot;: &quot;executed_wasm&quot;&#125;</p>
                   <p className="theme-text-primary">Calculated local variance: 0.9982</p>
                   <p className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 pt-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -780,9 +848,9 @@ export const Landing: React.FC<LandingProps> = ({
                   }`}
                 >
                   <span>
-                    Press <kbd className="rounded border px-1 border-white/20 bg-white/10">1</kbd>, <kbd className="rounded border px-1 border-white/20 bg-white/10">2</kbd>, <kbd className="rounded border px-1 border-white/20 bg-white/10">3</kbd> to switch • <strong className="text-indigo-400">Ctrl+Enter</strong> to run
+                    Press <kbd className="rounded border px-1 border-white/20 bg-white/10">1</kbd>, <kbd className="rounded border px-1 border-white/20 bg-white/10">2</kbd>, <kbd className="rounded border px-1 border-white/20 bg-white/10">3</kbd> to switch • <strong className="text-teal-600 dark:text-teal-400">Ctrl+Enter</strong> to run
                   </span>
-                  <span className="text-indigo-400">{activePreset.runtimeLabel}</span>
+                  <span className="text-teal-600 dark:text-teal-400">{activePreset.runtimeLabel}</span>
                 </div>
 
                 <div className="relative flex flex-1 font-mono text-xs leading-6 overflow-hidden">
@@ -806,8 +874,8 @@ export const Landing: React.FC<LandingProps> = ({
                     aria-label="Interactive WASM Code Sandbox"
                     className={`w-full flex-1 resize-none bg-transparent p-3 font-mono text-xs leading-6 focus:outline-none min-h-[220px] ${
                       isDark
-                        ? 'text-slate-100 selection:bg-indigo-500/30'
-                        : 'text-slate-900 selection:bg-indigo-500/20'
+                        ? 'text-slate-100 selection:bg-teal-500/30'
+                        : 'text-slate-900 selection:bg-teal-500/20'
                     }`}
                   />
                 </div>
@@ -831,7 +899,7 @@ export const Landing: React.FC<LandingProps> = ({
                         <CheckCircle2 className="h-3 w-3 text-emerald-400" />
                         Exit {sandboxOutput.exitCode}
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono border-white/10 bg-[#141824] text-indigo-300">
+                      <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono border-white/10 bg-[#141824] text-teal-300">
                         <Clock className="h-3 w-3" />
                         {sandboxOutput.durationMs}ms
                       </span>
@@ -857,7 +925,7 @@ export const Landing: React.FC<LandingProps> = ({
                           <button
                             type="button"
                             onClick={() => setShowAiDiffDrawer((prev) => !prev)}
-                            className="inline-flex items-center gap-1 rounded bg-gradient-to-r from-purple-600 to-indigo-600 px-2 py-0.5 font-sans text-[10px] font-semibold text-white cursor-pointer"
+                            className="inline-flex items-center gap-1 rounded bg-teal-600 hover:bg-teal-500 px-2 py-0.5 font-sans text-[10px] font-semibold text-white transition cursor-pointer shadow-xs"
                           >
                             <Bug className="h-3 w-3" />
                             <span>Inspect AI Fix</span>
@@ -872,10 +940,10 @@ export const Landing: React.FC<LandingProps> = ({
 
                   {/* AI Diff Drawer */}
                   {showAiDiffDrawer && activePreset.proposedAiFix && (
-                    <div className="rounded-xl border border-purple-500/40 bg-purple-950/20 p-3 space-y-2 font-sans">
+                    <div className="rounded-xl border border-teal-500/40 bg-teal-950/20 p-3 space-y-2 font-sans">
                       <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-300">
-                          <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-300">
+                          <Sparkles className="h-3.5 w-3.5 text-teal-400" />
                           AI Diff Guard Diagnosis
                         </span>
                         <button
@@ -899,7 +967,7 @@ export const Landing: React.FC<LandingProps> = ({
 
                 <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-2.5 font-sans text-[11px] text-slate-400">
                   <span>Worker Watchdog: 10s Timeout</span>
-                  <span className="font-mono text-indigo-400">Pyodide 0.26 WASM</span>
+                  <span className="font-mono text-teal-600 dark:text-teal-400">Pyodide 0.26 WASM</span>
                 </div>
               </div>
             </div>
@@ -913,7 +981,7 @@ export const Landing: React.FC<LandingProps> = ({
                 type="button"
                 onClick={() => setHeroActiveSlide('multiplayer')}
                 className={`h-2 rounded-full transition-all cursor-pointer ${
-                  heroActiveSlide === 'multiplayer' ? 'w-6 bg-indigo-500' : 'w-2 bg-slate-400/40 hover:bg-slate-400'
+                  heroActiveSlide === 'multiplayer' ? 'w-6 bg-teal-500' : 'w-2 bg-slate-400/40 hover:bg-slate-400'
                 }`}
                 title="Slide 1: Collaborative CRDT Mesh"
               />
@@ -921,7 +989,7 @@ export const Landing: React.FC<LandingProps> = ({
                 type="button"
                 onClick={() => setHeroActiveSlide('sandbox')}
                 className={`h-2 rounded-full transition-all cursor-pointer ${
-                  heroActiveSlide === 'sandbox' ? 'w-6 bg-indigo-500' : 'w-2 bg-slate-400/40 hover:bg-slate-400'
+                  heroActiveSlide === 'sandbox' ? 'w-6 bg-teal-500' : 'w-2 bg-slate-400/40 hover:bg-slate-400'
                 }`}
                 title="Slide 2: Live In-Browser WASM Sandbox"
               />
@@ -931,7 +999,7 @@ export const Landing: React.FC<LandingProps> = ({
             <button
               type="button"
               onClick={() => setHeroActiveSlide((prev: 'multiplayer' | 'sandbox') => prev === 'multiplayer' ? 'sandbox' : 'multiplayer')}
-              className="inline-flex items-center gap-1.5 font-mono text-[11px] text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 font-mono text-[11px] text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 transition cursor-pointer"
             >
               <span>
                 {heroActiveSlide === 'multiplayer'
@@ -946,7 +1014,7 @@ export const Landing: React.FC<LandingProps> = ({
       {/* 4. THE PARADIGM SHIFT: DOCKER VS CLIENT-SIDE WASM */}
       <section id="comparison" className="relative z-10 mx-auto max-w-6xl px-6 pb-16">
         <div className="text-center max-w-2xl mx-auto mb-8">
-          <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-indigo-500">
+          <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400">
             Architectural Benchmark
           </span>
           <h2 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight theme-text-primary">
@@ -1025,7 +1093,7 @@ export const Landing: React.FC<LandingProps> = ({
       {/* 5. BENTO GRID: FOUR ARCHITECTURAL PILLARS */}
       <section id="bento" className="relative z-10 mx-auto max-w-6xl px-6 pb-16">
         <div className="text-center max-w-2xl mx-auto mb-8">
-          <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-purple-500">
+          <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400">
             Core Engineering
           </span>
           <h2 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight theme-text-primary">
@@ -1038,20 +1106,20 @@ export const Landing: React.FC<LandingProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Bento Card 1: CRDT */}
-          <div className="group rounded-2xl border theme-border theme-bg-surface-1 p-5 transition-all duration-300 hover:border-indigo-500/50 hover:theme-shadow relative">
+          <div className="group rounded-2xl border theme-border theme-bg-surface-1 p-5 transition-all duration-300 hover:border-teal-500/50 hover:theme-shadow relative">
             <div className="flex items-center justify-between mb-3">
-              <span className="rounded bg-indigo-500/20 px-2 py-0.5 text-[10px] font-mono font-semibold text-indigo-500">
+              <span className="rounded bg-teal-500/15 px-2 py-0.5 text-[10px] font-mono font-semibold text-teal-600 dark:text-teal-400">
                 01 // CRDT
               </span>
-              <Users className="h-4 w-4 text-indigo-500" />
+              <Users className="h-4 w-4 text-teal-600 dark:text-teal-400" />
             </div>
             <h3 className="text-sm font-bold theme-text-primary">
               Per-File Y.Doc Isolation
             </h3>
             <p className="mt-2 text-xs theme-text-secondary leading-relaxed">
-              Every file binds to an isolated Yjs document key (<code className="font-mono text-indigo-500">${'{roomId}:${filePath}'}</code>). Teammates switch files freely with zero buffer collision.
+              Every file binds to an isolated Yjs document key (<code className="font-mono text-teal-600 dark:text-teal-400">${'{roomId}:${filePath}'}</code>). Teammates switch files freely with zero buffer collision.
             </p>
-            <div className="mt-4 pt-2.5 border-t theme-border text-[11px] font-mono text-indigo-500 flex items-center justify-between">
+            <div className="mt-4 pt-2.5 border-t theme-border text-[11px] font-mono text-teal-600 dark:text-teal-400 flex items-center justify-between">
               <span>Awareness Cursors</span>
               <span>Sub-15ms</span>
             </div>
@@ -1098,12 +1166,12 @@ export const Landing: React.FC<LandingProps> = ({
           </div>
 
           {/* Bento Card 4: AI Diff Guard */}
-          <div className="group rounded-2xl border theme-border theme-bg-surface-1 p-5 transition-all duration-300 hover:border-purple-500/50 hover:theme-shadow relative">
+          <div className="group rounded-2xl border theme-border theme-bg-surface-1 p-5 transition-all duration-300 hover:border-teal-500/50 hover:theme-shadow relative">
             <div className="flex items-center justify-between mb-3">
-              <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-mono font-semibold text-purple-500">
+              <span className="rounded bg-teal-500/15 px-2 py-0.5 text-[10px] font-mono font-semibold text-teal-600 dark:text-teal-400">
                 04 // AI GUARD
               </span>
-              <ShieldCheck className="h-4 w-4 text-purple-500" />
+              <ShieldCheck className="h-4 w-4 text-teal-600 dark:text-teal-400" />
             </div>
             <h3 className="text-sm font-bold theme-text-primary">
               Atomic CRDT Patching
@@ -1111,7 +1179,7 @@ export const Landing: React.FC<LandingProps> = ({
             <p className="mt-2 text-xs theme-text-secondary leading-relaxed">
               Pipes runtime traceback errors to AI diagnostics. Requires human confirmation in a side-by-side diff modal before committing changes.
             </p>
-            <div className="mt-4 pt-2.5 border-t theme-border text-[11px] font-mono text-purple-500 flex items-center justify-between">
+            <div className="mt-4 pt-2.5 border-t theme-border text-[11px] font-mono text-teal-600 dark:text-teal-400 flex items-center justify-between">
               <span>Guarded Mutations</span>
               <span>Zero-Hallucination</span>
             </div>
@@ -1154,7 +1222,7 @@ export const Landing: React.FC<LandingProps> = ({
               <div className="text-[10px] font-mono uppercase theme-text-muted">
                 CRDT State Vector
               </div>
-              <div className="mt-1 text-lg font-bold font-mono text-indigo-500">
+              <div className="mt-1 text-lg font-bold font-mono text-teal-600 dark:text-teal-400">
                 42 Bytes
               </div>
             </div>
@@ -1162,7 +1230,7 @@ export const Landing: React.FC<LandingProps> = ({
               <div className="text-[10px] font-mono uppercase theme-text-muted">
                 Worker Boot Time
               </div>
-              <div className="mt-1 text-lg font-bold font-mono text-purple-500">
+              <div className="mt-1 text-lg font-bold font-mono text-cyan-500">
                 &lt; 5.0ms
               </div>
             </div>
@@ -1188,7 +1256,7 @@ export const Landing: React.FC<LandingProps> = ({
                 return (
                   <div
                     key={idx}
-                    className="flex-1 rounded-t bg-indigo-500/80 transition-all duration-300"
+                    className="flex-1 rounded-t bg-teal-500/80 transition-all duration-300"
                     style={{ height: `${heightPct}%` }}
                     title={`${val}ms`}
                   />
@@ -1203,14 +1271,14 @@ export const Landing: React.FC<LandingProps> = ({
       <footer className="relative z-10 border-t theme-border theme-bg-surface-1 py-10 px-6">
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs theme-text-muted">
           <div className="flex items-center gap-2.5">
-            <Code2 className="h-4 w-4 text-indigo-500" />
+            <Code2 className="h-4 w-4 text-teal-600 dark:text-teal-400" />
             <span className="font-bold theme-text-primary">NexathonIDE</span>
             <span>• Distributed Collaborative IDE & Autonomous Debugger</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 font-mono text-[11px]">
             <span className="inline-flex items-center gap-1">
-              <Layers className="h-3.5 w-3.5 text-indigo-500" />
+              <Layers className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
               React 19 + Monaco
             </span>
             <span className="inline-flex items-center gap-1">
@@ -1235,7 +1303,7 @@ export const Landing: React.FC<LandingProps> = ({
           <div className="relative w-full max-w-md rounded-2xl border theme-border-strong theme-bg-surface-1 p-6 theme-shadow">
             <div className="flex items-center justify-between border-b theme-border pb-3.5 mb-5">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-500 ring-1 ring-indigo-500/30">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500/15 text-teal-600 dark:text-teal-400 ring-1 ring-teal-500/30">
                   <Command className="h-4 w-4" />
                 </div>
                 <div>
@@ -1295,7 +1363,7 @@ export const Landing: React.FC<LandingProps> = ({
                   onChange={(e) => setHandleName(e.target.value)}
                   placeholder="e.g., John"
                   autoFocus
-                  className="w-full rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-sm theme-text-primary placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-sm theme-text-primary placeholder-slate-500 focus:border-teal-500 focus:outline-none"
                 />
               </div>
 
@@ -1311,7 +1379,7 @@ export const Landing: React.FC<LandingProps> = ({
                       onClick={() => setSelectedColor(c.hex)}
                       className={`h-6 w-6 rounded-full transition-transform cursor-pointer ${
                         selectedColor === c.hex
-                          ? 'scale-110 ring-2 ring-indigo-500 ring-offset-2'
+                          ? 'scale-110 ring-2 ring-teal-500 ring-offset-2'
                           : 'opacity-75 hover:opacity-100'
                       }`}
                       style={{ backgroundColor: c.hex }}
@@ -1334,7 +1402,7 @@ export const Landing: React.FC<LandingProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 rounded-lg bg-indigo-600 py-2 text-xs font-semibold text-white shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:bg-indigo-500 transition cursor-pointer"
+                  className="flex-1 rounded-lg bg-teal-600 hover:bg-teal-500 py-2 text-xs font-semibold text-white shadow-xs transition cursor-pointer"
                 >
                   Continue to Rooms →
                 </button>
@@ -1347,7 +1415,7 @@ export const Landing: React.FC<LandingProps> = ({
                     setIsModalOpen(false);
                     onNavigateToLogin();
                   }}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
+                  className="text-xs text-teal-600 dark:text-teal-400 hover:underline transition cursor-pointer"
                 >
                   Or sign in with Supabase Email & Password →
                 </button>

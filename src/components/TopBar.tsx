@@ -77,11 +77,10 @@ export const TopBar: React.FC<TopBarProps> = ({
     if (connectionStatus === 'connected' && isDocumentSynced) {
       return (
         <div
-          className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+          className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
           title="Yjs Document Synchronized & Live"
         >
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
           </span>
           <span>Live Sync</span>
@@ -95,7 +94,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-500"
           title="Connected to WebSocket, syncing CRDT document state..."
         >
-          <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
+          <Loader2 className="h-3 w-3 animate-spin text-amber-500" />
           <span>Syncing Doc...</span>
         </div>
       );
@@ -107,7 +106,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-500"
           title="Connecting to collaboration server..."
         >
-          <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
+          <Loader2 className="h-3 w-3 animate-spin text-amber-500" />
           <span>Connecting...</span>
         </div>
       );
@@ -118,7 +117,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-[11px] font-medium text-rose-500"
         title="Disconnected from collaboration server"
       >
-        <WifiOff className="h-3 w-3 text-rose-400" />
+        <WifiOff className="h-3 w-3 text-rose-500" />
         <span>Offline</span>
       </div>
     );
@@ -134,7 +133,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           title="Toggle File Explorer (Ctrl+B)"
           className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs transition cursor-pointer ${
             isExplorerOpen
-              ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-500 dark:text-indigo-300 font-semibold shadow-xs'
+              ? 'border-teal-500/40 bg-teal-500/10 text-teal-600 dark:text-teal-300 font-semibold shadow-xs'
               : 'theme-border theme-bg-surface-2 theme-text-secondary hover:theme-bg-elevated hover:theme-text-primary'
           }`}
         >
@@ -148,10 +147,10 @@ export const TopBar: React.FC<TopBarProps> = ({
           type="button"
           onClick={onSwitchWorkspace}
           title="Switch Workspace Room"
-          className="group flex items-center gap-2 rounded-lg border theme-border theme-bg-surface-2 px-2.5 py-1 hover:border-indigo-500/40 hover:theme-bg-elevated transition cursor-pointer"
+          className="group flex items-center gap-2 rounded-lg border theme-border theme-bg-surface-2 px-2.5 py-1 hover:border-teal-500/40 hover:theme-bg-elevated transition cursor-pointer"
         >
-          <FolderGit2 className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
-          <span className="text-xs font-semibold theme-text-primary group-hover:text-indigo-500 dark:group-hover:text-indigo-300 transition max-w-[160px] truncate">
+          <FolderGit2 className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+          <span className="text-xs font-semibold theme-text-primary group-hover:text-teal-600 dark:group-hover:text-teal-300 transition max-w-[160px] truncate">
             {roomName}
           </span>
           <ChevronRight className="h-3 w-3 theme-text-secondary opacity-60" />
@@ -165,10 +164,10 @@ export const TopBar: React.FC<TopBarProps> = ({
         {/* Edit Reservations Counter Pill */}
         {activeReservationsCount > 0 && (
           <div
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-950/40 px-2 py-0.5 text-[11px] font-medium text-indigo-300"
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-950/40 px-2 py-0.5 text-[11px] font-medium text-teal-300"
             title={`${activeReservationsCount} active code section reservation(s)`}
           >
-            <Shield className="h-3 w-3 text-indigo-400" />
+            <Shield className="h-3 w-3 text-teal-400" />
             <span>{activeReservationsCount} Reserved</span>
           </div>
         )}
@@ -176,15 +175,15 @@ export const TopBar: React.FC<TopBarProps> = ({
         {/* Follow Mode Indicator Pill */}
         {followState && (
           <div
-            className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/40 bg-cyan-950/40 px-2.5 py-0.5 text-[11px] font-medium text-cyan-300 animate-pulse"
+            className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/40 bg-teal-950/40 px-2.5 py-0.5 text-[11px] font-medium text-teal-300"
             title={`Following ${followState.targetUserName}`}
           >
-            <Eye className="h-3 w-3 text-cyan-400" />
+            <Eye className="h-3 w-3 text-teal-400" />
             <span>Following {followState.targetUserName}</span>
             <button
               type="button"
               onClick={onStopFollowing}
-              className="ml-1 text-cyan-400 hover:text-white underline text-[10px] cursor-pointer"
+              className="ml-1 text-teal-300 hover:text-white underline text-[10px] cursor-pointer"
             >
               Stop
             </button>
@@ -202,18 +201,18 @@ export const TopBar: React.FC<TopBarProps> = ({
           title="Refresh Workspace Files & Reconcile Sync (Safe targeted refresh)"
           className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition cursor-pointer disabled:opacity-50 ${
             refreshStatus === 'success'
-              ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+              ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300'
               : refreshStatus === 'error'
               ? 'border-rose-500/40 bg-rose-950/40 text-rose-300'
-              : 'border-white/10 bg-[#141824] text-slate-300 hover:border-white/20 hover:bg-[#1c2234] hover:text-white'
+              : 'theme-border theme-bg-surface-2 theme-text-secondary hover:border-teal-500/40 hover:theme-bg-elevated hover:theme-text-primary'
           }`}
         >
           {isRefreshing ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-teal-500" />
           ) : refreshStatus === 'success' ? (
             <Check className="h-3.5 w-3.5 text-emerald-400" />
           ) : (
-            <RotateCw className="h-3.5 w-3.5 text-indigo-400" />
+            <RotateCw className="h-3.5 w-3.5 text-teal-500 dark:text-teal-400" />
           )}
           <span>
             {isRefreshing
@@ -230,17 +229,17 @@ export const TopBar: React.FC<TopBarProps> = ({
           onClick={onSaveFile}
           disabled={isSaving}
           title="Save Active File to PostgreSQL (Ctrl+S)"
-          className="inline-flex items-center gap-2 rounded-lg border theme-border theme-bg-surface-2 px-3 py-1.5 text-xs font-medium theme-text-primary hover:border-indigo-500/30 hover:theme-bg-elevated disabled:opacity-50 transition cursor-pointer shadow-xs"
+          className="inline-flex items-center gap-2 rounded-lg border theme-border theme-bg-surface-2 px-3 py-1.5 text-xs font-medium theme-text-primary hover:border-teal-500/30 hover:theme-bg-elevated disabled:opacity-50 transition cursor-pointer shadow-xs"
         >
           {isSaving ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500 dark:text-indigo-400" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-teal-600 dark:text-teal-400" />
           ) : (
-            <Save className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" />
+            <Save className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
           )}
           <span>Save</span>
           {hasUnsavedChanges && (
             <span
-              className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]"
+              className="h-2 w-2 rounded-full bg-amber-400"
               title="Unsaved changes"
             />
           )}
@@ -255,7 +254,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           onClick={onRunCode}
           disabled={isRunning}
           title="Run Code in Browser Sandbox (Ctrl+Enter)"
-          className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer"
+          className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer shadow-xs"
         >
           {isRunning ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -273,9 +272,9 @@ export const TopBar: React.FC<TopBarProps> = ({
           type="button"
           onClick={onOpenAIDebugger}
           title="Open AI Debugger & Diff Assistant"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-purple-400/30 bg-gradient-to-r from-purple-600 to-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_0_15px_rgba(168,85,247,0.35)] hover:from-purple-500 hover:to-indigo-500 transition cursor-pointer"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-teal-500/40 bg-teal-500/10 px-3.5 py-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300 hover:bg-teal-500/20 transition cursor-pointer shadow-xs"
         >
-          <Sparkles className="h-3.5 w-3.5 text-purple-200" />
+          <Sparkles className="h-3.5 w-3.5 text-teal-600 dark:text-teal-300" />
           <span className="hidden sm:inline">AI Debugger</span>
         </button>
       </div>

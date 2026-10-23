@@ -72,13 +72,10 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
             >
               <div
                 className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white transition-all ring-2 ring-(--bg-root) ${
-                  isFollowed ? 'ring-2 ring-cyan-400 animate-pulse' : ''
+                  isFollowed ? 'ring-2 ring-teal-400' : ''
                 }`}
                 style={{
                   backgroundColor: collab.user.color,
-                  boxShadow: isFollowed
-                    ? `0 0 12px ${collab.user.color}`
-                    : `0 0 0 1px var(--border-hairline), 0 0 6px ${collab.user.color}40`,
                 }}
               >
                 {initials}
@@ -86,7 +83,7 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
               <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-(--bg-root)">
                 <span
                   className={`h-1.5 w-1.5 rounded-full ${
-                    isFollowed ? 'bg-cyan-400 animate-ping' : 'bg-emerald-500'
+                    isFollowed ? 'bg-teal-400' : 'bg-emerald-500'
                   }`}
                 />
               </span>
@@ -120,8 +117,8 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
               }}
               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] transition ${
                 isFollowed
-                  ? 'border-cyan-500/50 bg-cyan-950/40 text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.25)]'
-                  : 'theme-border theme-bg-surface-2 theme-text-secondary hover:border-cyan-500/30'
+                  ? 'border-teal-500/50 bg-teal-950/40 text-teal-200'
+                  : 'theme-border theme-bg-surface-2 theme-text-secondary hover:border-teal-500/30'
               } ${isMe ? 'cursor-default' : 'cursor-pointer'}`}
               title={isMe ? 'You' : isFollowed ? 'Stop Following' : `Follow ${collab.user.name}`}
             >
@@ -129,7 +126,6 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
                 className="h-2 w-2 rounded-full"
                 style={{
                   backgroundColor: collab.user.color,
-                  boxShadow: `0 0 6px ${collab.user.color}`,
                 }}
               />
               <span className="max-w-[70px] truncate font-medium theme-text-primary">
@@ -142,7 +138,7 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
               )}
               {!isMe && (
                 isFollowed ? (
-                  <EyeOff className="h-3 w-3 text-cyan-400" />
+                  <EyeOff className="h-3 w-3 text-teal-400" />
                 ) : (
                   <Eye className="h-3 w-3 theme-text-secondary opacity-60 group-hover:opacity-100" />
                 )
