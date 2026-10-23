@@ -4,6 +4,13 @@ import { Login } from './pages/Login';
 import { WorkspaceSelection } from './pages/WorkspaceSelection';
 import { Workspace } from './pages/Workspace';
 import { workspaceApi } from './services/workspaceApi';
+import {
+  supabase,
+  getCurrentUserProfile,
+  mapSupabaseUserToProfile,
+  signOutUser,
+  isSupabaseConfigured,
+} from './services/supabaseClient';
 import { UserProfile, WorkspaceRoom } from './types';
 import { ThemeMode } from './components/ThemeToggle';
 
@@ -56,6 +63,32 @@ export const App: React.FC = () => {
     setUser(loggedInUser);
   }, []);
 
+  // Sync Supabase Auth Session
+  useEffect(() => {
+    let isMounted = true;
+
+    if (isSupabaseConfigured) {
+      getCurrentUserProfile().then((profile) => {
+        if (isMounted && profile) {
+          persistUser(profile);
+        }
+      });
+
+      const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!isMounted) return;
+        if (session?.user) {
+          const profile = mapSupabaseUserToProfile(session.user);
+          persistUser(profile);
+        }
+      });
+
+      return () => {
+        isMounted = false;
+        authListener?.subscription?.unsubscribe();
+      };
+    }
+  }, [persistUser]);
+
   const handleLoginSuccess = useCallback(
     (loggedInUser: UserProfile) => {
       persistUser(loggedInUser);
@@ -105,7 +138,8 @@ export const App: React.FC = () => {
     }
   }, [user, persistUser]);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    await signOutUser();
     sessionStorage.removeItem(USER_STORAGE_KEY);
     setActiveRoom(null);
     setUser(null);
@@ -136,7 +170,13 @@ export const App: React.FC = () => {
   }
 
   if (view === 'login' || !user) {
-    return <Login onLogin={handleLoginSuccess} />;
+    return (
+      <Login
+        onLogin={handleLoginSuccess}
+        onBackToLanding={() => setView('landing')}
+        onGuestDemo={handleInstantGuestDemo}
+      />
+    );
   }
 
   if (view === 'workspaces' || !activeRoom) {
