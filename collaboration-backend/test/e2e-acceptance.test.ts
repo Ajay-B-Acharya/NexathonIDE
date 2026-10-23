@@ -94,15 +94,45 @@ async function runEndToEndAcceptanceTest() {
   assert(textA.toString().includes('Alice online line'));
   console.log('   ✓ Reconnection safely merged offline and online edits without data loss.');
 
-  // Step 7: Natural simultaneous concurrent editing across peers without locks
-  console.log('7. Testing natural simultaneous concurrent editing across peers (no locks)...');
+  // Step 7: Natural simultaneous concurrent editing across peers outside locks
+  console.log('7. Testing natural simultaneous concurrent editing across peers outside locks...');
   textA.insert(0, '// Concurrent Header from Alice\n');
   textB.insert(textB.length, '\n// Concurrent Footer from Bob\n');
 
   await waitFor(() => textA.toString() === textB.toString(), 4000, 'Simultaneous edits convergence');
   assert(textA.toString().startsWith('// Concurrent Header from Alice\n'));
   assert(textA.toString().endsWith('\n// Concurrent Footer from Bob\n'));
-  console.log('   ✓ Natural simultaneous edits converged seamlessly across both peers without locks.');
+  console.log('   ✓ Natural simultaneous edits converged seamlessly across both peers.');
+
+  // Step 8: Code reservation synchronization and ownership
+  console.log('8. Testing code reservation creation, ownership, and synchronization...');
+  const resMapA = docA.getMap('edit_reservations');
+  const resMapB = docB.getMap('edit_reservations');
+
+  resMapA.set('res_alice_1', {
+    id: 'res_alice_1',
+    roomId: 'e2e-room',
+    filePath: 'main.js',
+    ownerId: 'usr_alice',
+    ownerName: 'Alice',
+    ownerColor: '#35B8A6',
+    startLine: 2,
+    endLine: 4,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 60000,
+  });
+
+  await waitFor(() => resMapB.has('res_alice_1'), 2000, 'Bob received Alice reservation');
+  const bobReceivedRes = resMapB.get('res_alice_1') as any;
+  assert.strictEqual(bobReceivedRes.ownerId, 'usr_alice');
+  assert.strictEqual(bobReceivedRes.startLine, 2);
+  assert.strictEqual(bobReceivedRes.endLine, 4);
+  console.log('   ✓ Reservation synchronized with accurate boundaries and ownership.');
+
+  // Release reservation
+  resMapA.delete('res_alice_1');
+  await waitFor(() => !resMapB.has('res_alice_1'), 2000, 'Bob observed reservation release');
+  console.log('   ✓ Reservation release synchronized cleanly to peer.');
 
   // Step 8: Clean teardown
   provA.destroy();
