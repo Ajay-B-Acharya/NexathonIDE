@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Pool } from 'pg';
 
 const pool = new Pool({
@@ -55,4 +56,7 @@ async function initDatabase() {
   }
 }
 
-initDatabase().catch(() => process.exit(1));
+initDatabase().catch((err) => {
+  console.error('Fatal database initialization error:', err);
+  process.exit(1);
+});

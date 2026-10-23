@@ -1,12 +1,13 @@
+import 'dotenv/config';
 import express, { type Request, type Response } from 'express';
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import cors from 'cors';
-import { Pool } from 'pg';
-import { v4 as uuidv4 } from 'uuid';
 import pty from 'node-pty';
 import OpenAI from 'openai';
-import type { Room, WorkspaceFile, User, TerminalMessage, AIDebugRequest, AIDebugResponse } from './types.js';
+import { supabaseAdmin } from './supabase.js';
+import { WorkspaceService } from './services/workspaceService.js';
+import type { TerminalMessage, AIDebugRequest, AIDebugResponse } from './types.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -14,11 +15,6 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 
 app.use(cors());
 app.use(express.json());
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/collaborative_ide',
-  max: 20,
-});
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -32,235 +28,194 @@ interface TerminalSession {
 
 const terminalSessions = new Map<string, TerminalSession>();
 
-async function initDatabase() {
-  const client = await pool.connect();
+function getBearerToken(req: Request): string | undefined {
+  const authHeader = req.headers.authorization;
+  return authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined;
+}
+
+async function verifyDatabaseConnection() {
   try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        username VARCHAR(255) UNIQUE NOT NULL,
-        avatar_url TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      
-      CREATE TABLE IF NOT EXISTS rooms (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name VARCHAR(255) NOT NULL,
-        owner_id UUID REFERENCES users(id),
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      
-      CREATE TABLE IF NOT EXISTS workspace_files (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
-        path TEXT NOT NULL,
-        content TEXT DEFAULT '',
-        language VARCHAR(50) DEFAULT 'plaintext',
-        updated_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(room_id, path)
-      );
-      
-      CREATE INDEX IF NOT EXISTS idx_workspace_files_room_id ON workspace_files(room_id);
-    `);
-    console.log('Database initialized');
-  } finally {
-    client.release();
+    const { error } = await supabaseAdmin.from('rooms').select('count', { count: 'exact', head: true });
+    if (error) {
+      console.warn('⚠️ Supabase connection warning:', error.message);
+    } else {
+      console.log('✅ Connected to Supabase managed PostgreSQL successfully');
+    }
+  } catch (err) {
+    console.error('⚠️ Could not connect to Supabase:', err);
   }
 }
 
-function getLanguageFromPath(path: string): string {
-  const ext = path.split('.').pop()?.toLowerCase();
-  const langMap: Record<string, string> = {
-    'js': 'javascript',
-    'ts': 'typescript',
-    'jsx': 'javascript',
-    'tsx': 'typescript',
-    'py': 'python',
-    'html': 'html',
-    'css': 'css',
-    'json': 'json',
-    'md': 'markdown',
-    'sql': 'sql',
-    'sh': 'shell',
-    'yaml': 'yaml',
-    'yml': 'yaml',
-  };
-  return langMap[ext || ''] || 'plaintext';
-}
-
+// Health check
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Users
 app.post('/api/users', async (req: Request, res: Response) => {
   try {
-    const { username, avatarUrl } = req.body;
+    const { username, avatarUrl, id } = req.body;
     if (!username) {
       return res.status(400).json({ error: 'Username is required' });
     }
-    
-    const result = await pool.query(
-      'INSERT INTO users (username, avatar_url) VALUES ($1, $2) ON CONFLICT (username) DO UPDATE SET avatar_url = $2 RETURNING *',
-      [username, avatarUrl || null]
-    );
-    res.json(result.rows[0]);
-  } catch (error) {
+    const user = await WorkspaceService.upsertUser(username, avatarUrl, id);
+    res.json(user);
+  } catch (error: any) {
     console.error('Error creating user:', error);
-    res.status(500).json({ error: 'Failed to create user' });
+    res.status(500).json({ error: error.message || 'Failed to create user' });
   }
 });
 
 app.get('/api/users/:id', async (req: Request, res: Response) => {
   try {
-    const result = await pool.query('SELECT * FROM users WHERE id = $1', [req.params.id]);
-    if (result.rows.length === 0) {
+    const id = String(req.params.id);
+    const user = await WorkspaceService.getUser(id);
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    res.json(result.rows[0]);
-  } catch (error) {
+    res.json(user);
+  } catch (error: any) {
     console.error('Error fetching user:', error);
-    res.status(500).json({ error: 'Failed to fetch user' });
+    res.status(500).json({ error: error.message || 'Failed to fetch user' });
   }
 });
 
+// Rooms / Workspaces
 app.post('/api/rooms', async (req: Request, res: Response) => {
   try {
-    const { name, ownerId } = req.body;
-    if (!name || !ownerId) {
+    const { name, ownerId, userId } = req.body;
+    const effectiveOwnerId = ownerId || userId;
+    if (!name || !effectiveOwnerId) {
       return res.status(400).json({ error: 'Name and ownerId are required' });
     }
-    
-    const result = await pool.query(
-      'INSERT INTO rooms (name, owner_id) VALUES ($1, $2) RETURNING *',
-      [name, ownerId]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
+    const room = await WorkspaceService.createWorkspace({ name, ownerId: effectiveOwnerId });
+    res.status(201).json(room);
+  } catch (error: any) {
     console.error('Error creating room:', error);
-    res.status(500).json({ error: 'Failed to create room' });
+    res.status(500).json({ error: error.message || 'Failed to create room' });
   }
 });
 
 app.get('/api/rooms/:id', async (req: Request, res: Response) => {
   try {
-    const result = await pool.query('SELECT * FROM rooms WHERE id = $1', [req.params.id]);
-    if (result.rows.length === 0) {
+    const token = getBearerToken(req);
+    const id = String(req.params.id);
+    const room = await WorkspaceService.getRoom(id, token);
+    if (!room) {
       return res.status(404).json({ error: 'Room not found' });
     }
-    res.json(result.rows[0]);
-  } catch (error) {
+    res.json(room);
+  } catch (error: any) {
     console.error('Error fetching room:', error);
-    res.status(500).json({ error: 'Failed to fetch room' });
+    res.status(500).json({ error: error.message || 'Failed to fetch room' });
   }
 });
 
+// Workspace Files
 app.get('/api/rooms/:id/files', async (req: Request, res: Response) => {
   try {
-    const result = await pool.query(
-      'SELECT * FROM workspace_files WHERE room_id = $1 ORDER BY path',
-      [req.params.id]
-    );
-    res.json(result.rows);
-  } catch (error) {
+    const token = getBearerToken(req);
+    const id = String(req.params.id);
+    const files = await WorkspaceService.listFiles(id, token);
+    res.json(files);
+  } catch (error: any) {
     console.error('Error fetching files:', error);
-    res.status(500).json({ error: 'Failed to fetch files' });
+    res.status(500).json({ error: error.message || 'Failed to fetch files' });
   }
 });
 
 app.get('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
   try {
-    const roomId = req.params.roomId;
-    const filePath = req.params.filePath;
-    const result = await pool.query(
-      'SELECT * FROM workspace_files WHERE room_id = $1 AND path = $2',
-      [roomId, filePath]
-    );
-    if (result.rows.length === 0) {
+    const token = getBearerToken(req);
+    const roomId = String(req.params.roomId);
+    const filePath = String(req.params.filePath);
+    const file = await WorkspaceService.loadFile(roomId, filePath, token);
+    if (!file) {
       return res.status(404).json({ error: 'File not found' });
     }
-    res.json(result.rows[0]);
-  } catch (error) {
+    res.json(file);
+  } catch (error: any) {
     console.error('Error fetching file:', error);
-    res.status(500).json({ error: 'Failed to fetch file' });
+    res.status(500).json({ error: error.message || 'Failed to fetch file' });
   }
 });
 
 app.post('/api/rooms/:roomId/files', async (req: Request, res: Response) => {
   try {
-    const { path, content = '', language } = req.body;
-    const roomId = req.params.roomId;
-    
+    const token = getBearerToken(req);
+    const { path, content = '', language, expectedVersion } = req.body;
+    const roomId = String(req.params.roomId);
+
     if (!path) {
       return res.status(400).json({ error: 'Path is required' });
     }
-    
-    const fileLanguage = language || getLanguageFromPath(path);
-    
-    const result = await pool.query(
-      `INSERT INTO workspace_files (room_id, path, content, language) 
-       VALUES ($1, $2, $3, $4) 
-       ON CONFLICT (room_id, path) DO UPDATE SET content = $3, language = $4, updated_at = NOW() 
-       RETURNING *`,
-      [roomId, path, content, fileLanguage]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
+
+    const savedFile = await WorkspaceService.saveFile({
+      roomId,
+      path,
+      content,
+      language,
+      expectedVersion,
+      userToken: token,
+    });
+    res.status(201).json(savedFile);
+  } catch (error: any) {
     console.error('Error creating/updating file:', error);
-    res.status(500).json({ error: 'Failed to save file' });
+    const status = error.message?.includes('CONFLICT') ? 409 : 500;
+    res.status(status).json({ error: error.message || 'Failed to save file' });
   }
 });
 
 app.patch('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
   try {
-    const roomId = req.params.roomId;
-    const filePath = req.params.filePath;
+    const token = getBearerToken(req);
+    const roomId = String(req.params.roomId);
+    const filePath = String(req.params.filePath);
     const { content } = req.body;
-    
-    const result = await pool.query(
-      'UPDATE workspace_files SET content = $1, updated_at = NOW() WHERE room_id = $2 AND path = $3 RETURNING *',
-      [content, roomId, filePath]
-    );
-    
-    if (result.rows.length === 0) {
+
+    const updated = await WorkspaceService.updateFileContent(roomId, filePath, content, token);
+    if (!updated) {
       return res.status(404).json({ error: 'File not found' });
     }
-    res.json(result.rows[0]);
-  } catch (error) {
+    res.json(updated);
+  } catch (error: any) {
     console.error('Error updating file:', error);
-    res.status(500).json({ error: 'Failed to update file' });
+    res.status(500).json({ error: error.message || 'Failed to update file' });
   }
 });
 
 app.delete('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
   try {
-    const roomId = req.params.roomId;
-    const filePath = req.params.filePath;
-    
-    await pool.query('DELETE FROM workspace_files WHERE room_id = $1 AND path = $2', [roomId, filePath]);
+    const token = getBearerToken(req);
+    const roomId = String(req.params.roomId);
+    const filePath = String(req.params.filePath);
+
+    await WorkspaceService.deleteFile(roomId, filePath, token);
     res.status(204).send();
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting file:', error);
-    res.status(500).json({ error: 'Failed to delete file' });
+    res.status(500).json({ error: error.message || 'Failed to delete file' });
   }
 });
 
+// AI Debugger
 app.post('/api/ai/debug', async (req: Request, res: Response) => {
   try {
     const { code, language, error, filePath }: AIDebugRequest = req.body;
-    
+
     if (!code || !language) {
       return res.status(400).json({ error: 'Code and language are required' });
     }
-    
+
     if (!process.env.OPENAI_API_KEY) {
-      return res.status(503).json({ 
+      return res.status(503).json({
         error: 'AI service not configured',
         explanation: 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.',
         suggestedFix: null,
-        confidence: 0
+        confidence: 0,
       });
     }
-    
+
     const prompt = `You are an expert programming assistant. Analyze the following code and error, then provide a clear explanation and suggested fix.
 
 File: ${filePath}
@@ -284,40 +239,41 @@ Provide your response in JSON format:
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: 'You are an expert debugging assistant. Respond only with valid JSON.' },
-        { role: 'user', content: prompt }
+        { role: 'user', content: prompt },
       ],
       temperature: 0.3,
       max_tokens: 2000,
       response_format: { type: 'json_object' },
     });
-    
+
     const response = JSON.parse(completion.choices[0].message.content || '{}') as AIDebugResponse;
     res.json(response);
   } catch (error) {
     console.error('AI debug error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'AI debugging failed',
       explanation: 'Failed to get AI assistance. Please try again.',
       suggestedFix: null,
-      confidence: 0
+      confidence: 0,
     });
   }
 });
 
+// Terminal WebSocket
 const wss = new WebSocketServer({ server: httpServer, path: '/ws/terminal' });
 
 wss.on('connection', (ws: WebSocket, req) => {
   const url = new URL(req.url || '', `http://${req.headers.host}`);
   const roomId = url.searchParams.get('roomId');
   const userId = url.searchParams.get('userId');
-  
+
   if (!roomId || !userId) {
     ws.close(4000, 'roomId and userId required');
     return;
   }
-  
+
   let session = terminalSessions.get(roomId);
-  
+
   if (!session) {
     const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
     const ptyProcess = pty.spawn(shell, [], {
@@ -327,25 +283,25 @@ wss.on('connection', (ws: WebSocket, req) => {
       cwd: process.env.HOME || process.cwd(),
       env: { ...process.env, TERM: 'xterm-color' },
     });
-    
+
     session = { pty: ptyProcess, clients: new Set(), roomId };
     terminalSessions.set(roomId, session);
-    
+
     ptyProcess.onData((data) => {
       const currentSession = terminalSessions.get(roomId);
       if (currentSession) {
-        currentSession.clients.forEach(client => {
+        currentSession.clients.forEach((client) => {
           if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify({ type: 'output', data }));
           }
         });
       }
     });
-    
+
     ptyProcess.onExit(() => {
       const currentSession = terminalSessions.get(roomId);
       if (currentSession) {
-        currentSession.clients.forEach(client => {
+        currentSession.clients.forEach((client) => {
           if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify({ type: 'disconnect' }));
           }
@@ -354,12 +310,10 @@ wss.on('connection', (ws: WebSocket, req) => {
       terminalSessions.delete(roomId);
     });
   }
-  
-  if (!session) return;
-  
+
   session.clients.add(ws);
   ws.send(JSON.stringify({ type: 'connect', data: `Connected to terminal for room ${roomId}\r\n` }));
-  
+
   ws.on('message', (message) => {
     try {
       const msg: TerminalMessage = JSON.parse(message.toString());
@@ -374,7 +328,7 @@ wss.on('connection', (ws: WebSocket, req) => {
       console.error('Invalid terminal message:', e);
     }
   });
-  
+
   ws.on('close', () => {
     const currentSession = terminalSessions.get(roomId);
     if (!currentSession) return;
@@ -387,7 +341,7 @@ wss.on('connection', (ws: WebSocket, req) => {
 });
 
 httpServer.listen(PORT, async () => {
-  await initDatabase();
+  await verifyDatabaseConnection();
   console.log(`API server running on port ${PORT}`);
 });
 
@@ -396,7 +350,6 @@ process.on('SIGINT', async () => {
   for (const session of terminalSessions.values()) {
     session.pty.kill();
   }
-  await pool.end();
   httpServer.close(() => {
     process.exit(0);
   });
