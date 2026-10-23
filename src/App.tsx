@@ -12,6 +12,7 @@ import {
   getStoredUser,
   saveStoredUser,
   clearStoredUser,
+  addAccessibleRoomId,
   AppView,
 } from './services/refreshEngine';
 import {
@@ -74,8 +75,11 @@ export const App: React.FC = () => {
   const navigateTo = useCallback((nextView: AppView, room: WorkspaceRoom | null = null, replace: boolean = false) => {
     setView(nextView);
     setActiveRoom(room);
+    if (nextView === 'workspace' && room && user) {
+      addAccessibleRoomId(user.id, room.id);
+    }
     syncRoute(nextView, room, replace);
-  }, []);
+  }, [user]);
 
   // Synchronize browser URL query param with activeRoom ID
   useEffect(() => {
@@ -112,6 +116,8 @@ export const App: React.FC = () => {
       saveStoredUser(currentUser);
       setUser(currentUser);
     }
+
+    addAccessibleRoomId(currentUser.id, targetRoomId);
 
     workspaceApi
       .getRoom(targetRoomId)
@@ -262,6 +268,7 @@ export const App: React.FC = () => {
         description: 'Ephemeral CRDT + Pyodide WASM + Node-PTY Room',
         ownerId: guestUser.id,
       });
+      addAccessibleRoomId(guestUser.id, createdRoom.id);
       navigateTo('workspace', createdRoom);
     } catch {
       const fallbackDemoRoom: WorkspaceRoom = {
@@ -272,6 +279,7 @@ export const App: React.FC = () => {
         updatedAt: new Date().toISOString(),
         ownerId: guestUser.id,
       };
+      addAccessibleRoomId(guestUser.id, fallbackDemoRoom.id);
       navigateTo('workspace', fallbackDemoRoom);
     }
   }, [user, persistUser, navigateTo]);

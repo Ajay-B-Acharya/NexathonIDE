@@ -25,6 +25,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { workspaceApi } from '../services/workspaceApi';
+import { getAccessibleRoomIds, addAccessibleRoomId } from '../services/refreshEngine';
 import { UserProfile, WorkspaceRoom } from '../types';
 import { ThemeMode, ThemeToggle } from '../components/ThemeToggle';
 import { AmbientCollaborationCanvas } from '../components/AmbientCollaborationCanvas';
@@ -91,7 +92,8 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-  const [filterCategory, setFilterCategory] = useState<'all' | 'mine' | 'recent'>('all');
+  const [filterCategory, setFilterCategory] = useState<'all' | 'mine' | 'joined'>('all');
+  const [accessibleRoomIds, setAccessibleRoomIds] = useState<Set<string>>(() => getAccessibleRoomIds(user.id));
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const isDark = theme === 'dark';
@@ -128,15 +130,20 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
     setError(null);
     try {
       const list = await workspaceApi.listRooms();
-      if (Array.isArray(list) && list.length > 0) {
-        setRooms(list);
-      } else {
-        setRooms(DEFAULT_STARTER_ROOMS);
-      }
+      const accessibleIds = getAccessibleRoomIds(user.id);
+      setAccessibleRoomIds(accessibleIds);
+      const userRooms = (Array.isArray(list) ? list : []).filter(
+        (r) => r.ownerId === user.id || accessibleIds.has(r.id)
+      );
+      setRooms(userRooms);
     } catch (err: any) {
       console.warn('API directory sync notice, loading starter workspaces:', err);
-      // Seamlessly fall back to starter workspaces so the UI is never empty or blocked
-      setRooms(DEFAULT_STARTER_ROOMS);
+      const accessibleIds = getAccessibleRoomIds(user.id);
+      setAccessibleRoomIds(accessibleIds);
+      const userStarters = DEFAULT_STARTER_ROOMS.filter(
+        (r) => r.ownerId === user.id || accessibleIds.has(r.id)
+      );
+      setRooms(userStarters);
     } finally {
       setIsLoading(false);
     }
@@ -158,6 +165,8 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
         description: newRoomDesc.trim() || undefined,
         ownerId: user.id,
       });
+      addAccessibleRoomId(user.id, created.id);
+      setAccessibleRoomIds(getAccessibleRoomIds(user.id));
       onSelectRoom(created);
     } catch (err) {
       console.warn('Backend room creation notice, activating resilient workspace:', err);
@@ -170,6 +179,8 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
         updatedAt: new Date().toISOString(),
         ownerId: user.id,
       };
+      addAccessibleRoomId(user.id, fallbackRoom.id);
+      setAccessibleRoomIds(getAccessibleRoomIds(user.id));
       onSelectRoom(fallbackRoom);
     } finally {
       setIsCreating(false);
@@ -184,6 +195,8 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
     setError(null);
     try {
       const room = await workspaceApi.getRoom(trimmed);
+      addAccessibleRoomId(user.id, room.id);
+      setAccessibleRoomIds(getAccessibleRoomIds(user.id));
       onSelectRoom(room);
     } catch (err) {
       setError(
@@ -206,9 +219,15 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
     .slice(0, 2)
     .toUpperCase();
 
-  // Filtered rooms logic
+  // Filtered rooms logic: strictly only show workspaces created by user or entered via code
   const filteredRooms = useMemo(() => {
     return rooms.filter((r) => {
+      const isMine = r.ownerId === user.id;
+      const isJoined = accessibleRoomIds.has(r.id);
+
+      // Access control: user can only see workspaces they created or entered the code for
+      if (!isMine && !isJoined) return false;
+
       const matchesSearch =
         r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -217,18 +236,16 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
       if (!matchesSearch) return false;
 
       if (filterCategory === 'mine') {
-        return r.ownerId === user.id;
+        return isMine;
       }
 
-      if (filterCategory === 'recent') {
-        const createdDate = new Date(r.createdAt || r.updatedAt || Date.now()).getTime();
-        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-        return createdDate > oneDayAgo;
+      if (filterCategory === 'joined') {
+        return !isMine && isJoined;
       }
 
       return true;
     });
-  }, [rooms, searchQuery, filterCategory, user.id]);
+  }, [rooms, searchQuery, filterCategory, user.id, accessibleRoomIds]);
 
   return (
     <div className="relative min-h-screen w-full theme-bg-root bg-grid-pattern theme-text-primary flex flex-col select-none overflow-x-hidden">
@@ -513,7 +530,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                       : 'theme-text-muted hover:theme-text-primary'
                   }`}
                 >
-                  All
+                  All ({rooms.length})
                 </button>
                 <button
                   type="button"
@@ -524,18 +541,18 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                       : 'theme-text-muted hover:theme-text-primary'
                   }`}
                 >
-                  Created by Me
+                  Created by Me ({rooms.filter((r) => r.ownerId === user.id).length})
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFilterCategory('recent')}
+                  onClick={() => setFilterCategory('joined')}
                   className={`rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
-                    filterCategory === 'recent'
+                    filterCategory === 'joined'
                       ? 'bg-teal-600 text-white shadow-xs'
                       : 'theme-text-muted hover:theme-text-primary'
                   }`}
                 >
-                  Recent (24h)
+                  Joined via Code ({rooms.filter((r) => r.ownerId !== user.id && accessibleRoomIds.has(r.id)).length})
                 </button>
               </div>
             </div>
@@ -552,12 +569,20 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                   <FolderGit2 className="h-6 w-6" />
                 </div>
                 <h3 className="text-sm font-semibold theme-text-primary">
-                  {searchQuery ? 'No Matching Workspaces' : 'No Workspaces Found'}
+                  {searchQuery
+                    ? 'No Matching Workspaces'
+                    : filterCategory === 'mine'
+                    ? 'No Workspaces Created Yet'
+                    : filterCategory === 'joined'
+                    ? 'No Workspaces Joined via Code'
+                    : 'No Accessible Workspaces Found'}
                 </h3>
                 <p className="mt-1 max-w-sm text-xs theme-text-muted">
                   {searchQuery
                     ? `No workspaces match "${searchQuery}". Clear your search query to see all rooms.`
-                    : 'Create your first collaborative sandbox using the provisioning panel on the left.'}
+                    : filterCategory === 'joined'
+                    ? 'Enter a workspace ID or room code in the Join panel to access a collaborative session.'
+                    : 'You only have access to workspaces you created or entered the code for. Create a new sandbox or enter a room code to join.'}
                 </p>
                 {searchQuery && (
                   <button
