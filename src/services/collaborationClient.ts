@@ -119,6 +119,7 @@ class CollaborationManager {
     user: UserProfile,
     activeFile: string,
     cursor?: { lineNumber: number; column: number } | null,
+    isInactive?: boolean,
     isTyping?: boolean
   ): void {
     provider.awareness.setLocalStateField('user', {
@@ -129,6 +130,9 @@ class CollaborationManager {
     provider.awareness.setLocalStateField('activeFile', activeFile);
     if (cursor !== undefined) {
       provider.awareness.setLocalStateField('cursor', cursor);
+    }
+    if (isInactive !== undefined) {
+      provider.awareness.setLocalStateField('isInactive', isInactive);
     }
     if (isTyping !== undefined) {
       provider.awareness.setLocalStateField('isTyping', isTyping);

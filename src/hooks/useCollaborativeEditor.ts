@@ -91,6 +91,7 @@ function syncCollaboratorCursorStyles(collaborators: CollaboratorPresence[]) {
 }
 
 const DYNAMIC_RESERVATION_LINES = 10;
+const INACTIVITY_TIMEOUT_MS = 15_000;
 
 /**
  * Calculates a dynamic non-overlapping reservation window around currentLine:
@@ -280,6 +281,8 @@ export function useCollaborativeEditor({
   const [reservations, setReservations] = useState<EditReservation[]>([]);
   const [activeConflictReservation, setActiveConflictReservation] = useState<EditReservation | null>(null);
   const [followState, setFollowState] = useState<FollowState | null>(null);
+  const lastLocalActivityRef = useRef<number>(Date.now());
+  const isInactiveRef = useRef<boolean>(false);
 
   const bindingRef = useRef<MonacoBinding | null>(null);
   const sessionRef = useRef<FileCollaborationSession | null>(null);
@@ -444,18 +447,25 @@ export function useCollaborativeEditor({
     session.provider.on('sync', handleSync);
     setIsDocumentSynced(session.provider.synced);
 
-    // Synchronize edit reservations from CRDT shared map with strict ghost pruning
-    const updateReservationsFromMap = (activeUserIds?: Set<string>) => {
+    // Synchronize edit reservations from CRDT shared map with strict ghost and inactivity pruning
+    const updateReservationsFromMap = (activeUserIds?: Set<string>, inactiveUserIds?: Set<string>) => {
       const now = Date.now();
       const list: EditReservation[] = [];
 
       let validUserIds = activeUserIds;
-      if (!validUserIds) {
+      let inactives = inactiveUserIds;
+
+      if (!validUserIds || !inactives) {
         validUserIds = new Set<string>();
+        inactives = new Set<string>();
         session.provider.awareness.getStates().forEach((state) => {
           if (state && state.user && (state.user as UserProfile).id) {
+            const uid = (state.user as UserProfile).id;
             if (!state.activeFile || state.activeFile === activeFile.path) {
-              validUserIds!.add((state.user as UserProfile).id);
+              validUserIds!.add(uid);
+            }
+            if (state.isInactive) {
+              inactives!.add(uid);
             }
           }
         });
@@ -469,18 +479,30 @@ export function useCollaborativeEditor({
           return;
         }
 
-        // 2. Ghost prevention: Purge automatic reservations if owner is no longer active on this file
-        if (res.isAutomatic && !validUserIds!.has(res.ownerId)) {
+        // 2. Ghost prevention: Purge automatic reservations if owner is no longer active on this file/connected
+        if (!validUserIds!.has(res.ownerId)) {
           session.reservationsMap.delete(key);
           return;
         }
 
-        // 3. Must match active file
+        // 3. Inactivity prevention: Purge automatic reservations if owner is inactive
+        if (inactives!.has(res.ownerId) && (res.isAutomatic || key.startsWith('auto_'))) {
+          session.reservationsMap.delete(key);
+          return;
+        }
+
+        // 4. Local inactivity: purge local auto-reservation if local user is inactive
+        if (res.ownerId === user.id && isInactiveRef.current && (res.isAutomatic || key.startsWith('auto_'))) {
+          session.reservationsMap.delete(key);
+          return;
+        }
+
+        // 5. Must match active file
         if (res.filePath !== activeFile.path) {
           return;
         }
 
-        // 4. Update owner name & color from fresh awareness state
+        // 6. Update owner name & color from fresh awareness state
         const liveState = Array.from(session.provider.awareness.getStates().values()).find(
           (s) => (s.user as UserProfile)?.id === res.ownerId
         );
@@ -493,27 +515,40 @@ export function useCollaborativeEditor({
       });
 
       setReservations(list);
+
+      // Clear any conflict banner if the blocking reservation was released/pruned
+      setActiveConflictReservation((prev) => {
+        if (!prev) return null;
+        const stillActive = list.find((r) => r.id === prev.id);
+        return stillActive || null;
+      });
     };
 
-    // Attach peer awareness listener and immediate ghost-purge
+    // Attach peer awareness listener and immediate ghost/inactivity purge
     const handleAwareness = () => {
       const states = session.provider.awareness.getStates();
       const list: CollaboratorPresence[] = [];
       const activeUserIds = new Set<string>();
+      const inactiveUserIds = new Set<string>();
 
       states.forEach((state, clientId) => {
         if (state && state.user) {
+          const u = state.user as UserProfile;
           list.push({
             clientId,
-            user: state.user as UserProfile,
+            user: u,
             activeFile: state.activeFile as string | undefined,
             cursor: state.cursor as { lineNumber: number; column: number } | null | undefined,
             isTyping: Boolean(state.isTyping),
+            isInactive: Boolean(state.isInactive),
             lastActive: (state.lastActive as number) || Date.now(),
           });
 
           if (!state.activeFile || state.activeFile === activeFile.path) {
-            activeUserIds.add((state.user as UserProfile).id);
+            activeUserIds.add(u.id);
+          }
+          if (state.isInactive) {
+            inactiveUserIds.add(u.id);
           }
         }
       });
@@ -522,7 +557,7 @@ export function useCollaborativeEditor({
 
       setCollaborators(list);
       syncCollaboratorCursorStyles(list);
-      updateReservationsFromMap(activeUserIds);
+      updateReservationsFromMap(activeUserIds, inactiveUserIds);
     };
 
     session.provider.awareness.on('change', handleAwareness);
@@ -560,18 +595,34 @@ export function useCollaborativeEditor({
     lastActiveLineRef.current = initLine;
     handleUserStoppedTyping(initLine);
 
+    const markActivity = (line: number, col?: number) => {
+      lastLocalActivityRef.current = Date.now();
+      lastActiveLineRef.current = line;
+      if (isInactiveRef.current) {
+        isInactiveRef.current = false;
+        session.provider.awareness.setLocalStateField('isInactive', false);
+      }
+    };
+
     // Track local cursor position in awareness with lag-free throttled broadcast
     const cursorDisposable = editorInstance.onDidChangeCursorPosition((e) => {
       const currentLine = e.position.lineNumber;
-      lastActiveLineRef.current = currentLine;
+      markActivity(currentLine, e.position.column);
 
       const now = Date.now();
       if (now - awarenessThrottleRef.current > 120) {
         awarenessThrottleRef.current = now;
-        collaborationClient.updateLocalAwareness(session.provider, user, activeFile.path, {
-          lineNumber: currentLine,
-          column: e.position.column,
-        });
+        collaborationClient.updateLocalAwareness(
+          session.provider,
+          user,
+          activeFile.path,
+          {
+            lineNumber: currentLine,
+            column: e.position.column,
+          },
+          false,
+          false
+        );
       }
 
       // Debounce reservation update: only update when user pauses/stops typing or navigating!
@@ -585,6 +636,7 @@ export function useCollaborativeEditor({
 
     // Track content edits: set typing state and debounce reservation update until typing finishes
     const contentDisposable = editorInstance.onDidChangeModelContent(() => {
+      markActivity(lastActiveLineRef.current);
       collaborationClient.updateLocalAwareness(
         session.provider,
         user,
@@ -593,6 +645,7 @@ export function useCollaborativeEditor({
           lineNumber: lastActiveLineRef.current,
           column: editorInstance.getPosition()?.column || 1,
         },
+        false,
         true
       );
 
@@ -602,6 +655,14 @@ export function useCollaborativeEditor({
       typingTimerRef.current = setTimeout(() => {
         handleUserStoppedTyping(lastActiveLineRef.current);
       }, 320);
+    });
+
+    const keyDisposable = editorInstance.onKeyDown(() => {
+      markActivity(lastActiveLineRef.current);
+    });
+
+    const mouseDisposable = editorInstance.onMouseDown(() => {
+      markActivity(lastActiveLineRef.current);
     });
 
     return () => {
@@ -619,6 +680,8 @@ export function useCollaborativeEditor({
       session.provider.awareness.off('change', handleAwareness);
       cursorDisposable.dispose();
       contentDisposable.dispose();
+      keyDisposable.dispose();
+      mouseDisposable.dispose();
       session.ytext.unobserve(handleYTextObserver);
       session.reservationsMap.unobserve(handleReservationsObserver);
       if (bindingRef.current) {
@@ -684,31 +747,97 @@ export function useCollaborativeEditor({
     );
   }, [reservations, editorInstance, monacoInstance, activeFile?.path, user.id]);
 
-  // Periodic Lease Auto-Renewal for owned reservations & fast expired reservation cleanup (5s/15s)
+  // Periodic Lease Auto-Renewal, Inactivity check, and fast expired/departed peer reservation cleanup
   useEffect(() => {
     const interval = window.setInterval(() => {
       const session = sessionRef.current;
       if (!session) return;
       const now = Date.now();
 
+      // Check inactivity locally
+      const idleTime = now - lastLocalActivityRef.current;
+      if (idleTime >= INACTIVITY_TIMEOUT_MS && !isInactiveRef.current) {
+        isInactiveRef.current = true;
+        session.provider.awareness.setLocalStateField('isInactive', true);
+        const autoResId = `auto_${user.id}_${activeFile?.id}`;
+        if (session.reservationsMap.has(autoResId)) {
+          session.reservationsMap.delete(autoResId);
+        }
+      }
+
+      const states = session.provider.awareness.getStates();
+      const connectedUserIds = new Set<string>();
+      const inactiveUserIds = new Set<string>();
+      states.forEach((state) => {
+        if (state && state.user && (state.user as UserProfile).id) {
+          const uid = (state.user as UserProfile).id;
+          connectedUserIds.add(uid);
+          if (state.isInactive) {
+            inactiveUserIds.add(uid);
+          }
+        }
+      });
+
       session.reservationsMap.forEach((res, key) => {
+        // If owner disconnected (left the codebase), prune immediately
+        if (!connectedUserIds.has(res.ownerId)) {
+          session.reservationsMap.delete(key);
+          return;
+        }
+
+        // If owner is inactive and this is an automatic reservation, prune immediately
+        if (inactiveUserIds.has(res.ownerId) && (res.isAutomatic || key.startsWith('auto_'))) {
+          session.reservationsMap.delete(key);
+          return;
+        }
+
         if (res.ownerId === user.id) {
-          // Fast auto-renew while actively connected
-          session.reservationsMap.set(key, {
-            ...res,
-            expiresAt: now + 15_000,
-          });
+          if (!isInactiveRef.current) {
+            // Fast auto-renew while actively connected and not inactive
+            session.reservationsMap.set(key, {
+              ...res,
+              expiresAt: now + 15_000,
+            });
+          } else if (res.isAutomatic || key.startsWith('auto_')) {
+            session.reservationsMap.delete(key);
+          }
         } else if (res.expiresAt <= now) {
           // Clean up expired peer lease immediately
           session.reservationsMap.delete(key);
         }
       });
-    }, 5_000);
+    }, 3_000);
 
     return () => window.clearInterval(interval);
+  }, [user.id, activeFile?.id]);
+
+  // Clean up reservations when leaving the page or closing tab
+  useEffect(() => {
+    const handleLeave = () => {
+      const session = sessionRef.current;
+      if (session) {
+        session.reservationsMap.forEach((res, key) => {
+          if (res.ownerId === user.id) {
+            session.reservationsMap.delete(key);
+          }
+        });
+        try {
+          session.provider.awareness.setLocalState(null);
+        } catch {}
+      }
+    };
+
+    window.addEventListener('beforeunload', handleLeave);
+    window.addEventListener('pagehide', handleLeave);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleLeave);
+      window.removeEventListener('pagehide', handleLeave);
+      handleLeave();
+    };
   }, [user.id]);
 
-  // Follow Mode: Smoothly scroll and reveal target collaborator's cursor
+    // Follow Mode: Smoothly scroll and reveal target collaborator's cursor
   useEffect(() => {
     if (!followState || !editorInstance || !monacoInstance) return;
 
