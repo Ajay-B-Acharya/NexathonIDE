@@ -46,6 +46,7 @@ interface TopBarProps {
   onOpenAIDebugger: () => void;
   onSwitchWorkspace: () => void;
   onLogout: () => void;
+  onOpenDiagnostics?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -75,6 +76,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenAIDebugger,
   onSwitchWorkspace,
   onLogout,
+  onOpenDiagnostics,
 }) => {
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -167,7 +169,18 @@ export const TopBar: React.FC<TopBarProps> = ({
           </span>
         </button>
 
-        {renderConnectionStatus()}
+        {onOpenDiagnostics ? (
+          <button
+            type="button"
+            onClick={onOpenDiagnostics}
+            title="Click to view Live Collaboration Diagnostics & Network Endpoints"
+            className="cursor-pointer transition-transform hover:scale-105 active:scale-95"
+          >
+            {renderConnectionStatus()}
+          </button>
+        ) : (
+          renderConnectionStatus()
+        )}
 
         {/* Edit Reservations Counter Pill */}
         {activeReservationsCount > 0 && (

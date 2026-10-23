@@ -1,10 +1,10 @@
 import { AIDebugRequest, AIDebugResponse } from '../types';
-
-const API_BASE_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3001/api';
+import { getApiBaseUrl } from '../config/endpoints';
 
 export const aiDebuggerApi = {
   async analyzeAndDebug(payload: AIDebugRequest): Promise<AIDebugResponse> {
-    const response = await fetch(`${API_BASE_URL}/ai/debug`, {
+    const baseUrl = getApiBaseUrl();
+    const response = await fetch(`${baseUrl}/ai/debug`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -12,7 +12,7 @@ export interface RoomConfig {
 export const DEFAULT_ROOM_CONFIG: RoomConfig = {
   port: process.env.Y_WEBSOCKET_PORT ? parseInt(process.env.Y_WEBSOCKET_PORT, 10) : 1234,
   heartbeatIntervalMs: 30000,
-  maxRoomNameLength: 128,
+  maxRoomNameLength: 512,
   gcEnabled: true,
 };
 
@@ -52,7 +52,8 @@ export function validateRoomName(
 
 /**
  * Extracts and validates the room identifier from incoming HTTP/WebSocket request URL.
- * Supports both path-based routing (/workspace-123) and query-based routing (?room=workspace-123).
+ * Supports both path-based routing (/workspace-123), proxied paths (/yjs/workspace-123),
+ * and query-based routing (?room=workspace-123).
  */
 export function extractRoomFromUrl(
   reqUrl: string | undefined,
@@ -67,12 +68,19 @@ export function extractRoomFromUrl(
     let candidate = parsed.searchParams.get('room');
 
     if (!candidate) {
-      // Path-based format: e.g. /workspace-123 or /workspace-123/
+      // Path-based format: e.g. /workspace-123 or /yjs/workspace-123
       candidate = parsed.pathname.replace(/^\/+|\/+$/g, '');
     }
 
     if (!candidate) {
       return { valid: false, roomName: '', error: 'No room name provided in path or query' };
+    }
+
+    // Normalize proxied prefixes (e.g. from Vite dev server or reverse proxy)
+    if (candidate.startsWith('yjs/')) {
+      candidate = candidate.slice(4);
+    } else if (candidate.startsWith('collab/')) {
+      candidate = candidate.slice(7);
     }
 
     const decoded = decodeURIComponent(candidate);

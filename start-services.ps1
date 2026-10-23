@@ -15,7 +15,13 @@ Start-Process powershell -WorkingDirectory $root -ArgumentList "-NoExit", "-Comm
 Start-Process powershell -WorkingDirectory $root -ArgumentList "-NoExit", "-Command", "`$host.UI.RawUI.WindowTitle = 'Nexathon [3/3] Vite Frontend (Port 5173)'; npm run dev"
 
 Write-Host ""
+Write-Host ""
 Write-Host "All 3 services successfully launched in dedicated windows!" -ForegroundColor Green
-Write-Host "Frontend URL: " -NoNewline
+$lanIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" -and $_.IPAddress -notlike "169.254*" } | Select-Object -First 1).IPAddress
+Write-Host "Local URL:   " -NoNewline
 Write-Host "http://localhost:5173" -ForegroundColor Yellow
+if ($lanIp) {
+    Write-Host "Network URL: " -NoNewline
+    Write-Host "http://${lanIp}:5173 (Open on Computer B)" -ForegroundColor Cyan
+}
 Write-Host ""

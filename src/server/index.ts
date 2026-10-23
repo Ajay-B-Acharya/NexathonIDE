@@ -73,9 +73,27 @@ const apiServer = spawnProcess(
   { ...process.env, PORT: process.env.PORT || '3001' }
 );
 
+import os from 'os';
+
+function getLanIpAddress(): string | null {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      if (net.family === 'IPv4' && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return null;
+}
+
+const lanIp = getLanIpAddress();
+
 // 3. Vite Frontend Dev Server
 const viteCmd = fs.existsSync(localVite) ? nodeBin : npxCmd;
-const viteArgs = fs.existsSync(localVite) ? [localVite] : ['vite'];
+const viteArgs = fs.existsSync(localVite)
+  ? [localVite, '--host', '0.0.0.0']
+  : ['vite', '--host', '0.0.0.0'];
 const viteDev = spawnProcess(
   'Vite Frontend',
   viteCmd,
@@ -101,3 +119,19 @@ function shutdown() {
 
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+
+const yjsPort = process.env.Y_WEBSOCKET_PORT || '1234';
+const apiPort = process.env.PORT || '3001';
+
+console.log('Servers starting...');
+console.log(`  Local:`);
+console.log(`    Frontend:      http://localhost:5173`);
+console.log(`    API Server:    http://localhost:${apiPort}`);
+console.log(`    Yjs Collab:    ws://localhost:${yjsPort}`);
+if (lanIp) {
+  console.log(`  Network (Cross-device / LAN):`);
+  console.log(`    Frontend:      http://${lanIp}:5173`);
+  console.log(`    API Server:    http://${lanIp}:${apiPort}`);
+  console.log(`    Yjs Collab:    ws://${lanIp}:${yjsPort}`);
+}
+console.log('');

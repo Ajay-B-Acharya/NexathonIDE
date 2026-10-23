@@ -1,8 +1,8 @@
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
-import { CollaboratorPresence, ConnectionStatus, EditReservation, UserProfile } from '../types';
+import { EditReservation, UserProfile } from '../types';
 
-const YJS_WS_URL = (import.meta.env.VITE_YJS_WS_URL as string) || 'ws://localhost:1234';
+import { getYjsWsUrl } from '../config/endpoints';
 
 export interface FileCollaborationSession {
   docKey: string;
@@ -10,11 +10,17 @@ export interface FileCollaborationSession {
   provider: WebsocketProvider;
   ytext: Y.Text;
   reservationsMap: Y.Map<EditReservation>;
+  serverUrl: string;
   destroy: () => void;
 }
 
 class CollaborationManager {
   private sessions = new Map<string, FileCollaborationSession>();
+  private lastWsUrl: string = '';
+
+  public getLastWsUrl(): string {
+    return this.lastWsUrl || getYjsWsUrl();
+  }
 
   /**
    * Creates or retrieves an isolated Y.Doc and WebsocketProvider per file: `${roomId}:${filePath}`
@@ -43,9 +49,14 @@ class CollaborationManager {
       return existing;
     }
 
+    const wsUrl = getYjsWsUrl();
+    this.lastWsUrl = wsUrl;
+
     const ydoc = new Y.Doc();
-    const provider = new WebsocketProvider(YJS_WS_URL, docKey, ydoc, {
+    const provider = new WebsocketProvider(wsUrl, docKey, ydoc, {
       connect: true,
+      // Disable local browser BroadcastChannel to guarantee true client-server WebSocket transport
+      disableBc: true,
       // Keep resyncInterval disabled (-1) so text updates flow exclusively over WebSocket messages
       resyncInterval: -1,
     });
@@ -73,6 +84,7 @@ class CollaborationManager {
       provider,
       ytext,
       reservationsMap,
+      serverUrl: wsUrl,
       destroy: () => {
         provider.off('sync', handleSync);
         provider.disconnect();

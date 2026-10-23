@@ -14,7 +14,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "db:init": "tsx src/server/init-db.ts",
-    "test:collab": "tsx collaboration-backend/test/collaboration.test.ts"
+    "test:collab": "tsx collaboration-backend/test/collaboration.test.ts",
+    "test:cross-device": "tsx collaboration-backend/test/cross-device.test.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
