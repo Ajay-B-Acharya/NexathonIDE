@@ -33,9 +33,14 @@ registerConnectionHandler(wss);
  * Start the collaboration server on the given port.
  */
 export function startServer(port: number = PORT): Promise<http.Server> {
-  return new Promise((resolve) => {
-    server.listen(port, () => {
-      console.log(`[Collaboration Server] Listening on ws://localhost:${port}`);
+  return new Promise((resolve, reject) => {
+    const errorHandler = (err: any) => {
+      reject(err);
+    };
+    server.once('error', errorHandler);
+    server.listen(port, '0.0.0.0', () => {
+      server.removeListener('error', errorHandler);
+      console.log(`[Collaboration Server] Listening on ws://0.0.0.0:${port}`);
       resolve(server);
     });
   });

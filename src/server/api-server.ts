@@ -9,6 +9,7 @@ import { WorkspaceService, getLanguageFromPath, isValidUUID } from './services/w
 import type { AIDebugRequest, AIDebugResponse } from './types.js';
 import { createTerminalRouter, setupTerminalServer } from './terminal/terminalServer.js';
 import { sessionManager } from './terminal/sessionManager.js';
+import { startServer as startYjsServer, wss as yjsWss } from './yjs-server.js';
 
 try {
   process.loadEnvFile();
@@ -601,6 +602,33 @@ app.post('/api/ai/debug', handleAIDebug);
 app.post('/ai/debug', handleAIDebug);
 
 setupTerminalServer(httpServer);
+
+// Route /yjs and /collab WebSocket upgrades directly through the unified API server as well
+httpServer.on('upgrade', (request, socket, head) => {
+  try {
+    const parsed = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
+    if (parsed.pathname.startsWith('/yjs') || parsed.pathname.startsWith('/collab')) {
+      yjsWss.handleUpgrade(request, socket as any, head, (ws) => {
+        yjsWss.emit('connection', ws, request);
+      });
+    }
+  } catch (err: any) {
+    console.warn('Notice: WebSocket upgrade error:', err?.message);
+  }
+});
+
+const YJS_PORT = process.env.Y_WEBSOCKET_PORT ? parseInt(process.env.Y_WEBSOCKET_PORT, 10) : 1234;
+startYjsServer(YJS_PORT)
+  .then(() => {
+    console.log(`Yjs Collaboration WebSocket running on ws://localhost:${YJS_PORT}`);
+  })
+  .catch((err) => {
+    if ((err as any)?.code === 'EADDRINUSE') {
+      console.log(`Yjs Collaboration WebSocket active on port ${YJS_PORT}`);
+    } else {
+      console.warn('Yjs server startup note:', err?.message || err);
+    }
+  });
 
 httpServer.listen(PORT, async () => {
   await verifyDatabaseConnection();
