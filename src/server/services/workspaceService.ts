@@ -182,18 +182,21 @@ export class WorkspaceService {
   }
 
   /**
-   * Load single file by path
+   * Load single file by id or path
    */
-  static async loadFile(roomId: string, filePath: string, userToken?: string) {
+  static async loadFile(roomId: string, fileIdentifier: string, userToken?: string) {
     const client = createScopedClient(userToken);
-    const { data, error } = await client
-      .from('workspace_files')
-      .select('*')
-      .eq('room_id', roomId)
-      .eq('path', filePath)
-      .single();
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fileIdentifier);
 
-    if (error) return null;
+    let query = client.from('workspace_files').select('*').eq('room_id', roomId);
+    if (isUUID) {
+      query = query.or(`id.eq.${fileIdentifier},path.eq.${fileIdentifier}`);
+    } else {
+      query = query.eq('path', fileIdentifier);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error || !data) return null;
     return formatFile(data);
   }
 
@@ -247,43 +250,53 @@ export class WorkspaceService {
   }
 
   /**
-   * Patch file content
+   * Patch file content by id or path
    */
-  static async updateFileContent(roomId: string, filePathOrId: string, content: string, userToken?: string) {
+  static async updateFileContent(
+    roomId: string,
+    fileIdentifier: string,
+    content?: string,
+    path?: string,
+    language?: string,
+    userToken?: string
+  ) {
     const client = createScopedClient(userToken);
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(filePathOrId);
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fileIdentifier);
 
-    let query = client
-      .from('workspace_files')
-      .update({
-        content,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('room_id', roomId);
+    const updatePayload: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (content !== undefined) updatePayload.content = content;
+    if (path !== undefined) updatePayload.path = path;
+    if (language !== undefined) updatePayload.language = language;
 
+    let query = client.from('workspace_files').update(updatePayload).eq('room_id', roomId);
     if (isUUID) {
-      query = query.eq('id', filePathOrId);
+      query = query.or(`id.eq.${fileIdentifier},path.eq.${fileIdentifier}`);
     } else {
-      query = query.eq('path', filePathOrId);
+      query = query.eq('path', fileIdentifier);
     }
 
-    const { data, error } = await query.select('*').single();
-
-    if (error) return null;
-    return formatFile(data);
+    const { data, error } = await query.select('*');
+    if (error || !data || data.length === 0) return null;
+    return formatFile(data[0]);
   }
 
   /**
-   * Delete file
+   * Delete file by id or path
    */
-  static async deleteFile(roomId: string, filePath: string, userToken?: string) {
+  static async deleteFile(roomId: string, fileIdentifier: string, userToken?: string) {
     const client = createScopedClient(userToken);
-    const { error } = await client
-      .from('workspace_files')
-      .delete()
-      .eq('room_id', roomId)
-      .eq('path', filePath);
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fileIdentifier);
 
+    let query = client.from('workspace_files').delete().eq('room_id', roomId);
+    if (isUUID) {
+      query = query.or(`id.eq.${fileIdentifier},path.eq.${fileIdentifier}`);
+    } else {
+      query = query.eq('path', fileIdentifier);
+    }
+
+    const { error } = await query;
     if (error) throw new Error(`Failed to delete file: ${error.message}`);
     return true;
   }

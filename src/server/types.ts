@@ -46,6 +46,7 @@ export interface AIDebugRequest {
 
 export interface AIDebugResponse {
   explanation: string;
+  probableCause?: string;
   suggestedFix?: string;
   confidence: number;
 }
