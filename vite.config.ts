@@ -47,7 +47,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['yjs', 'y-monaco', 'y-websocket', 'y-protocols'],
+    include: ['yjs', 'y-monaco', 'y-websocket', 'y-protocols/awareness', 'y-protocols/sync'],
     exclude: ['@xterm/xterm', 'monaco-editor/esm/vs/editor/editor.api.js'],
   },
   worker: {
