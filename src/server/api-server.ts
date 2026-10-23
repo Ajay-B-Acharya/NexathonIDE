@@ -4,9 +4,10 @@ import { WebSocketServer, WebSocket } from 'ws';
 import cors from 'cors';
 import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
-import pty from 'node-pty';
 import OpenAI from 'openai';
-import type { Room, WorkspaceFile, User, TerminalMessage, AIDebugRequest, AIDebugResponse } from './types.js';
+import type { Room, WorkspaceFile, User, AIDebugRequest, AIDebugResponse } from './types.js';
+import { setupTerminalServer, createTerminalRouter } from './terminal/terminalServer.js';
+import { sessionManager } from './terminal/sessionManager.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -14,6 +15,7 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/terminal', createTerminalRouter());
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/collaborative_ide',
@@ -23,14 +25,6 @@ const pool = new Pool({
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-interface TerminalSession {
-  pty: pty.IPty;
-  clients: Set<WebSocket>;
-  roomId: string;
-}
-
-const terminalSessions = new Map<string, TerminalSession>();
 
 async function initDatabase() {
   const client = await pool.connect();
@@ -304,100 +298,23 @@ Provide your response in JSON format:
   }
 });
 
-const wss = new WebSocketServer({ server: httpServer, path: '/ws/terminal' });
-
-wss.on('connection', (ws: WebSocket, req) => {
-  const url = new URL(req.url || '', `http://${req.headers.host}`);
-  const roomId = url.searchParams.get('roomId');
-  const userId = url.searchParams.get('userId');
-  
-  if (!roomId || !userId) {
-    ws.close(4000, 'roomId and userId required');
-    return;
-  }
-  
-  let session = terminalSessions.get(roomId);
-  
-  if (!session) {
-    const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
-    const ptyProcess = pty.spawn(shell, [], {
-      name: 'xterm-color',
-      cols: 80,
-      rows: 24,
-      cwd: process.env.HOME || process.cwd(),
-      env: { ...process.env, TERM: 'xterm-color' },
-    });
-    
-    session = { pty: ptyProcess, clients: new Set(), roomId };
-    terminalSessions.set(roomId, session);
-    
-    ptyProcess.onData((data) => {
-      const currentSession = terminalSessions.get(roomId);
-      if (currentSession) {
-        currentSession.clients.forEach(client => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: 'output', data }));
-          }
-        });
-      }
-    });
-    
-    ptyProcess.onExit(() => {
-      const currentSession = terminalSessions.get(roomId);
-      if (currentSession) {
-        currentSession.clients.forEach(client => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: 'disconnect' }));
-          }
-        });
-      }
-      terminalSessions.delete(roomId);
-    });
-  }
-  
-  if (!session) return;
-  
-  session.clients.add(ws);
-  ws.send(JSON.stringify({ type: 'connect', data: `Connected to terminal for room ${roomId}\r\n` }));
-  
-  ws.on('message', (message) => {
-    try {
-      const msg: TerminalMessage = JSON.parse(message.toString());
-      const currentSession = terminalSessions.get(roomId);
-      if (!currentSession) return;
-      if (msg.type === 'input' && msg.data) {
-        currentSession.pty.write(msg.data);
-      } else if (msg.type === 'resize' && msg.cols && msg.rows) {
-        currentSession.pty.resize(msg.cols, msg.rows);
-      }
-    } catch (e) {
-      console.error('Invalid terminal message:', e);
-    }
-  });
-  
-  ws.on('close', () => {
-    const currentSession = terminalSessions.get(roomId);
-    if (!currentSession) return;
-    currentSession.clients.delete(ws);
-    if (currentSession.clients.size === 0) {
-      currentSession.pty.kill();
-      terminalSessions.delete(roomId);
-    }
-  });
-});
+// Initialize Modular Collaborative Terminal WebSocket Server
+setupTerminalServer(httpServer);
 
 httpServer.listen(PORT, async () => {
   await initDatabase();
   console.log(`API server running on port ${PORT}`);
+  console.log(`Terminal WebSocket available at ws://localhost:${PORT}/ws/terminal`);
 });
 
-process.on('SIGINT', async () => {
-  console.log('Shutting down API server...');
-  for (const session of terminalSessions.values()) {
-    session.pty.kill();
-  }
+const handleGracefulShutdown = async () => {
+  console.log('\nGracefully shutting down API server and terminal sessions...');
+  sessionManager.shutdown();
   await pool.end();
   httpServer.close(() => {
     process.exit(0);
   });
-});
+};
+
+process.on('SIGINT', handleGracefulShutdown);
+process.on('SIGTERM', handleGracefulShutdown);

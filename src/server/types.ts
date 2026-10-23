@@ -22,10 +22,19 @@ export interface WorkspaceFile {
 }
 
 export interface TerminalMessage {
-  type: 'input' | 'output' | 'resize' | 'connect' | 'disconnect';
+  type?: 'input' | 'output' | 'resize' | 'connect' | 'disconnect' | 'history' | 'presence' | 'typing' | 'restart' | 'exit';
+  action?: 'terminal_input' | 'terminal_output' | 'terminal_resize' | 'terminal_connect' | 'terminal_disconnect' | 'terminal_history' | 'terminal_presence' | 'terminal_typing' | 'terminal_restart' | 'terminal_exit';
   data?: string;
+  payload?: any;
   cols?: number;
   rows?: number;
+  userId?: string;
+  username?: string;
+  color?: string;
+  shellType?: string;
+  isIsolated?: boolean;
+  exitCode?: number;
+  users?: Array<{ userId: string; username: string; color?: string }>;
 }
 
 export interface AIDebugRequest {
