@@ -78,9 +78,12 @@ export const Login: React.FC<LoginProps> = ({
   useEffect(() => {
     try {
       const hash = window.location.hash;
-      if (hash && (hash.includes('type=recovery') || hash.includes('access_token'))) {
+      if (hash && hash.includes('type=recovery')) {
         setAuthMode('reset');
         setInfoMsg('Password recovery link verified! Please enter your new password.');
+        try {
+          window.history.replaceState(null, '', window.location.pathname);
+        } catch {}
       }
     } catch {}
 
@@ -503,6 +506,17 @@ export const Login: React.FC<LoginProps> = ({
                       </>
                     )}
                   </button>
+
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleMode('signin')}
+                      className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
+                    >
+                      <ArrowLeft className="h-3 w-3" />
+                      <span>Cancel & Return to Sign In</span>
+                    </button>
+                  </div>
                 </form>
               )}
 
