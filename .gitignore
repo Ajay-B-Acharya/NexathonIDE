@@ -11,11 +11,15 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Environment variables (contains secrets — keep out of version control)
 .env
 .env.local
 .env.production
 .env.development
-.env.*.local
+.env.*
+!.env.example
+.codex
 
 # Editor directories and files
 .vscode/*

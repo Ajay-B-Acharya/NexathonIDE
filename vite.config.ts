@@ -1,4 +1,5 @@
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -7,10 +8,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [tailwindcss(), react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'monaco-editor/esm/vs/editor/editor.api.js': 'monaco-editor',
+      'monaco-editor/esm/vs/editor/editor.api': 'monaco-editor',
     },
   },
   server: {
@@ -43,12 +46,12 @@ export default defineConfig({
           }
         },
       },
-      external: ['monaco-editor/esm/vs/editor/editor.api.js'],
+      external: [],
     },
   },
   optimizeDeps: {
     include: ['yjs', 'y-monaco', 'y-websocket', 'y-protocols/awareness', 'y-protocols/sync'],
-    exclude: ['@xterm/xterm', 'monaco-editor/esm/vs/editor/editor.api.js'],
+    exclude: ['@xterm/xterm'],
   },
   worker: {
     format: 'es',

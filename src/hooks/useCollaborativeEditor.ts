@@ -1,148 +1,208 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import * as Y from 'yjs';
-import { WebsocketProvider } from 'y-websocket';
+import type * as Monaco from 'monaco-editor';
 import { MonacoBinding } from 'y-monaco';
-import * as awarenessProtocol from 'y-protocols/awareness.js';
-import type { User, CursorPosition, PresenceUser } from '../types';
+import { collaborationClient, FileCollaborationSession } from '../services/collaborationClient';
+import { CollaboratorPresence, ConnectionStatus, UserProfile, WorkspaceFile } from '../types';
 
-const YJS_WS_URL = import.meta.env.VITE_YJS_WS_URL || 'ws://localhost:1234';
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+interface UseCollaborativeEditorOptions {
+  roomId: string;
+  activeFile: WorkspaceFile | null;
+  user: UserProfile;
+  editorInstance: Monaco.editor.IStandaloneCodeEditor | null;
+  monacoInstance: typeof Monaco | null;
+  onContentChange: (fileId: string, newContent: string) => void;
+}
 
-const CURSOR_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-  '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-];
+interface UseCollaborativeEditorReturn {
+  connectionStatus: ConnectionStatus;
+  isDocumentSynced: boolean;
+  collaborators: CollaboratorPresence[];
+  applyContentToSharedDoc: (newFullContent: string) => void;
+}
 
-export function useCollaborativeEditor(roomId: string, user: User) {
-  const [doc, setDoc] = useState<Y.Doc | null>(null);
-  const [provider, setProvider] = useState<WebsocketProvider | null>(null);
-  const [awareness, setAwareness] = useState<any>(null);
-  const [connectedUsers, setConnectedUsers] = useState<PresenceUser[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
+/**
+ * Dynamically injects per-client cursor CSS styles so y-monaco awareness
+ * cursors and selection highlights display each user's unique color & username pill.
+ */
+function syncCollaboratorCursorStyles(collaborators: CollaboratorPresence[]) {
+  const styleId = 'nexathon-yjs-cursor-styles';
+  let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = styleId;
+    document.head.appendChild(styleEl);
+  }
+
+  const rules = collaborators
+    .map(({ clientId, user }) => {
+      const safeName = user.name.replace(/"/g, '\\"');
+      const color = user.color || '#3b82f6';
+      return `
+        .yRemoteSelection-${clientId} {
+          background-color: ${color}33 !important;
+        }
+        .yRemoteSelectionHead-${clientId} {
+          position: absolute;
+          border-left: 2px solid ${color} !important;
+          border-top: 2px solid ${color} !important;
+          border-bottom: 2px solid ${color} !important;
+          height: 100%;
+          box-sizing: border-box;
+        }
+        .yRemoteSelectionHead-${clientId}::after {
+          content: "${safeName}";
+          position: absolute;
+          top: -18px;
+          left: -2px;
+          background-color: ${color};
+          color: #ffffff;
+          font-size: 10px;
+          font-family: ui-sans-serif, system-ui, sans-serif;
+          font-weight: 600;
+          padding: 1px 5px;
+          border-radius: 3px 3px 3px 0;
+          white-space: nowrap;
+          pointer-events: none;
+          z-index: 50;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+      `;
+    })
+    .join('\n');
+
+  styleEl.textContent = rules;
+}
+
+export function useCollaborativeEditor({
+  roomId,
+  activeFile,
+  user,
+  editorInstance,
+  monacoInstance,
+  onContentChange,
+}: UseCollaborativeEditorOptions): UseCollaborativeEditorReturn {
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+  const [isDocumentSynced, setIsDocumentSynced] = useState<boolean>(false);
+  const [collaborators, setCollaborators] = useState<CollaboratorPresence[]>([]);
+
   const bindingRef = useRef<MonacoBinding | null>(null);
-  const editorRef = useRef<any>(null);
-  const userColorsRef = useRef<Map<string, string>>(new Map());
-
-  const getUserColor = useCallback((userId: string) => {
-    if (!userColorsRef.current.has(userId)) {
-      const colorIndex = userColorsRef.current.size % CURSOR_COLORS.length;
-      userColorsRef.current.set(userId, CURSOR_COLORS[colorIndex]);
-    }
-    return userColorsRef.current.get(userId)!;
-  }, []);
+  const sessionRef = useRef<FileCollaborationSession | null>(null);
+  const modelsMapRef = useRef<Map<string, Monaco.editor.ITextModel>>(new Map());
+  const onContentChangeRef = useRef(onContentChange);
+  onContentChangeRef.current = onContentChange;
 
   useEffect(() => {
-    if (!roomId || !user) return;
-
-    const ydoc = new Y.Doc();
-    setDoc(ydoc);
-
-    const wsProvider = new WebsocketProvider(YJS_WS_URL, roomId, ydoc, {
-      connect: true,
-    });
-    setProvider(wsProvider);
-    setAwareness(wsProvider.awareness);
-
-    wsProvider.on('status', (event: { status: string }) => {
-      setIsConnected(event.status === 'connected');
-    });
-
-    wsProvider.awareness.on('change', () => {
-      const states = Array.from(wsProvider.awareness.getStates().entries());
-      const users: PresenceUser[] = states
-        .filter(([, state]: [number, any]) => state && state.user)
-        .map(([clientId, state]: [number, any]) => ({
-          ...state.user,
-          cursor: state.cursor,
-          lastActive: new Date(),
-        }));
-      setConnectedUsers(users);
-    });
-
-    wsProvider.awareness.setLocalStateField('user', {
-      id: user.id,
-      username: user.username,
-      avatarUrl: user.avatarUrl,
-      color: user.color,
-      createdAt: user.createdAt,
-    });
-
-    return () => {
-      wsProvider.awareness.setLocalStateField('user', null);
-      wsProvider.destroy();
-      ydoc.destroy();
-      bindingRef.current?.destroy();
-    };
-  }, [roomId, user]);
-
-  const bindEditor = useCallback((monacoEditor: any) => {
-    if (!doc || !provider || editorRef.current === monacoEditor) return;
-    
-    editorRef.current = monacoEditor;
-    
-    if (bindingRef.current) {
-      bindingRef.current.destroy();
+    if (!editorInstance || !monacoInstance || !activeFile || !roomId) {
+      return;
     }
-    
-    bindingRef.current = new MonacoBinding(
-      doc.getText('codemirror'),
-      monacoEditor.getModel(),
-      new Set([provider.awareness.clientID]),
-      provider.awareness
-    );
-  }, [doc, provider]);
 
-  const unbindEditor = useCallback(() => {
+    // Clean up previous file's MonacoBinding without destroying cached Y.Doc sessions prematurely
     if (bindingRef.current) {
       bindingRef.current.destroy();
       bindingRef.current = null;
     }
-    editorRef.current = null;
+
+    const fileKey = `${roomId}:${activeFile.path}`;
+
+    // Get or create a dedicated Monaco ITextModel per file URI so undo/redo & view state remain file-scoped
+    const modelUri = monacoInstance.Uri.parse(`inmemory://nexathon/${roomId}/${activeFile.path}`);
+    let model = monacoInstance.editor.getModel(modelUri);
+    if (!model) {
+      model = monacoInstance.editor.createModel(
+        activeFile.content,
+        activeFile.language,
+        modelUri
+      );
+      modelsMapRef.current.set(fileKey, model);
+    } else if (model.getLanguageId() !== activeFile.language) {
+      monacoInstance.editor.setModelLanguage(model, activeFile.language);
+    }
+
+    editorInstance.setModel(model);
+
+    // Connect or reuse the per-file Yjs session (`${roomId}:${file.path}`)
+    const session = collaborationClient.getOrCreateFileSession(
+      roomId,
+      activeFile.path,
+      user,
+      activeFile.content,
+      (status) => setConnectionStatus(status),
+      (list) => {
+        setCollaborators(list);
+        syncCollaboratorCursorStyles(list);
+      },
+      (synced) => setIsDocumentSynced(synced)
+    );
+
+    sessionRef.current = session;
+
+    // If session is already synced and contains text, ensure model reflects it immediately
+    if (session.provider.synced && session.ytext.length > 0) {
+      if (model.getValue() !== session.ytext.toString()) {
+        model.setValue(session.ytext.toString());
+      }
+    }
+
+    // Bind Y.Text to the file's dedicated Monaco model and Awareness
+    const binding = new MonacoBinding(
+      session.ytext,
+      model,
+      new Set([editorInstance]),
+      session.provider.awareness
+    );
+    bindingRef.current = binding;
+
+    // Observe Y.Text changes to update dirty indicators and trigger debounced autosave
+    const handleYTextObserver = () => {
+      onContentChangeRef.current(activeFile.id, session.ytext.toString());
+    };
+    session.ytext.observe(handleYTextObserver);
+
+    // Track local cursor position in awareness without forcing viewport scrolling on peers
+    const cursorDisposable = editorInstance.onDidChangeCursorPosition((e) => {
+      collaborationClient.updateLocalAwareness(session.provider, user, activeFile.path, {
+        lineNumber: e.position.lineNumber,
+        column: e.position.column,
+      });
+    });
+
+    return () => {
+      cursorDisposable.dispose();
+      session.ytext.unobserve(handleYTextObserver);
+      if (bindingRef.current) {
+        bindingRef.current.destroy();
+        bindingRef.current = null;
+      }
+    };
+  }, [roomId, activeFile?.id, activeFile?.path, activeFile?.language, editorInstance, monacoInstance, user]);
+
+  // Dispose all sessions and models when leaving the workspace completely
+  useEffect(() => {
+    return () => {
+      if (bindingRef.current) {
+        bindingRef.current.destroy();
+        bindingRef.current = null;
+      }
+      modelsMapRef.current.forEach((model) => model.dispose());
+      modelsMapRef.current.clear();
+      collaborationClient.destroyAllSessions();
+    };
   }, []);
 
-  const updateCursor = useCallback((position: { lineNumber: number; column: number } | null, selection?: { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number } | null) => {
-    if (!awareness) return;
-    
-    awareness.setLocalStateField('cursor', position ? {
-      userId: user.id,
-      username: user.username,
-      color: user.color,
-      position,
-      selection,
-    } : null);
-  }, [awareness, user]);
+  const applyContentToSharedDoc = useCallback((newFullContent: string) => {
+    const session = sessionRef.current;
+    if (!session) return;
 
-  const saveFile = useCallback(async (path: string, content: string) => {
-    const response = await fetch(`${API_URL}/api/rooms/${roomId}/files/${encodeURIComponent(path)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
+    session.ydoc.transact(() => {
+      session.ytext.delete(0, session.ytext.length);
+      session.ytext.insert(0, newFullContent);
     });
-    if (!response.ok) throw new Error('Failed to save file');
-    return response.json();
-  }, [roomId]);
-
-  const createFile = useCallback(async (path: string, content: string = '', language?: string) => {
-    const response = await fetch(`${API_URL}/api/rooms/${roomId}/files`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, content, language }),
-    });
-    if (!response.ok) throw new Error('Failed to create file');
-    return response.json();
-  }, [roomId]);
+  }, []);
 
   return {
-    doc,
-    provider,
-    awareness,
-    connectedUsers,
-    isConnected,
-    bindEditor,
-    unbindEditor,
-    updateCursor,
-    saveFile,
-    createFile,
-    getUserColor,
+    connectionStatus,
+    isDocumentSynced,
+    collaborators,
+    applyContentToSharedDoc,
   };
 }

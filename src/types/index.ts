@@ -1,58 +1,94 @@
-export interface User {
-  id: string;
-  username: string;
-  avatarUrl?: string;
-  color: string;
-  createdAt: Date;
-}
+export type SupportedLanguage =
+  | 'javascript'
+  | 'typescript'
+  | 'python'
+  | 'json'
+  | 'html'
+  | 'css'
+  | 'markdown';
 
-export interface Room {
+export interface UserProfile {
   id: string;
   name: string;
-  ownerId: string;
-  createdAt: Date;
+  color: string;
+  avatarUrl?: string;
+  username?: string;
+  email?: string;
+}
+
+export type User = UserProfile;
+
+export interface CollaboratorPresence {
+  clientId: number;
+  user: UserProfile;
+  activeFile?: string;
+  cursor?: {
+    lineNumber: number;
+    column: number;
+  } | null;
+  isTyping?: boolean;
+  lastActive: number;
 }
 
 export interface WorkspaceFile {
   id: string;
   roomId: string;
-  path: string;
+  name: string;
+  path: string; // e.g., "src/main.py" or "index.js"
+  language: SupportedLanguage;
   content: string;
-  language: string;
-  updatedAt: Date;
+  updatedAt: string;
+  isDirty?: boolean;
 }
 
-export interface CursorPosition {
-  userId: string;
-  username: string;
-  color: string;
-  position: { lineNumber: number; column: number } | null;
-  selection: { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number } | null;
+export interface FileTreeNode {
+  name: string;
+  path: string;
+  type: 'file' | 'folder';
+  file?: WorkspaceFile;
+  children?: FileTreeNode[];
 }
 
-export interface PresenceUser extends User {
-  cursor?: CursorPosition;
-  lastActive: Date;
+export interface WorkspaceRoom {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  ownerId: string;
+  files?: WorkspaceFile[];
 }
 
 export interface ExecutionResult {
-  output: string;
-  error?: string;
-  executionTime: number;
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  executionTimeMs: number;
+  language: SupportedLanguage;
+  timestamp: string;
+  output?: string;
+  error?: string | null;
+  executionTime?: number;
 }
 
 export interface AIDebugRequest {
   code: string;
-  language: string;
-  error?: string;
+  language: SupportedLanguage;
+  error: string;
   filePath: string;
 }
 
 export interface AIDebugResponse {
   explanation: string;
-  suggestedFix?: string;
-  confidence: number;
+  probableCause?: string;
+  suggestedFix: string;
+  confidence?: number;
+  lineNumbers?: number[];
 }
+
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
+
+export type BottomTabType = 'output' | 'terminal' | 'ai-debugger';
 
 export interface TerminalMessage {
   type?: 'input' | 'output' | 'resize' | 'connect' | 'disconnect' | 'history' | 'presence' | 'typing' | 'restart' | 'exit';

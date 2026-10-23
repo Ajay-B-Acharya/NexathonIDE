@@ -88,7 +88,7 @@ export function TerminalComponent({ roomId, user, isVisible }: TerminalProps) {
 
     // Connect to multi-user collaborative terminal WebSocket
     const wsBase = API_URL.replace(/^http/, 'ws');
-    const wsUrl = `${wsBase}/ws/terminal?roomId=${encodeURIComponent(roomId)}&userId=${encodeURIComponent(user.id)}&username=${encodeURIComponent(user.username)}&color=${encodeURIComponent(user.color || '#4ec9b0')}`;
+    const wsUrl = `${wsBase}/ws/terminal?roomId=${encodeURIComponent(roomId)}&userId=${encodeURIComponent(user.id)}&username=${encodeURIComponent(user.username || user.name || 'Anonymous')}&color=${encodeURIComponent(user.color || '#4ec9b0')}`;
     const ws = new WebSocket(wsUrl);
     websocketRef.current = ws;
 
