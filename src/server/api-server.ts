@@ -68,6 +68,23 @@ async function verifyDatabaseConnection() {
   }
 }
 
+// Root API probe
+app.get('/', (req: Request, res: Response) => {
+  res.json({
+    name: 'Nexathon Collaborative IDE API',
+    status: 'online',
+    version: '1.0.0',
+    supabaseConnected,
+    aiProvider: groq ? 'groq' : openai ? 'openai' : 'none',
+    endpoints: {
+      health: '/api/health',
+      rooms: '/api/rooms',
+      terminal: '/api/terminal',
+      debug: '/api/ai/debug',
+    },
+  });
+});
+
 // Health check
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({
