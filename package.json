@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:all": "tsx src/server/index.ts",
+    "dev:split": "powershell -ExecutionPolicy Bypass -File ./start-services.ps1",
     "server:yjs": "tsx src/server/yjs-server.ts",
     "server:api": "tsx src/server/api-server.ts",
     "build": "tsc -b && vite build",

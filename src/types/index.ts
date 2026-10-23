@@ -12,7 +12,10 @@ export interface UserProfile {
   name: string;
   color: string;
   avatarUrl?: string;
+  username?: string;
 }
+
+export type User = UserProfile;
 
 export interface CollaboratorPresence {
   clientId: number;
@@ -62,6 +65,9 @@ export interface ExecutionResult {
   executionTimeMs: number;
   language: SupportedLanguage;
   timestamp: string;
+  output?: string;
+  error?: string | null;
+  executionTime?: number;
 }
 
 export interface AIDebugRequest {
@@ -82,3 +88,19 @@ export interface AIDebugResponse {
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 export type BottomTabType = 'output' | 'terminal' | 'ai-debugger';
+
+export interface TerminalMessage {
+  type?: 'input' | 'output' | 'resize' | 'connect' | 'disconnect' | 'history' | 'presence' | 'typing' | 'restart' | 'exit';
+  action?: 'terminal_input' | 'terminal_output' | 'terminal_resize' | 'terminal_connect' | 'terminal_disconnect' | 'terminal_history' | 'terminal_presence' | 'terminal_typing' | 'terminal_restart' | 'terminal_exit';
+  data?: string;
+  payload?: any;
+  cols?: number;
+  rows?: number;
+  userId?: string;
+  username?: string;
+  color?: string;
+  shellType?: string;
+  isIsolated?: boolean;
+  exitCode?: number;
+  users?: Array<{ userId: string; username: string; color?: string }>;
+}

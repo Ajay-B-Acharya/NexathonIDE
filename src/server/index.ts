@@ -8,26 +8,29 @@ try {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, '../..');
+const projectRoot = path.resolve(__dirname, '../..');
 
 console.log('Starting Collaborative IDE servers...\n');
 
-const yjsServer = spawn(`npx tsx "${path.join(__dirname, 'yjs-server.ts')}"`, {
+const isWin = process.platform === 'win32';
+const npx = isWin ? 'npx.cmd' : 'npx';
+
+const yjsServer = spawn(`${npx} tsx "${path.join(__dirname, 'yjs-server.ts')}"`, {
   stdio: 'inherit',
   shell: true,
   env: { ...process.env, Y_WEBSOCKET_PORT: process.env.Y_WEBSOCKET_PORT || '1234' },
 });
 
-const apiServer = spawn(`npx tsx "${path.join(__dirname, 'api-server.ts')}"`, {
+const apiServer = spawn(`${npx} tsx "${path.join(__dirname, 'api-server.ts')}"`, {
   stdio: 'inherit',
   shell: true,
   env: { ...process.env, PORT: process.env.PORT || '3001' },
 });
 
-const viteDev = spawn('npx vite', {
+const viteDev = spawn(`${npx} vite`, {
   stdio: 'inherit',
   shell: true,
-  cwd: rootDir,
+  cwd: projectRoot,
 });
 
 function shutdown() {
