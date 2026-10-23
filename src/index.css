@@ -220,15 +220,25 @@
   scrollbar-width: none;
 }
 
-/* Monaco & Xterm Container Overrides */
-.monaco-editor,
-.monaco-editor .margin,
-.monaco-editor-background {
+/* Monaco & Xterm Container Overrides (Light / Dark Adaptive) */
+.dark .monaco-editor,
+.dark .monaco-editor .margin,
+.dark .monaco-editor-background {
   background-color: #06080e !important;
 }
 
-.xterm .xterm-viewport {
+.light .monaco-editor,
+.light .monaco-editor .margin,
+.light .monaco-editor-background {
+  background-color: #ffffff !important;
+}
+
+.dark .xterm .xterm-viewport {
   background-color: #06080e !important;
+}
+
+.light .xterm .xterm-viewport {
+  background-color: #f8fafc !important;
 }
 
 /* Collaborative Edit Reservations Decorations */

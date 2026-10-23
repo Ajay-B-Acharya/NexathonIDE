@@ -75,19 +75,19 @@ function getExtensionBadge(fileName: string) {
   const ext = fileName.split('.').pop()?.toLowerCase();
   switch (ext) {
     case 'py':
-      return <FileCode className="h-4 w-4 shrink-0 text-amber-400" />;
+      return <FileCode className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400" />;
     case 'ts':
     case 'tsx':
-      return <FileCode className="h-4 w-4 shrink-0 text-blue-400" />;
+      return <FileCode className="h-4 w-4 shrink-0 text-blue-500 dark:text-blue-400" />;
     case 'js':
     case 'jsx':
-      return <FileCode className="h-4 w-4 shrink-0 text-yellow-300" />;
+      return <FileCode className="h-4 w-4 shrink-0 text-yellow-500 dark:text-yellow-300" />;
     case 'json':
-      return <FileJson className="h-4 w-4 shrink-0 text-emerald-400" />;
+      return <FileJson className="h-4 w-4 shrink-0 text-emerald-500 dark:text-emerald-400" />;
     case 'md':
-      return <FileText className="h-4 w-4 shrink-0 text-sky-400" />;
+      return <FileText className="h-4 w-4 shrink-0 text-sky-500 dark:text-sky-400" />;
     default:
-      return <FileText className="h-4 w-4 shrink-0 text-slate-400" />;
+      return <FileText className="h-4 w-4 shrink-0 theme-text-secondary" />;
   }
 }
 
@@ -172,17 +172,17 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               type="button"
               onClick={() => toggleFolder(node.path)}
               style={{ paddingLeft: `${depth * 12 + 10}px` }}
-              className="flex w-full items-center gap-1.5 py-1.5 pr-2 text-left text-xs text-slate-300 hover:bg-[#141824] hover:text-white transition cursor-pointer"
+              className="flex w-full items-center gap-1.5 py-1.5 pr-2 text-left text-xs theme-text-primary hover:theme-bg-surface-2 transition cursor-pointer"
             >
               {isExpanded ? (
-                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 theme-text-secondary opacity-70" />
               ) : (
-                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 theme-text-secondary opacity-70" />
               )}
               {isExpanded ? (
-                <FolderOpen className="h-4 w-4 shrink-0 text-indigo-400" />
+                <FolderOpen className="h-4 w-4 shrink-0 text-indigo-500 dark:text-indigo-400" />
               ) : (
-                <Folder className="h-4 w-4 shrink-0 text-indigo-400/80" />
+                <Folder className="h-4 w-4 shrink-0 text-indigo-500/80 dark:text-indigo-400/80" />
               )}
               <span className="truncate font-medium">{node.name}</span>
             </button>
@@ -203,7 +203,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           <div
             key={file.id}
             style={{ paddingLeft: `${depth * 12 + 14}px` }}
-            className="flex items-center gap-1 py-1 pr-2 bg-[#161b2a]"
+            className="flex items-center gap-1 py-1 pr-2 theme-bg-surface-2"
           >
             <input
               type="text"
@@ -214,12 +214,12 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                 if (e.key === 'Escape') setEditingFileId(null);
               }}
               autoFocus
-              className="w-full rounded border border-indigo-500 bg-[#090a0f] px-2 py-0.5 text-xs text-white focus:outline-none"
+              className="w-full rounded border border-indigo-500 theme-bg-surface-1 px-2 py-0.5 text-xs theme-text-primary focus:outline-none"
             />
             <button
               type="button"
               onClick={() => void handleRenameSubmit(file)}
-              className="p-0.5 text-emerald-400 hover:text-emerald-300"
+              className="p-0.5 text-emerald-500 hover:text-emerald-400 cursor-pointer"
               title="Confirm Rename"
             >
               <Check className="h-3.5 w-3.5" />
@@ -227,7 +227,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             <button
               type="button"
               onClick={() => setEditingFileId(null)}
-              className="p-0.5 text-slate-400 hover:text-white"
+              className="p-0.5 theme-text-secondary hover:theme-text-primary cursor-pointer"
               title="Cancel"
             >
               <X className="h-3.5 w-3.5" />
@@ -243,8 +243,8 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           onClick={() => onSelectFile(file)}
           className={`group flex cursor-pointer items-center justify-between py-1.5 pr-2.5 text-xs transition-all ${
             isActive
-              ? 'border-l-2 border-indigo-500 bg-[#161b2a] text-white font-medium shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]'
-              : 'border-l-2 border-transparent text-slate-400 hover:bg-[#141824] hover:text-slate-200'
+              ? 'border-l-2 border-indigo-500 bg-indigo-500/10 theme-text-primary font-medium'
+              : 'border-l-2 border-transparent theme-text-secondary hover:theme-bg-surface-2 hover:theme-text-primary'
           }`}
         >
           <div className="flex items-center gap-2 min-w-0">
@@ -268,7 +268,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                   setEditingPathValue(file.path);
                 }}
                 title="Rename File"
-                className="rounded p-0.5 text-slate-400 hover:bg-white/10 hover:text-white"
+                className="rounded p-0.5 theme-text-secondary hover:theme-bg-surface-2 hover:theme-text-primary"
               >
                 <Edit3 className="h-3 w-3" />
               </button>
@@ -279,7 +279,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                   onRequestDeleteFile(file);
                 }}
                 title="Delete File"
-                className="rounded p-0.5 text-slate-400 hover:bg-rose-500/20 hover:text-rose-400"
+                className="rounded p-0.5 theme-text-secondary hover:bg-rose-500/20 hover:text-rose-500"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
@@ -291,10 +291,10 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   };
 
   return (
-    <aside className="flex h-full w-full flex-col bg-[#0f121d] border-r border-white/10 select-none overflow-hidden">
+    <aside className="flex h-full w-full flex-col theme-bg-surface-1 border-r theme-border select-none overflow-hidden transition-colors">
       {/* Explorer Header */}
-      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-white/10 bg-[#090a0f]/40">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+      <div className="flex items-center justify-between px-3.5 py-2.5 border-b theme-border theme-bg-surface-2/60">
+        <span className="text-[11px] font-semibold uppercase tracking-wider theme-text-secondary">
           Workspace Files
         </span>
         <button
@@ -304,9 +304,9 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             setErrorMsg(null);
           }}
           title="New File (supports nested paths like src/main.py)"
-          className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-[#141824] px-2 py-0.5 text-[11px] font-medium text-slate-300 hover:border-indigo-500/50 hover:bg-[#1c2234] hover:text-white transition cursor-pointer"
+          className="inline-flex items-center gap-1 rounded-md border theme-border theme-bg-surface-2 px-2 py-0.5 text-[11px] font-medium theme-text-primary hover:border-indigo-500/50 hover:theme-bg-elevated transition cursor-pointer shadow-xs"
         >
-          <FilePlus className="h-3.5 w-3.5 text-indigo-400" />
+          <FilePlus className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" />
           <span>New</span>
         </button>
       </div>
@@ -315,11 +315,11 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       {isCreating && (
         <form
           onSubmit={(e) => void handleCreateSubmit(e)}
-          className="border-b border-white/10 bg-[#141824] p-2.5 space-y-1.5"
+          className="border-b theme-border theme-bg-surface-2 p-2.5 space-y-1.5"
         >
-          <div className="flex items-center justify-between text-[10px] text-slate-400">
-            <span>Path (e.g. <code className="text-indigo-300">src/app.py</code>)</span>
-            <span className="font-mono text-[9px] text-slate-500">Enter ↵ • Esc</span>
+          <div className="flex items-center justify-between text-[10px] theme-text-secondary">
+            <span>Path (e.g. <code className="text-indigo-500 dark:text-indigo-300">src/app.py</code>)</span>
+            <span className="font-mono text-[9px] opacity-70">Enter ↵ • Esc</span>
           </div>
           <div className="flex items-center gap-1">
             <input
@@ -334,11 +334,11 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                   setNewFilePath('');
                 }
               }}
-              className="w-full rounded-md border border-indigo-500 bg-[#090a0f] px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+              className="w-full rounded-md border border-indigo-500 theme-bg-surface-1 px-2.5 py-1 text-xs theme-text-primary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
             />
             <button
               type="submit"
-              className="rounded-md bg-indigo-600 p-1.5 text-white hover:bg-indigo-500"
+              className="rounded-md bg-indigo-600 p-1.5 text-white hover:bg-indigo-500 cursor-pointer"
               title="Create File"
             >
               <Check className="h-3.5 w-3.5" />
@@ -349,7 +349,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                 setIsCreating(false);
                 setNewFilePath('');
               }}
-              className="rounded-md p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+              className="rounded-md p-1.5 theme-text-secondary hover:theme-bg-surface-1 hover:theme-text-primary cursor-pointer"
               title="Cancel"
             >
               <X className="h-3.5 w-3.5" />
@@ -359,7 +359,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       )}
 
       {errorMsg && (
-        <div className="bg-rose-950/70 border-b border-rose-800 px-3 py-1.5 text-[11px] text-rose-300">
+        <div className="bg-rose-500/10 border-b border-rose-500/30 px-3 py-1.5 text-[11px] text-rose-500">
           {errorMsg}
         </div>
       )}
@@ -368,12 +368,12 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       <div className="flex-1 overflow-y-auto py-1.5">
         {tree.length === 0 ? (
           <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
-            <div className="mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-slate-500">
+            <div className="mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500">
               <FolderTree className="h-5 w-5" />
             </div>
-            <p className="text-xs font-medium text-slate-300">Workspace is empty</p>
-            <p className="mt-1 text-[11px] text-slate-500">
-              Click <strong className="text-indigo-400">+ New</strong> above to create your first file.
+            <p className="text-xs font-medium theme-text-primary">Workspace is empty</p>
+            <p className="mt-1 text-[11px] theme-text-secondary">
+              Click <strong className="text-indigo-500 dark:text-indigo-400">+ New</strong> above to create your first file.
             </p>
           </div>
         ) : (
