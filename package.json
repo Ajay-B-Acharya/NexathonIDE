@@ -16,7 +16,9 @@
     "db:init": "tsx src/server/init-db.ts",
     "stop:all": "powershell -Command \"Get-Process node,tsx -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue\"",
     "test:collab": "tsx collaboration-backend/test/collaboration.test.ts",
-    "test:cross-device": "tsx collaboration-backend/test/cross-device.test.ts"
+    "test:cross-device": "tsx collaboration-backend/test/cross-device.test.ts",
+    "start": "tsx src/server/api-server.ts",
+    "server:all": "tsx src/server/api-server.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -51,7 +53,8 @@
     "y-protocols": "^1.0.7",
     "y-websocket": "^3.1.0",
     "yjs": "^13.6.33",
-    "zustand": "^5.0.16"
+    "zustand": "^5.0.16",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -64,7 +67,6 @@
     "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^6.1.2",
     "oxlint": "^1.88.0",
-    "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "vite": "^8.3.4"
   }

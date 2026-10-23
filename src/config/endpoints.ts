@@ -88,6 +88,12 @@ export function getYjsWsUrl(preferDirectPort: boolean = true): string {
       return envWsUrl.replace(/\/+$/, '');
     }
 
+    // In deployed cloud environments (like Render or Vercel), external ports like 1234 are not accessible.
+    // Route through the unified single-port proxy path (e.g. wss://domain.onrender.com/yjs).
+    if (isRemote && !isLanAddress(hostname)) {
+      return `${wsProto}//${host}/yjs`;
+    }
+
     // Direct port connection: connect to the host computer's port 1234
     if (preferDirectPort) {
       return `${wsProto}//${hostname}:1234`;

@@ -2,6 +2,9 @@ import 'dotenv/config';
 import express, { type Request, type Response } from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import Groq from 'groq-sdk';
 import { supabaseAdmin } from './supabase.js';
@@ -14,6 +17,10 @@ import { startServer as startYjsServer, wss as yjsWss } from './yjs-server.js';
 try {
   process.loadEnvFile();
 } catch {}
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.resolve(__dirname, '../../dist');
 
 const app = express();
 const httpServer = createServer(app);
@@ -60,8 +67,8 @@ async function verifyDatabaseConnection() {
   }
 }
 
-// Root API probe
-app.get('/', (req: Request, res: Response) => {
+// Root API probe & frontend entry
+app.get('/api', (req: Request, res: Response) => {
   res.json({
     name: 'Nexathon Collaborative IDE API',
     status: 'online',
@@ -77,15 +84,39 @@ app.get('/', (req: Request, res: Response) => {
   });
 });
 
-// Health check
-app.get('/api/health', (req: Request, res: Response) => {
+app.get('/', (req: Request, res: Response, next) => {
+  if (fs.existsSync(path.join(distPath, 'index.html')) && req.accepts('html')) {
+    return res.sendFile(path.join(distPath, 'index.html'));
+  }
+  if (!fs.existsSync(path.join(distPath, 'index.html'))) {
+    return res.json({
+      name: 'Nexathon Collaborative IDE API',
+      status: 'online',
+      version: '1.0.0',
+      supabaseConnected,
+      aiProvider: groq ? 'groq' : 'none',
+      endpoints: {
+        health: '/api/health',
+        rooms: '/api/rooms',
+        terminal: '/api/terminal',
+        debug: '/api/ai/debug',
+      },
+    });
+  }
+  next();
+});
+
+// Health check (supporting both /api/health and standard Render /health)
+const handleHealthCheck = (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     supabaseConnected,
     aiProvider: groq ? 'groq' : 'none',
   });
-});
+};
+app.get('/api/health', handleHealthCheck);
+app.get('/health', handleHealthCheck);
 
 // Users
 app.post('/api/users', async (req: Request, res: Response) => {
@@ -600,6 +631,26 @@ ${error || 'Check code for syntax errors, bugs, or logic flaws.'}`;
 
 app.post('/api/ai/debug', handleAIDebug);
 app.post('/ai/debug', handleAIDebug);
+
+// Static frontend serving and SPA fallback for production when dist/ exists
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.use((req: Request, res: Response, next) => {
+    if (req.method !== 'GET') {
+      return next();
+    }
+    if (
+      req.path.startsWith('/api') ||
+      req.path.startsWith('/ws') ||
+      req.path.startsWith('/yjs') ||
+      req.path.startsWith('/terminal') ||
+      req.path.startsWith('/health')
+    ) {
+      return next();
+    }
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 const terminalWss = setupTerminalServer();
 
