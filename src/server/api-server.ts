@@ -1,3 +1,4 @@
+try { process.loadEnvFile(); } catch {}
 import express, { type Request, type Response } from 'express';
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -20,9 +21,8 @@ const pool = new Pool({
   max: 20,
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const hasOpenAI = Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() && process.env.OPENAI_API_KEY !== 'your_openai_api_key_here');
+const openai = hasOpenAI ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 interface TerminalSession {
   pty: pty.IPty;
@@ -33,38 +33,43 @@ interface TerminalSession {
 const terminalSessions = new Map<string, TerminalSession>();
 
 async function initDatabase() {
-  const client = await pool.connect();
   try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        username VARCHAR(255) UNIQUE NOT NULL,
-        avatar_url TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      
-      CREATE TABLE IF NOT EXISTS rooms (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name VARCHAR(255) NOT NULL,
-        owner_id UUID REFERENCES users(id),
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      
-      CREATE TABLE IF NOT EXISTS workspace_files (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
-        path TEXT NOT NULL,
-        content TEXT DEFAULT '',
-        language VARCHAR(50) DEFAULT 'plaintext',
-        updated_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(room_id, path)
-      );
-      
-      CREATE INDEX IF NOT EXISTS idx_workspace_files_room_id ON workspace_files(room_id);
-    `);
-    console.log('Database initialized');
-  } finally {
-    client.release();
+    const client = await pool.connect();
+    try {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          username VARCHAR(255) UNIQUE NOT NULL,
+          avatar_url TEXT,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+        
+        CREATE TABLE IF NOT EXISTS rooms (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name VARCHAR(255) NOT NULL,
+          owner_id UUID REFERENCES users(id),
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+        
+        CREATE TABLE IF NOT EXISTS workspace_files (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          room_id UUID REFERENCES rooms(id) ON DELETE CASCADE,
+          path TEXT NOT NULL,
+          content TEXT DEFAULT '',
+          language VARCHAR(50) DEFAULT 'plaintext',
+          updated_at TIMESTAMP DEFAULT NOW(),
+          UNIQUE(room_id, path)
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_workspace_files_room_id ON workspace_files(room_id);
+      `);
+      console.log('Database initialized successfully');
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.warn(`[API Server Warning] Could not connect to PostgreSQL: ${error.message}`);
+    console.warn('[API Server Warning] Ensure PostgreSQL is running if database persistence is required.');
   }
 }
 
@@ -120,6 +125,16 @@ app.get('/api/users/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching user:', error);
     res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+app.get('/api/rooms', async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query('SELECT * FROM rooms ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching rooms:', error);
+    res.status(500).json({ error: 'Failed to fetch rooms' });
   }
 });
 
@@ -210,15 +225,15 @@ app.post('/api/rooms/:roomId/files', async (req: Request, res: Response) => {
   }
 });
 
-app.patch('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
+const handleUpdateFile = async (req: Request, res: Response) => {
   try {
     const roomId = req.params.roomId;
-    const filePath = req.params.filePath;
-    const { content } = req.body;
+    const fileIdentifier = req.params.filePath;
+    const { content, path, language } = req.body;
     
     const result = await pool.query(
-      'UPDATE workspace_files SET content = $1, updated_at = NOW() WHERE room_id = $2 AND path = $3 RETURNING *',
-      [content, roomId, filePath]
+      'UPDATE workspace_files SET content = COALESCE($1, content), path = COALESCE($4, path), language = COALESCE($5, language), updated_at = NOW() WHERE room_id = $2 AND (path = $3 OR id::text = $3) RETURNING *',
+      [content, roomId, fileIdentifier, path || null, language || null]
     );
     
     if (result.rows.length === 0) {
@@ -229,14 +244,20 @@ app.patch('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Respon
     console.error('Error updating file:', error);
     res.status(500).json({ error: 'Failed to update file' });
   }
-});
+};
+
+app.patch('/api/rooms/:roomId/files/:filePath', handleUpdateFile);
+app.put('/api/rooms/:roomId/files/:filePath', handleUpdateFile);
 
 app.delete('/api/rooms/:roomId/files/:filePath', async (req: Request, res: Response) => {
   try {
     const roomId = req.params.roomId;
-    const filePath = req.params.filePath;
+    const fileIdentifier = req.params.filePath;
     
-    await pool.query('DELETE FROM workspace_files WHERE room_id = $1 AND path = $2', [roomId, filePath]);
+    await pool.query(
+      'DELETE FROM workspace_files WHERE room_id = $1 AND (path = $2 OR id::text = $2)',
+      [roomId, fileIdentifier]
+    );
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting file:', error);
@@ -252,7 +273,7 @@ app.post('/api/ai/debug', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Code and language are required' });
     }
     
-    if (!process.env.OPENAI_API_KEY) {
+    if (!openai) {
       return res.status(503).json({ 
         error: 'AI service not configured',
         explanation: 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.',
