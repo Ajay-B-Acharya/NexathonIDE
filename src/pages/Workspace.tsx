@@ -340,6 +340,7 @@ clearFileDraft(room.id, fileId);
     followState,
     reserveLines,
     releaseReservation,
+    updateReservationRange,
     startFollowing,
     stopFollowing,
     reconcileSession,
@@ -584,6 +585,7 @@ clearFileDraft(room.id, fileId);
             onLanguageChange={handleLanguageChange}
             onReserveSelection={reserveLines}
             onReleaseReservation={releaseReservation}
+            onUpdateReservationRange={updateReservationRange}
             onStopFollowing={stopFollowing}
             onEditorReady={(editor, monaco) => {
               setEditorInstance(editor);

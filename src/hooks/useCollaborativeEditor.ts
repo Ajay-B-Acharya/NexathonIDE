@@ -30,6 +30,7 @@ interface UseCollaborativeEditorReturn {
   followState: FollowState | null;
   reserveLines: (startLine: number, endLine: number, taskDescription?: string) => void;
   releaseReservation: (reservationId: string) => void;
+  updateReservationRange: (reservationId: string, startLine: number, endLine: number) => void;
   startFollowing: (targetUserId: string, targetUserName: string, targetUserColor: string, targetFile?: string) => void;
   stopFollowing: () => void;
   reconcileSession: () => void;
@@ -92,30 +93,82 @@ function syncCollaboratorCursorStyles(collaborators: CollaboratorPresence[]) {
 const DYNAMIC_RESERVATION_LINES = 10;
 
 /**
- * Calculates a 10-line dedicated workspace section centered around the user's cursor.
- * For files under 10 lines, reserves the exact active line.
+ * Calculates a dynamic non-overlapping reservation window around currentLine:
+ * - Strictly uses 10-line reservation ONLY if:
+ *     (activeUserCount > 1) AND (totalLines >= 10 * activeUserCount)
+ * - Otherwise (if single user or totalLines < 10 * activeUserCount):
+ *     strictly uses 1-line reservation (currentLine..currentLine).
+ * - When 10-line reservation is active, it strictly partitions lines so that
+ *   active users do not overlap with one another.
  */
-function calculateDynamicWindow(
+function calculateNonOverlappingDynamicWindow(
   currentLine: number,
-  totalLines: number
+  totalLines: number,
+  activeUserCount: number,
+  peerReservations: EditReservation[]
 ): { startLine: number; endLine: number } {
-  if (totalLines <= DYNAMIC_RESERVATION_LINES) {
-    return { startLine: currentLine, endLine: currentLine };
+  const safeLine = Math.max(1, Math.min(currentLine, Math.max(1, totalLines)));
+
+  // Strict condition: more than 1 user AND totalLines >= 10 * activeUserCount
+  const canUse10LineWindow =
+    activeUserCount > 1 && totalLines >= DYNAMIC_RESERVATION_LINES * activeUserCount;
+
+  if (!canUse10LineWindow) {
+    return { startLine: safeLine, endLine: safeLine };
   }
 
-  let start = Math.max(1, currentLine - 2);
+  // Filter and sort active peer reservations on this file
+  const sortedPeers = [...peerReservations]
+    .filter((r) => r.startLine <= totalLines && r.endLine >= 1)
+    .sort((a, b) => a.startLine - b.startLine);
+
+  let gapStart = 1;
+  let gapEnd = totalLines;
+
+  for (const peer of sortedPeers) {
+    if (peer.endLine < safeLine) {
+      gapStart = Math.max(gapStart, peer.endLine + 1);
+    } else if (peer.startLine > safeLine) {
+      gapEnd = Math.min(gapEnd, peer.startLine - 1);
+      break;
+    } else {
+      // User is currently at or inside peer's reservation
+      return { startLine: safeLine, endLine: safeLine };
+    }
+  }
+
+  if (gapStart > gapEnd) {
+    return { startLine: safeLine, endLine: safeLine };
+  }
+
+  const gapLength = gapEnd - gapStart + 1;
+
+  if (gapLength < DYNAMIC_RESERVATION_LINES) {
+    // Gap is smaller than 10 lines: use available gap to avoid any overlap
+    return { startLine: gapStart, endLine: gapEnd };
+  }
+
+  // Desired 10-line window centered around safeLine
+  let start = safeLine - 4;
   let end = start + DYNAMIC_RESERVATION_LINES - 1;
 
-  if (end > totalLines) {
-    end = Math.max(totalLines, currentLine);
-    start = Math.max(1, end - DYNAMIC_RESERVATION_LINES + 1);
+  if (start < gapStart) {
+    start = gapStart;
+    end = start + DYNAMIC_RESERVATION_LINES - 1;
   }
+  if (end > gapEnd) {
+    end = gapEnd;
+    start = end - DYNAMIC_RESERVATION_LINES + 1;
+  }
+
+  start = Math.max(gapStart, start);
+  end = Math.min(gapEnd, end);
 
   return { startLine: start, endLine: end };
 }
 
 /**
- * Dynamically injects CSS rules for each user's reserved 10-line window, active line,
+ * Dynamically injects CSS rules for each user's reserved window, active line,
  * and colored status tag to give every collaborator an unmistakable unique visual identity.
  */
 function syncCollaboratorReservationStyles(
@@ -133,10 +186,35 @@ function syncCollaboratorReservationStyles(
   const rules = reservations
     .map((r) => {
       const isMine = r.ownerId === currentUserId;
-      const color = r.ownerColor || (isMine ? '#6366f1' : '#f59e0b');
+      const color = r.ownerColor || (isMine ? '#14b8a6' : '#f59e0b');
       const safeId = r.id.replace(/[^a-zA-Z0-9_-]/g, '_');
       const safeName = (r.ownerName || 'Collaborator').replace(/"/g, '\\"');
       const activeLineNum = r.activeLine || r.startLine;
+
+      if (isMine) {
+        return `
+          .res-window-${safeId} {
+            background-color: ${color}12 !important;
+            border-left: 3px solid ${color}aa !important;
+            position: relative;
+          }
+          .res-active-line-${safeId} {
+            background-color: ${color}20 !important;
+            border-left: 4px solid ${color} !important;
+            box-shadow: inset 0 0 10px ${color}15;
+            position: relative;
+          }
+          .res-glyph-${safeId} {
+            background-color: ${color} !important;
+            border-radius: 50%;
+            width: 8px !important;
+            height: 8px !important;
+            margin-left: 4px;
+            margin-top: 5px;
+            box-shadow: 0 0 6px ${color};
+          }
+        `;
+      }
 
       return `
         .res-window-${safeId} {
@@ -153,7 +231,7 @@ function syncCollaboratorReservationStyles(
         .res-active-line-${safeId}::after {
           content: "👤 ${safeName} (Ln ${activeLineNum})";
           position: absolute;
-          right: 14px;
+          right: 18px;
           top: 0;
           bottom: 0;
           margin: auto 0;
@@ -208,12 +286,106 @@ export function useCollaborativeEditor({
   const modelsMapRef = useRef<Map<string, Monaco.editor.ITextModel>>(new Map());
   const decorationIdsRef = useRef<string[]>([]);
   const lastFollowedLineRef = useRef<number | null>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const awarenessThrottleRef = useRef<number>(0);
+  const lastActiveLineRef = useRef<number>(1);
 
   const onContentChangeRef = useRef(onContentChange);
   onContentChangeRef.current = onContentChange;
 
   const onFollowFileChangeRef = useRef(onFollowFileChange);
   onFollowFileChangeRef.current = onFollowFileChange;
+
+  // Debounced reservation updater fired strictly when user stops typing / moving cursor
+  const handleUserStoppedTyping = useCallback(
+    (targetLine: number) => {
+      const session = sessionRef.current;
+      if (!session || !activeFile || !editorInstance) return;
+
+      // Broadcast typing finished in awareness
+      collaborationClient.updateLocalAwareness(
+        session.provider,
+        user,
+        activeFile.path,
+        {
+          lineNumber: targetLine,
+          column: editorInstance.getPosition()?.column || 1,
+        },
+        false
+      );
+
+      const autoResId = `auto_${user.id}_${activeFile.id}`;
+      // If user holds an active manual reservation, do not overwrite it with auto-reservation
+      const myManualRes = Array.from(session.reservationsMap.values()).find(
+        (r) => r.ownerId === user.id && r.filePath === activeFile.path && !r.isAutomatic
+      );
+      if (myManualRes) return;
+
+      const totalLines = editorInstance.getModel()?.getLineCount() || 1;
+
+      // Determine active users on this file from awareness
+      const activeFileUsers = new Set<string>();
+      session.provider.awareness.getStates().forEach((state) => {
+        if (state && state.user && (state.user as UserProfile).id) {
+          if (!state.activeFile || state.activeFile === activeFile.path) {
+            activeFileUsers.add((state.user as UserProfile).id);
+          }
+        }
+      });
+      activeFileUsers.add(user.id);
+      const activeCount = activeFileUsers.size;
+
+      // Collect active peer reservations
+      const now = Date.now();
+      const peerReservations: EditReservation[] = [];
+      session.reservationsMap.forEach((r) => {
+        if (r.ownerId !== user.id && r.filePath === activeFile.path && r.expiresAt > now) {
+          peerReservations.push(r);
+        }
+      });
+
+      const dynWindow = calculateNonOverlappingDynamicWindow(
+        targetLine,
+        totalLines,
+        activeCount,
+        peerReservations
+      );
+
+      const existing = session.reservationsMap.get(autoResId);
+      if (
+        !existing ||
+        existing.startLine !== dynWindow.startLine ||
+        existing.endLine !== dynWindow.endLine ||
+        existing.activeLine !== targetLine
+      ) {
+        session.reservationsMap.set(autoResId, {
+          id: autoResId,
+          roomId,
+          fileId: activeFile.id,
+          filePath: activeFile.path,
+          ownerId: user.id,
+          ownerName: user.name,
+          ownerColor: user.color,
+          startLine: dynWindow.startLine,
+          endLine: dynWindow.endLine,
+          activeLine: targetLine,
+          createdAt: existing?.createdAt || Date.now(),
+          expiresAt: Date.now() + 15_000,
+          isAutomatic: true,
+          taskDescription:
+            dynWindow.startLine === dynWindow.endLine
+              ? `Active Line ${dynWindow.startLine}`
+              : `Workspace Block (Lines ${dynWindow.startLine}–${dynWindow.endLine})`,
+        });
+      }
+
+      const conflict = peerReservations.find(
+        (r) => targetLine >= r.startLine && targetLine <= r.endLine
+      );
+      setActiveConflictReservation(conflict || null);
+    },
+    [roomId, activeFile, user, editorInstance]
+  );
 
   useEffect(() => {
     if (!editorInstance || !monacoInstance || !activeFile || !roomId) {
@@ -272,10 +444,63 @@ export function useCollaborativeEditor({
     session.provider.on('sync', handleSync);
     setIsDocumentSynced(session.provider.synced);
 
-    // Attach peer awareness listener
+    // Synchronize edit reservations from CRDT shared map with strict ghost pruning
+    const updateReservationsFromMap = (activeUserIds?: Set<string>) => {
+      const now = Date.now();
+      const list: EditReservation[] = [];
+
+      let validUserIds = activeUserIds;
+      if (!validUserIds) {
+        validUserIds = new Set<string>();
+        session.provider.awareness.getStates().forEach((state) => {
+          if (state && state.user && (state.user as UserProfile).id) {
+            if (!state.activeFile || state.activeFile === activeFile.path) {
+              validUserIds!.add((state.user as UserProfile).id);
+            }
+          }
+        });
+        validUserIds.add(user.id);
+      }
+
+      session.reservationsMap.forEach((res, key) => {
+        // 1. Purge expired leases
+        if (res.expiresAt <= now) {
+          session.reservationsMap.delete(key);
+          return;
+        }
+
+        // 2. Ghost prevention: Purge automatic reservations if owner is no longer active on this file
+        if (res.isAutomatic && !validUserIds!.has(res.ownerId)) {
+          session.reservationsMap.delete(key);
+          return;
+        }
+
+        // 3. Must match active file
+        if (res.filePath !== activeFile.path) {
+          return;
+        }
+
+        // 4. Update owner name & color from fresh awareness state
+        const liveState = Array.from(session.provider.awareness.getStates().values()).find(
+          (s) => (s.user as UserProfile)?.id === res.ownerId
+        );
+
+        list.push({
+          ...res,
+          ownerName: (liveState?.user as UserProfile)?.name || res.ownerName,
+          ownerColor: (liveState?.user as UserProfile)?.color || res.ownerColor,
+        });
+      });
+
+      setReservations(list);
+    };
+
+    // Attach peer awareness listener and immediate ghost-purge
     const handleAwareness = () => {
       const states = session.provider.awareness.getStates();
       const list: CollaboratorPresence[] = [];
+      const activeUserIds = new Set<string>();
+
       states.forEach((state, clientId) => {
         if (state && state.user) {
           list.push({
@@ -286,27 +511,23 @@ export function useCollaborativeEditor({
             isTyping: Boolean(state.isTyping),
             lastActive: (state.lastActive as number) || Date.now(),
           });
+
+          if (!state.activeFile || state.activeFile === activeFile.path) {
+            activeUserIds.add((state.user as UserProfile).id);
+          }
         }
       });
+
+      activeUserIds.add(user.id);
+
       setCollaborators(list);
       syncCollaboratorCursorStyles(list);
+      updateReservationsFromMap(activeUserIds);
     };
+
     session.provider.awareness.on('change', handleAwareness);
     handleAwareness();
 
-    // Synchronize edit reservations from CRDT shared map
-    const updateReservationsFromMap = () => {
-      const now = Date.now();
-      const list: EditReservation[] = [];
-      session.reservationsMap.forEach((res) => {
-        if (res.expiresAt > now && res.filePath === activeFile.path) {
-          list.push(res);
-        }
-      });
-      setReservations(list);
-    };
-
-    updateReservationsFromMap();
     const handleReservationsObserver = () => {
       updateReservationsFromMap();
     };
@@ -334,58 +555,59 @@ export function useCollaborativeEditor({
     };
     session.ytext.observe(handleYTextObserver);
 
-    // Track local cursor position in awareness and maintain dynamic 10-line reserved workspace section
+    // Initialize reservation on initial mount
+    const initLine = editorInstance.getPosition()?.lineNumber || 1;
+    lastActiveLineRef.current = initLine;
+    handleUserStoppedTyping(initLine);
+
+    // Track local cursor position in awareness with lag-free throttled broadcast
     const cursorDisposable = editorInstance.onDidChangeCursorPosition((e) => {
       const currentLine = e.position.lineNumber;
-      const totalLines = editorInstance.getModel()?.getLineCount() || 1;
+      lastActiveLineRef.current = currentLine;
 
-      collaborationClient.updateLocalAwareness(session.provider, user, activeFile.path, {
-        lineNumber: currentLine,
-        column: e.position.column,
-      });
-
-      // Feature 1 & 2: Dynamically calculate and reserve a 10-line workspace block centered around user's line
-      const dynWindow = calculateDynamicWindow(currentLine, totalLines);
-      const autoResId = `auto_${user.id}_${activeFile.id}`;
-      const existing = session.reservationsMap.get(autoResId);
-
-      if (
-        !existing ||
-        existing.startLine !== dynWindow.startLine ||
-        existing.endLine !== dynWindow.endLine ||
-        existing.activeLine !== currentLine
-      ) {
-        session.reservationsMap.set(autoResId, {
-          id: autoResId,
-          roomId,
-          fileId: activeFile.id,
-          filePath: activeFile.path,
-          ownerId: user.id,
-          ownerName: user.name,
-          ownerColor: user.color,
-          startLine: dynWindow.startLine,
-          endLine: dynWindow.endLine,
-          activeLine: currentLine,
-          createdAt: existing?.createdAt || Date.now(),
-          expiresAt: Date.now() + 60_000,
-          isAutomatic: true,
-          taskDescription: `Active Workspace (Lines ${dynWindow.startLine}–${dynWindow.endLine})`,
+      const now = Date.now();
+      if (now - awarenessThrottleRef.current > 120) {
+        awarenessThrottleRef.current = now;
+        collaborationClient.updateLocalAwareness(session.provider, user, activeFile.path, {
+          lineNumber: currentLine,
+          column: e.position.column,
         });
       }
 
-      const now = Date.now();
-      const conflict = reservations.find(
-        (r) =>
-          r.filePath === activeFile.path &&
-          r.ownerId !== user.id &&
-          r.expiresAt > now &&
-          currentLine >= r.startLine &&
-          currentLine <= r.endLine
+      // Debounce reservation update: only update when user pauses/stops typing or navigating!
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+      }
+      typingTimerRef.current = setTimeout(() => {
+        handleUserStoppedTyping(currentLine);
+      }, 280);
+    });
+
+    // Track content edits: set typing state and debounce reservation update until typing finishes
+    const contentDisposable = editorInstance.onDidChangeModelContent(() => {
+      collaborationClient.updateLocalAwareness(
+        session.provider,
+        user,
+        activeFile.path,
+        {
+          lineNumber: lastActiveLineRef.current,
+          column: editorInstance.getPosition()?.column || 1,
+        },
+        true
       );
-      setActiveConflictReservation(conflict || null);
+
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+      }
+      typingTimerRef.current = setTimeout(() => {
+        handleUserStoppedTyping(lastActiveLineRef.current);
+      }, 320);
     });
 
     return () => {
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+      }
       // Release automatic reservation when switching away from this file
       const autoResId = `auto_${user.id}_${activeFile.id}`;
       if (session.reservationsMap.has(autoResId)) {
@@ -396,6 +618,7 @@ export function useCollaborativeEditor({
       session.provider.off('sync', handleSync);
       session.provider.awareness.off('change', handleAwareness);
       cursorDisposable.dispose();
+      contentDisposable.dispose();
       session.ytext.unobserve(handleYTextObserver);
       session.reservationsMap.unobserve(handleReservationsObserver);
       if (bindingRef.current) {
@@ -403,7 +626,7 @@ export function useCollaborativeEditor({
         bindingRef.current = null;
       }
     };
-  }, [roomId, activeFile?.id, activeFile?.path, activeFile?.language, editorInstance, monacoInstance, user.id]);
+  }, [roomId, activeFile?.id, activeFile?.path, activeFile?.language, editorInstance, monacoInstance, user.id, handleUserStoppedTyping]);
 
   // Render Monaco visual decorations for active reservations (both 10-line window & active line)
   useEffect(() => {
@@ -461,7 +684,7 @@ export function useCollaborativeEditor({
     );
   }, [reservations, editorInstance, monacoInstance, activeFile?.path, user.id]);
 
-  // Periodic Lease Auto-Renewal for owned reservations & expired reservation cleanup
+  // Periodic Lease Auto-Renewal for owned reservations & fast expired reservation cleanup (5s/15s)
   useEffect(() => {
     const interval = window.setInterval(() => {
       const session = sessionRef.current;
@@ -470,17 +693,17 @@ export function useCollaborativeEditor({
 
       session.reservationsMap.forEach((res, key) => {
         if (res.ownerId === user.id) {
-          // Auto-renew while owner is actively connected
+          // Fast auto-renew while actively connected
           session.reservationsMap.set(key, {
             ...res,
-            expiresAt: now + 60_000,
+            expiresAt: now + 15_000,
           });
         } else if (res.expiresAt <= now) {
-          // Clean up expired peer lease
+          // Clean up expired peer lease immediately
           session.reservationsMap.delete(key);
         }
       });
-    }, 20_000);
+    }, 5_000);
 
     return () => window.clearInterval(interval);
   }, [user.id]);
@@ -539,7 +762,16 @@ export function useCollaborativeEditor({
       const session = sessionRef.current;
       if (!session || !activeFile) return;
 
+      // Clean up auto reservation so user's manual reservation takes precedence
+      const autoResId = `auto_${user.id}_${activeFile.id}`;
+      if (session.reservationsMap.has(autoResId)) {
+        session.reservationsMap.delete(autoResId);
+      }
+
       const resId = `res_${Math.random().toString(36).substring(2, 9)}`;
+      const clampedStart = Math.min(startLine, endLine);
+      const clampedEnd = Math.max(startLine, endLine);
+
       const newRes: EditReservation = {
         id: resId,
         roomId,
@@ -548,11 +780,14 @@ export function useCollaborativeEditor({
         ownerId: user.id,
         ownerName: user.name,
         ownerColor: user.color,
-        startLine: Math.min(startLine, endLine),
-        endLine: Math.max(startLine, endLine),
+        startLine: clampedStart,
+        endLine: clampedEnd,
+        activeLine: clampedStart,
         createdAt: Date.now(),
         expiresAt: Date.now() + 60_000,
-        taskDescription,
+        isAutomatic: false,
+        taskDescription:
+          taskDescription || `Reserved Section (Lines ${clampedStart}–${clampedEnd})`,
       };
 
       session.reservationsMap.set(resId, newRes);
@@ -560,11 +795,38 @@ export function useCollaborativeEditor({
     [roomId, activeFile, user]
   );
 
-  const releaseReservation = useCallback((reservationId: string) => {
-    const session = sessionRef.current;
-    if (!session) return;
-    session.reservationsMap.delete(reservationId);
-  }, []);
+  const updateReservationRange = useCallback(
+    (reservationId: string, startLine: number, endLine: number) => {
+      const session = sessionRef.current;
+      if (!session || !activeFile) return;
+
+      const existing = session.reservationsMap.get(reservationId);
+      if (!existing) return;
+
+      const clampedStart = Math.min(startLine, endLine);
+      const clampedEnd = Math.max(startLine, endLine);
+
+      session.reservationsMap.set(reservationId, {
+        ...existing,
+        startLine: clampedStart,
+        endLine: clampedEnd,
+        isAutomatic: false, // User customized this range manually!
+        expiresAt: Date.now() + 60_000,
+        taskDescription: `Custom Reserved Range (Lines ${clampedStart}–${clampedEnd})`,
+      });
+    },
+    [activeFile]
+  );
+
+  const releaseReservation = useCallback(
+    (reservationId: string) => {
+      const session = sessionRef.current;
+      if (!session) return;
+      session.reservationsMap.delete(reservationId);
+      handleUserStoppedTyping(lastActiveLineRef.current);
+    },
+    [handleUserStoppedTyping]
+  );
 
   const startFollowing = useCallback(
     (targetUserId: string, targetUserName: string, targetUserColor: string, targetFile?: string) => {
@@ -617,6 +879,7 @@ export function useCollaborativeEditor({
     followState,
     reserveLines,
     releaseReservation,
+    updateReservationRange,
     startFollowing,
     stopFollowing,
     reconcileSession,
