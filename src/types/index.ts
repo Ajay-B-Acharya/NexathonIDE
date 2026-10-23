@@ -114,3 +114,21 @@ export interface FollowState {
   targetFile?: string;
   lastLineNumber?: number;
 }
+
+export interface EditReservation {
+  id: string;
+  roomId: string;
+  fileId?: string;
+  filePath: string;
+  ownerId: string;
+  ownerName: string;
+  ownerColor: string;
+  startLine: number;
+  endLine: number;
+  activeLine?: number;
+  createdAt: number;
+  expiresAt: number;
+  isAutomatic?: boolean;
+  taskDescription?: string;
+}
+
