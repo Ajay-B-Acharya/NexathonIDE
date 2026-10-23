@@ -15,6 +15,7 @@ interface UseCollaborativeEditorOptions {
 
 interface UseCollaborativeEditorReturn {
   connectionStatus: ConnectionStatus;
+  isDocumentSynced: boolean;
   collaborators: CollaboratorPresence[];
   applyContentToSharedDoc: (newFullContent: string) => void;
 }
@@ -81,11 +82,14 @@ export function useCollaborativeEditor({
   onContentChange,
 }: UseCollaborativeEditorOptions): UseCollaborativeEditorReturn {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+  const [isDocumentSynced, setIsDocumentSynced] = useState<boolean>(false);
   const [collaborators, setCollaborators] = useState<CollaboratorPresence[]>([]);
 
   const bindingRef = useRef<MonacoBinding | null>(null);
   const sessionRef = useRef<FileCollaborationSession | null>(null);
   const modelsMapRef = useRef<Map<string, Monaco.editor.ITextModel>>(new Map());
+  const onContentChangeRef = useRef(onContentChange);
+  onContentChangeRef.current = onContentChange;
 
   useEffect(() => {
     if (!editorInstance || !monacoInstance || !activeFile || !roomId) {
@@ -126,10 +130,18 @@ export function useCollaborativeEditor({
       (list) => {
         setCollaborators(list);
         syncCollaboratorCursorStyles(list);
-      }
+      },
+      (synced) => setIsDocumentSynced(synced)
     );
 
     sessionRef.current = session;
+
+    // If session is already synced and contains text, ensure model reflects it immediately
+    if (session.provider.synced && session.ytext.length > 0) {
+      if (model.getValue() !== session.ytext.toString()) {
+        model.setValue(session.ytext.toString());
+      }
+    }
 
     // Bind Y.Text to the file's dedicated Monaco model and Awareness
     const binding = new MonacoBinding(
@@ -142,7 +154,7 @@ export function useCollaborativeEditor({
 
     // Observe Y.Text changes to update dirty indicators and trigger debounced autosave
     const handleYTextObserver = () => {
-      onContentChange(activeFile.id, session.ytext.toString());
+      onContentChangeRef.current(activeFile.id, session.ytext.toString());
     };
     session.ytext.observe(handleYTextObserver);
 
@@ -189,6 +201,7 @@ export function useCollaborativeEditor({
 
   return {
     connectionStatus,
+    isDocumentSynced,
     collaborators,
     applyContentToSharedDoc,
   };

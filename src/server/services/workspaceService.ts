@@ -248,18 +248,25 @@ export class WorkspaceService {
   /**
    * Patch file content
    */
-  static async updateFileContent(roomId: string, filePath: string, content: string, userToken?: string) {
+  static async updateFileContent(roomId: string, filePathOrId: string, content: string, userToken?: string) {
     const client = createScopedClient(userToken);
-    const { data, error } = await client
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(filePathOrId);
+
+    let query = client
       .from('workspace_files')
       .update({
         content,
         updated_at: new Date().toISOString(),
       })
-      .eq('room_id', roomId)
-      .eq('path', filePath)
-      .select('*')
-      .single();
+      .eq('room_id', roomId);
+
+    if (isUUID) {
+      query = query.eq('id', filePathOrId);
+    } else {
+      query = query.eq('path', filePathOrId);
+    }
+
+    const { data, error } = await query.select('*').single();
 
     if (error) return null;
     return formatFile(data);
