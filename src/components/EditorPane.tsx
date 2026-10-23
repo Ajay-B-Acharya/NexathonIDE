@@ -7,6 +7,7 @@ import {
   Command,
   Sparkles,
   ChevronRight,
+  ArrowLeft,
   Shield,
   ShieldAlert,
   Unlock,
@@ -36,6 +37,7 @@ interface EditorPaneProps {
     editor: Monaco.editor.IStandaloneCodeEditor,
     monaco: typeof Monaco
   ) => void;
+  onSwitchWorkspace?: () => void;
 }
 
 const LANGUAGES: { label: string; value: SupportedLanguage }[] = [
@@ -64,6 +66,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   onUpdateReservationRange,
   onStopFollowing,
   onEditorReady,
+  onSwitchWorkspace,
 }) => {
   const [selectedRange, setSelectedRange] = useState<{ startLine: number; endLine: number } | null>(null);
   const [blockedNotice, setBlockedNotice] = useState<{
@@ -83,6 +86,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   const [dragLines, setDragLines] = useState<{ startLine: number; endLine: number } | null>(null);
 
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<typeof Monaco | null>(null);
   const reservationsRef = useRef(reservations);
   const activeFileRef = useRef(activeFile);
   const blockedNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -91,7 +95,6 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
     reservationsRef.current = reservations;
     activeFileRef.current = activeFile;
   }, [reservations, activeFile]);
-
   const isDark = theme !== 'light';
 
   const myReservation = reservations.find(
@@ -230,6 +233,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
 
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
     monaco.editor.defineTheme('nexathon-obsidian', {
       base: 'vs-dark',
       inherit: true,
@@ -348,9 +352,9 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   };
 
   React.useEffect(() => {
-    const winMonaco = (window as unknown as { monaco?: typeof Monaco }).monaco;
-    if (winMonaco?.editor) {
-      winMonaco.editor.setTheme(isDark ? 'nexathon-obsidian' : 'nexathon-titanium');
+    const activeMonaco = monacoRef.current || (window as unknown as { monaco?: typeof Monaco }).monaco;
+    if (activeMonaco?.editor) {
+      activeMonaco.editor.setTheme(isDark ? 'nexathon-obsidian' : 'nexathon-titanium');
     }
   }, [isDark]);
 
@@ -395,6 +399,22 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
                 Ctrl + B
               </kbd>
             </div>
+
+            {onSwitchWorkspace && (
+              <button
+                type="button"
+                onClick={onSwitchWorkspace}
+                className="w-full flex items-center justify-between rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 hover:border-indigo-500/40 hover:theme-bg-elevated transition cursor-pointer text-left"
+              >
+                <span className="flex items-center gap-2 theme-text-primary font-medium">
+                  <ArrowLeft className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" />
+                  Exit to Workspaces Dashboard
+                </span>
+                <kbd className="rounded border theme-border theme-bg-surface-1 px-2 py-0.5 font-mono text-[11px] text-indigo-500 dark:text-indigo-300">
+                  Exit
+                </kbd>
+              </button>
+            )}
           </div>
 
           <div className="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-teal-600 dark:text-teal-300">

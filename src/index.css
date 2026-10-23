@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *));
+
 @layer base {
   :root,
-  .dark {
+  .dark,
+  [data-theme="dark"] {
     color-scheme: dark;
     --bg-canvas: #11151B;
     --bg-root: #11151B;
@@ -42,26 +45,31 @@
     --grid-line: rgba(255, 255, 255, 0.03);
   }
 
-  .light {
+  .light,
+  [data-theme="light"],
+  :root.light,
+  :root[data-theme="light"] {
     color-scheme: light;
-    --bg-canvas: #F3F5F7;
-    --bg-root: #F3F5F7;
-    --bg-surface: #FFFFFF;
-    --bg-surface-1: #FFFFFF;
-    --bg-surface-2: #F8FAFC;
-    --bg-surface-elevated: #FFFFFF;
-    --bg-elevated: #FFFFFF;
-    --bg-glass: rgba(255, 255, 255, 0.96);
-    --bg-code: #FFFFFF;
-    --bg-selected: #E1F3EF;
+    --bg-canvas: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-surface-elevated: #f1f5f9;
+    --border-hairline: rgba(15, 23, 42, 0.12);
+    --border-active: rgba(79, 70, 229, 0.6);
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --glow-hero: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12), transparent 70%);
 
-    --border-hairline: #DCE2E8;
-    --border-strong: #C5CFD8;
-    --border-active: #168C7D;
-
-    --text-primary: #202A35;
-    --text-secondary: #526171;
-    --text-muted: #748292;
+    --bg-root: #f8fafc;
+    --bg-surface-1: #ffffff;
+    --bg-surface-2: #f1f5f9;
+    --bg-elevated: #e2e8f0;
+    --bg-glass: rgba(255, 255, 255, 0.94);
+    --bg-code: #f1f5f9;
+    --text-muted: #475569;
+    --border-strong: rgba(15, 23, 42, 0.22);
+    --accent-primary: #4f46e5;
+    --accent-secondary: #7c3aed;
+    --shadow-elevated: 0 20px 50px -12px rgba(15, 23, 42, 0.12);
 
     --accent-primary: #168C7D;
     --accent-hover: #117568;
@@ -187,6 +195,24 @@
   }
 }
 
+@keyframes shiny-sweep {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 .animate-shimmer {
   background: linear-gradient(
     90deg,
@@ -255,22 +281,30 @@
 /* Monaco & Xterm Container Overrides (Obsidian Dark / Clean Light) */
 .dark .monaco-editor,
 .dark .monaco-editor .margin,
-.dark .monaco-editor-background {
-  background-color: #11151B !important;
+.dark .monaco-editor-background,
+[data-theme="dark"] .monaco-editor,
+[data-theme="dark"] .monaco-editor .margin,
+[data-theme="dark"] .monaco-editor-background {
+  background-color: #06080e !important;
 }
 
 .light .monaco-editor,
 .light .monaco-editor .margin,
-.light .monaco-editor-background {
+.light .monaco-editor-background,
+[data-theme="light"] .monaco-editor,
+[data-theme="light"] .monaco-editor .margin,
+[data-theme="light"] .monaco-editor-background {
   background-color: #ffffff !important;
 }
 
-.dark .xterm .xterm-viewport {
-  background-color: #11151B !important;
+.dark .xterm .xterm-viewport,
+[data-theme="dark"] .xterm .xterm-viewport {
+  background-color: #06080e !important;
 }
 
-.light .xterm .xterm-viewport {
-  background-color: #F8FAFC !important;
+.light .xterm .xterm-viewport,
+[data-theme="light"] .xterm .xterm-viewport {
+  background-color: #f8fafc !important;
 }
 
 /* Collaborative Edit Reservations (Teal for Owner, Amber for Peers) */

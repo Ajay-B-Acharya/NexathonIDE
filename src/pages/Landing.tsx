@@ -32,7 +32,20 @@ import {
 import { executionClient } from '../services/executionClient';
 import { SupportedLanguage, UserProfile } from '../types';
 import { AmbientCollaborationCanvas } from '../components/AmbientCollaborationCanvas';
+import { AdaptiveBackground } from '../components/AdaptiveBackground';
 import { ThemeMode, ThemeToggle } from '../components/ThemeToggle';
+import { SpotlightCard } from '../components/react-bits/cards/SpotlightCard';
+import { TiltedCard } from '../components/react-bits/cards/TiltedCard';
+import { DecryptedText } from '../components/react-bits/text/DecryptedText';
+import { ShinyText } from '../components/react-bits/text/ShinyText';
+import { Squares } from '../components/react-bits/backgrounds/Squares';
+import { StarBorder } from '../components/react-bits/animations/StarBorder';
+import { ClickSpark } from '../components/react-bits/animations/ClickSpark';
+import { SpeedBenchmarkWidget } from '../components/SpeedBenchmarkWidget';
+import { TechStackMarquee } from '../components/TechStackMarquee';
+import { TrueFocus } from '../components/react-bits/text/TrueFocus';
+import { DifferentiatorHUD } from '../components/DifferentiatorHUD';
+import { FolderOpen } from 'lucide-react';
 import { getYjsWsUrl } from '../config/endpoints';
 
 interface LandingProps {
@@ -365,9 +378,12 @@ export const Landing: React.FC<LandingProps> = ({
       className={`relative h-screen w-screen overflow-y-auto overflow-x-hidden theme-bg-root theme-text-primary select-none scroll-smooth ${
         isDark ? 'dark' : 'light'
       }`}
+      data-theme={theme}
     >
-      {/* Clean Architectural Grid Background */}
-      {/* Ambient Visual Canvas */}
+      {/* Theme-Adaptive CAD Grid + Aurora Background */}
+      <AdaptiveBackground variant="landing" theme={theme} />
+
+      {/* Clean Architectural Grid Background & Ambient Canvas */}
       <AmbientCollaborationCanvas theme={theme} />
 
       {/* 1. COMMAND HEADER */}
@@ -396,28 +412,28 @@ export const Landing: React.FC<LandingProps> = ({
           </div>
 
           {/* Center: Floating Capsule Navigation Tabs */}
-          <nav className="hidden lg:flex items-center gap-1 rounded-full border theme-border bg-slate-900/30 dark:bg-black/20 p-1 backdrop-blur-md">
+          <nav className="hidden lg:flex items-center gap-1 rounded-full border border-slate-200/90 dark:border-white/10 bg-slate-100/90 dark:bg-white/[0.04] p-1 backdrop-blur-md shadow-xs">
             <a
               href="#live-sandbox"
-              className="rounded-full px-4 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary hover:bg-white/[0.08] dark:hover:bg-white/[0.08] transition-all"
+              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
             >
               WASM Sandbox
             </a>
             <a
               href="#comparison"
-              className="rounded-full px-4 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary hover:bg-white/[0.08] dark:hover:bg-white/[0.08] transition-all"
+              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
             >
               Docker vs WASM
             </a>
             <a
               href="#bento"
-              className="rounded-full px-4 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary hover:bg-white/[0.08] dark:hover:bg-white/[0.08] transition-all"
+              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
             >
               Core Innovations
             </a>
             <a
               href="#telemetry"
-              className="rounded-full px-4 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary hover:bg-white/[0.08] dark:hover:bg-white/[0.08] transition-all"
+              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
             >
               Cluster Telemetry
             </a>
@@ -449,7 +465,7 @@ export const Landing: React.FC<LandingProps> = ({
               <button
                 type="button"
                 onClick={onNavigateToLogin}
-                className="hidden sm:inline-flex items-center rounded-xl border theme-border bg-slate-900/40 dark:bg-slate-800/40 px-3.5 py-1.5 text-xs font-medium theme-text-secondary hover:border-teal-500/40 hover:theme-text-primary hover:bg-white/[0.04] transition cursor-pointer whitespace-nowrap shrink-0"
+                className="hidden sm:inline-flex items-center rounded-xl border border-slate-200/90 dark:border-white/10 bg-white/80 hover:bg-white dark:bg-white/[0.04] dark:hover:bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white hover:border-teal-500/50 transition cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
               >
                 Sign In
               </button>
@@ -536,6 +552,9 @@ export const Landing: React.FC<LandingProps> = ({
           </div>
         )}
       </header>
+
+      {/* Signature Differentiators HUD: Hybrid Engine Clutch + X-Ray Telemetry + Figma Cursor Chat */}
+      <DifferentiatorHUD theme={theme} topOffsetClass="top-20" />
 
       {/* 2. REFINED HERO SECTION */}
       <section className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 pt-12 sm:pt-16 pb-8 text-center">

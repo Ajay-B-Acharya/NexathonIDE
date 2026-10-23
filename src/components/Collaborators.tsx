@@ -94,8 +94,8 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
         })}
       </div>
 
-      {/* Follow Pill & Legend Bar */}
-      <div className="hidden xl:flex items-center gap-1.5">
+      {/* Follow Pill & Legend Bar (visible on wide screens to preserve TopBar action space) */}
+      <div className="hidden 2xl:flex items-center gap-1.5">
         {uniqueCollaborators.slice(0, 3).map((collab) => {
           const isMe = collab.user.id === currentUserId;
           const isFollowed = followState?.targetUserId === collab.user.id;

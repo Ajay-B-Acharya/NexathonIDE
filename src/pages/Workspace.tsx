@@ -9,6 +9,7 @@ import { OutputPanel } from '../components/OutputPanel';
 import { TerminalPanel } from '../components/TerminalPanel';
 import { AIDebuggerPanel } from '../components/AIDebuggerPanel';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { WasmBootHud } from '../components/WasmBootHud';
 import { ConnectionDiagnosticsModal } from '../components/ConnectionDiagnosticsModal';
 import { workspaceApi, detectLanguageFromPath } from '../services/workspaceApi';
 import { executionClient } from '../services/executionClient';
@@ -589,6 +590,8 @@ clearFileDraft(room.id, fileId);
     void workspaceApi.updateFile(room.id, file.id, { language });
   };
 
+  const isDark = theme === 'dark';
+
   const handleFollowCollaborator = useCallback(
     (targetUserId: string, name: string, color: string, activeFilePath?: string) => {
       startFollowing(targetUserId, name, color, activeFilePath);
@@ -598,9 +601,13 @@ clearFileDraft(room.id, fileId);
     },
     [startFollowing, handleFollowFileChange]
   );
-
   return (
-    <div className="flex h-screen w-screen flex-col theme-bg-root theme-text-primary overflow-hidden transition-colors">
+    <div
+      className={`flex h-screen w-screen flex-col theme-bg-root theme-text-primary overflow-hidden transition-colors ${
+        isDark ? 'dark' : 'light'
+      }`}
+      data-theme={theme}
+    >
       <TopBar
         roomName={room.name}
         roomId={room.id}
@@ -689,6 +696,7 @@ clearFileDraft(room.id, fileId);
               setEditorInstance(editor);
               setMonacoInstance(monaco);
             }}
+            onSwitchWorkspace={onSwitchWorkspace}
           />
 
           {isBottomDrawerOpen && (

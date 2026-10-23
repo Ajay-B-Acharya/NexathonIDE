@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Code2,
-  ArrowRight,
-  Sparkles,
   Terminal,
-  Cpu,
+  ArrowRight,
   ShieldCheck,
-  Mail,
+  Cpu,
+  Radio,
+  MousePointer2,
   Lock,
+  Mail,
   User as UserIcon,
   Eye,
   EyeOff,
@@ -15,15 +15,8 @@ import {
   CheckCircle2,
   Loader2,
   ArrowLeft,
+  Sparkles,
   Zap,
-  KeyRound,
-  RotateCcw,
-  Check,
-  Copy,
-  Globe,
-  Database,
-  Activity,
-  Layers,
 } from 'lucide-react';
 import type { UserProfile } from '../types';
 import {
@@ -34,6 +27,12 @@ import {
   supabase,
 } from '../services/supabaseClient';
 import { ThemeMode, ThemeToggle } from '../components/ThemeToggle';
+import { AdaptiveBackground } from '../components/AdaptiveBackground';
+import { SpotlightCard } from '../components/react-bits/cards/SpotlightCard';
+import { Squares } from '../components/react-bits/backgrounds/Squares';
+import { DecryptedText } from '../components/react-bits/text/DecryptedText';
+import { Magnet } from '../components/react-bits/animations/Magnet';
+import { StarBorder } from '../components/react-bits/animations/StarBorder';
 
 interface LoginProps {
   onLogin: (user: UserProfile) => void;
@@ -43,15 +42,13 @@ interface LoginProps {
   onToggleTheme?: (theme: ThemeMode) => void;
 }
 
-type AuthMode = 'signin' | 'signup' | 'forgot' | 'reset';
+type AuthMode = 'crdt-handle' | 'signin' | 'signup' | 'forgot' | 'reset';
 
-const PRESET_COLORS = [
-  { hex: '#168c7d', name: 'Teal' },
-  { hex: '#10b981', name: 'Emerald' },
-  { hex: '#f59e0b', name: 'Amber' },
-  { hex: '#ec4899', name: 'Rose' },
-  { hex: '#3b82f6', name: 'Blue' },
-  { hex: '#06b6d4', name: 'Cyan' },
+const CURSOR_COLORS = [
+  { name: 'Cyber Cyan', hex: '#00f0ff', bg: 'bg-cyan-400', text: 'text-slate-950', ring: 'ring-cyan-400' },
+  { name: 'Acid Emerald', hex: '#10b981', bg: 'bg-emerald-400', text: 'text-slate-950', ring: 'ring-emerald-400' },
+  { name: 'Laser Rose', hex: '#f43f5e', bg: 'bg-rose-500', text: 'text-white', ring: 'ring-rose-500' },
+  { name: 'Solar Amber', hex: '#f59e0b', bg: 'bg-amber-400', text: 'text-slate-950', ring: 'ring-amber-400' },
 ];
 
 export const Login: React.FC<LoginProps> = ({
@@ -61,18 +58,24 @@ export const Login: React.FC<LoginProps> = ({
   theme = 'dark',
   onToggleTheme,
 }) => {
-  const [authMode, setAuthMode] = useState<AuthMode>('signin');
+  const isDark = theme === 'dark';
+
+  // Yjs multiplayer identity state
+  const [handle, setHandle] = useState('dev_architect');
+  const [selectedColor, setSelectedColor] = useState(CURSOR_COLORS[0]);
+
+  // Auth mode (CRDT Handle vs Supabase Account)
+  const [authMode, setAuthMode] = useState<AuthMode>('crdt-handle');
+
+  // Supabase credentials state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0].hex);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
-  const [copiedDemo, setCopiedDemo] = useState(false);
 
   // Detect Supabase recovery callback from email reset link
   useEffect(() => {
@@ -99,29 +102,20 @@ export const Login: React.FC<LoginProps> = ({
     };
   }, []);
 
-  const previewName = displayName.trim() || email.split('@')[0] || 'Developer';
-  const previewInitials = previewName
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
-  const handleToggleMode = (mode: AuthMode) => {
-    setAuthMode(mode);
-    setErrorMsg(null);
-    setInfoMsg(null);
+  // 1-Click Instant CRDT Handle Login
+  const handleCrdtLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanHandle = handle.trim() || 'dev_' + Math.random().toString(36).substring(2, 6);
+    const guestUser: UserProfile = {
+      id: `usr_${cleanHandle.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now().toString(36).slice(-4)}`,
+      name: cleanHandle,
+      color: selectedColor.hex,
+    };
+    onLogin(guestUser);
   };
 
-  const handleAutoFillDemo = () => {
-    setEmail('demo.developer@nexathon.dev');
-    setPassword('Nexathon2026!');
-    setDisplayName('Demo Specialist');
-    setCopiedDemo(true);
-    setTimeout(() => setCopiedDemo(false), 2000);
-  };
-
-  const handleAuthSubmit = async (e: React.FormEvent) => {
+  // Supabase Auth Submit
+  const handleSupabaseAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setInfoMsg(null);
@@ -141,13 +135,9 @@ export const Login: React.FC<LoginProps> = ({
 
     try {
       if (authMode === 'signup') {
-        const handle = displayName.trim() || trimmedEmail.split('@')[0];
-        const result = await signUpWithEmail(trimmedEmail, password, handle, selectedColor);
-
+        const result = await signUpWithEmail(trimmedEmail, password, handle, selectedColor.hex);
         if (result.requiresEmailConfirmation) {
-          setInfoMsg(
-            `Account registered for ${trimmedEmail}! A confirmation email has been sent. Please check your inbox or sign in directly if confirmations are disabled.`
-          );
+          setInfoMsg(`Account registered for ${trimmedEmail}! Please check your email inbox.`);
         } else if (result.user) {
           onLogin(result.user);
         } else {
@@ -161,27 +151,17 @@ export const Login: React.FC<LoginProps> = ({
         }
       }
     } catch (err: any) {
-      console.error('Supabase authentication error:', err);
-      let userFriendlyMessage = err.message || 'Authentication failed. Please check your credentials.';
-      if (userFriendlyMessage.toLowerCase().includes('invalid login credentials')) {
-        userFriendlyMessage = 'Invalid email or password. Verify your credentials or create a new account.';
-      } else if (userFriendlyMessage.toLowerCase().includes('email not confirmed')) {
-        userFriendlyMessage = 'Email address not yet confirmed. Please verify your inbox or test via 1-Click Guest.';
-      } else if (userFriendlyMessage.toLowerCase().includes('user already registered')) {
-        userFriendlyMessage = 'An account with this email already exists. Switched to Sign In.';
-        setAuthMode('signin');
-      }
-      setErrorMsg(userFriendlyMessage);
+      setErrorMsg(err.message || 'Authentication failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Password Recovery Submit
   const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setInfoMsg(null);
-
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
       setErrorMsg('Please enter your registered email address.');
@@ -191,28 +171,23 @@ export const Login: React.FC<LoginProps> = ({
     setIsLoading(true);
     try {
       await sendPasswordResetEmail(trimmedEmail);
-      setInfoMsg(
-        `Password recovery link has been sent to ${trimmedEmail}! Please check your email inbox to reset your password.`
-      );
+      setInfoMsg(`Password recovery link has been sent to ${trimmedEmail}!`);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to send recovery link. Please verify the email address.');
+      setErrorMsg(err.message || 'Failed to send recovery link.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Password Reset Submit
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg(null);
-    setInfoMsg(null);
-
     if (!newPassword || newPassword.length < 6) {
       setErrorMsg('New password must be at least 6 characters long.');
       return;
     }
-
     if (newPassword !== confirmPassword) {
-      setErrorMsg('Passwords do not match. Please re-enter your new password.');
+      setErrorMsg('Passwords do not match.');
       return;
     }
 
@@ -220,590 +195,522 @@ export const Login: React.FC<LoginProps> = ({
     try {
       const result = await updateUserPassword(newPassword);
       if (result.user) {
-        setInfoMsg('Password successfully updated! Launching your IDE workspace...');
-        setTimeout(() => {
-          onLogin(result.user!);
-        }, 1000);
+        setInfoMsg('Password updated successfully! Launching workspace...');
+        setTimeout(() => onLogin(result.user!), 800);
       } else {
-        setInfoMsg('Password updated successfully! You can now sign in.');
+        setInfoMsg('Password updated! You can now sign in.');
         setAuthMode('signin');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to update password. Recovery link may have expired.');
+      setErrorMsg(err.message || 'Failed to update password.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const hasMinLength = (authMode === 'reset' ? newPassword : password).length >= 6;
-  const hasMixedChars = /[a-zA-Z]/.test(authMode === 'reset' ? newPassword : password) &&
-                        /[0-9]/.test(authMode === 'reset' ? newPassword : password);
-
   return (
-    <div className="relative min-h-screen theme-bg-root bg-grid-pattern theme-text-primary select-none flex flex-col justify-between overflow-y-auto">
-      {/* Top Header Bar */}
-      <header className="sticky top-0 z-30 border-b theme-border theme-bg-glass backdrop-blur-md px-6 py-3.5">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
+    <div
+      className={`min-h-screen w-full grid grid-cols-1 lg:grid-cols-12 overflow-hidden font-sans select-none transition-colors duration-300 relative ${
+        isDark ? 'dark bg-[#06080e] text-slate-100' : 'light bg-[#f8fafc] text-slate-900'
+      }`}
+      data-theme={theme}
+    >
+      {/* Theme-Adaptive Cryptographic Topographical Mesh */}
+      <AdaptiveBackground variant="login" theme={theme} />
+      {/* ========================================================= */}
+      {/* LEFT 7 COLUMNS: INTERACTIVE CANVAS + LIVE YJS CURSOR PREVIEW */}
+      {/* ========================================================= */}
+      <div className="hidden lg:flex lg:col-span-7 relative flex-col justify-between p-12 border-r theme-border overflow-hidden">
+        {/* React Bits Interactive Squares Canvas Background */}
+        <div className="absolute inset-0 opacity-40">
+          <Squares
+            direction="diagonal"
+            speed={0.4}
+            borderColor={isDark ? '#1e293b' : '#cbd5e1'}
+            hoverFillColor={`${selectedColor.hex}25`}
+          />
+        </div>
+
+        {/* Top Header: Brand Identity & Back to Landing */}
+        <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {onBackToLanding && (
               <button
                 type="button"
                 onClick={onBackToLanding}
-                className="inline-flex items-center gap-1.5 rounded-lg border theme-border theme-bg-surface-1 px-3 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary transition cursor-pointer"
+                className="flex items-center justify-center h-8 w-8 rounded-lg border theme-border theme-bg-surface-2 hover:border-indigo-500/50 transition cursor-pointer"
+                title="Return to Landing Page"
               >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                <span>Landing Page</span>
+                <ArrowLeft className="h-4 w-4 theme-text-secondary" />
               </button>
             )}
-
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600 text-white shadow-xs">
-                <Code2 className="h-4 w-4" />
+              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-[0_0_16px_rgba(99,102,241,0.4)]">
+                <Terminal className="w-4 h-4" />
               </div>
-              <span className="text-sm font-bold tracking-tight theme-text-primary">
-                Nexathon<span className="text-teal-600 dark:text-teal-400">IDE</span>
+              <span className="font-mono font-bold tracking-tight text-slate-900 dark:text-slate-100 text-sm">
+                NEXATHON<span className="text-indigo-600 dark:text-indigo-400">.IDE</span>
+                <span className="text-slate-600 dark:text-slate-400 text-xs font-semibold ml-2">// AUTH_GATE</span>
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-mono text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Supabase Auth Service Active
+          <div className="flex items-center gap-2.5">
+            <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-600/30 dark:border-emerald-500/30 font-mono text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1.5 shadow-xs">
+              <Radio className="w-3 h-3 animate-pulse" />
+              YJS_MESH: ONLINE
+            </span>
+          </div>
+        </div>
+
+        {/* Center: Live Multiplayer Code Editor & Cursor Sandbox */}
+        <div className="relative z-10 my-auto max-w-xl w-full">
+          <div className="text-xs font-mono uppercase tracking-widest text-indigo-700 dark:text-indigo-400 font-bold mb-3 flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>01 // LIVE MULTIPLAYER PRESENCE PREVIEW</span>
+          </div>
+
+          <div
+            className={`p-6 rounded-2xl border backdrop-blur-xl shadow-2xl space-y-4 font-mono text-xs transition-all duration-300 ${
+              isDark ? 'bg-[#090d16]/95 border-white/10' : 'bg-white/95 border-slate-300 shadow-xl'
+            }`}
+          >
+            {/* Window title bar */}
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+                <span className="ml-2 font-mono text-[11px] font-bold text-slate-900 dark:text-slate-100">session_preview.py</span>
+              </div>
+              <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 font-semibold">CRDT Peer Awareness</span>
             </div>
 
+            {/* Simulated Code Lines */}
+            <div className="space-y-2 py-3 leading-relaxed">
+              <div className="text-slate-700 dark:text-slate-300 font-mono font-medium">1 &nbsp; async def initialize_wasm_worker():</div>
+              <div className="relative flex items-center flex-wrap gap-y-2">
+                <span className="text-slate-500 dark:text-slate-400">2 &nbsp; &nbsp;&nbsp;&nbsp;&nbsp;</span>
+                <span
+                  className="px-2 py-0.5 rounded border-l-2 font-mono transition-all duration-200"
+                  style={{
+                    backgroundColor: `${selectedColor.hex}18`,
+                    borderColor: selectedColor.hex,
+                    color: isDark ? '#ffffff' : '#0f172a',
+                  }}
+                >
+                  await pyodide.loadPackage([&quot;numpy&quot;, &quot;pandas&quot;])
+                </span>
+
+                {/* Live Updating Collaborator Cursor (Reacts instantly to handle & color change!) */}
+                <div className="ml-2.5 inline-flex items-center gap-1 transition-all duration-200 animate-in fade-in">
+                  <MousePointer2
+                    className="w-4 h-4 -rotate-12 transition-colors duration-200"
+                    style={{ color: selectedColor.hex, fill: selectedColor.hex }}
+                  />
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold shadow-md transition-colors duration-200 ${selectedColor.bg} ${selectedColor.text}`}
+                  >
+                    @{handle.trim() || 'developer'}
+                  </span>
+                </div>
+              </div>
+              <div className="text-slate-700 dark:text-slate-300 font-mono font-medium">3 &nbsp; &nbsp;&nbsp;&nbsp;&nbsp;return yjs_provider.connect()</div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-[10px] font-mono">
+              <span className="text-slate-600 dark:text-slate-400 font-medium">Awareness Clock: Lamport v2.4</span>
+              <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-bold">
+                ● Buffer Active (0ms lag)
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Telemetry Strip */}
+        <div className="relative z-10 grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 dark:border-white/10 font-mono text-xs">
+          <div>
+            <div className="text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">WASM RUNTIME</div>
+            <div className="text-cyan-700 dark:text-cyan-400 font-extrabold mt-0.5">Pyodide 0.26.2 (0ms)</div>
+          </div>
+          <div>
+            <div className="text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">SYNC PROTOCOL</div>
+            <div className="text-emerald-700 dark:text-emerald-400 font-extrabold mt-0.5">Yjs CRDT + WS (:1234)</div>
+          </div>
+          <div>
+            <div className="text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">SHELL DAEMON</div>
+            <div className="text-indigo-700 dark:text-indigo-400 font-extrabold mt-0.5">Node-PTY xterm (:3001)</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* RIGHT 5 COLUMNS: CRYPTOGRAPHIC AUTHENTICATION GATE */}
+      {/* ========================================================= */}
+      <div className="lg:col-span-5 flex flex-col justify-center p-6 sm:p-12 relative theme-bg-root overflow-y-auto">
+        <SpotlightCard
+          spotlightColor={`${selectedColor.hex}22`}
+          className={`w-full max-w-md mx-auto p-6 sm:p-8 rounded-2xl border theme-border theme-shadow backdrop-blur-2xl transition-all duration-300 ${
+            isDark ? 'bg-[#0c1018]/90' : 'bg-white/95'
+          }`}
+        >
+          {/* Card Top Strip: Gateway Badge + Theme Toggle */}
+          <div className="flex items-center justify-between mb-6">
+            <span className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 font-bold">
+              SSH_GATEWAY // v2.4
+            </span>
             {onToggleTheme && (
               <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             )}
           </div>
-        </div>
-      </header>
 
-      {/* Main Showcase Grid */}
-      <main className="mx-auto my-auto w-full max-w-7xl px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          
-          {/* Left Column (5 Cols): Credentials Box */}
-          <div className="lg:col-span-5 max-w-md mx-auto w-full">
-            <div className="relative rounded-2xl border theme-border theme-bg-glass p-7 theme-shadow backdrop-blur-2xl">
-              {/* Card Header & Title */}
-              <div className="mb-5">
-                <div className="flex items-center justify-between mb-1.5">
-                  <h2 className="text-xl font-bold tracking-tight theme-text-primary">
-                    {authMode === 'forgot'
-                      ? 'Reset Account Password'
-                      : authMode === 'reset'
-                      ? 'Set New Password'
-                      : authMode === 'signup'
-                      ? 'Create Developer Account'
-                      : 'Welcome Back'}
-                  </h2>
-                  <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold text-teal-600 dark:text-teal-400 font-mono">
-                    v2.4 CRDT
-                  </span>
-                </div>
-                <p className="text-xs theme-text-muted">
-                  {authMode === 'forgot'
-                    ? 'Enter your email to receive a secure one-time password recovery link.'
-                    : authMode === 'reset'
-                    ? 'Enter your new credentials to update your encrypted Bcrypt hash.'
-                    : authMode === 'signup'
-                    ? 'Join collaborative multi-peer rooms with real-time Monaco state vectors.'
-                    : 'Sign in to access your cloud workspaces and live terminals.'}
-                </p>
+          {/* Decrypted Headline */}
+          <div className="mb-6">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 font-mono">
+              <DecryptedText
+                text="INITIALIZE_SESSION"
+                animateOn="view"
+                speed={30}
+                maxIterations={10}
+              />
+            </h1>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 font-medium">
+              Configure your multiplayer CRDT identity or connect with a persistent account.
+            </p>
+          </div>
+
+          {/* Mode Switcher Tabs */}
+          <div className="flex rounded-xl p-1 border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/5 mb-6">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('crdt-handle');
+                setErrorMsg(null);
+                setInfoMsg(null);
+              }}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                authMode === 'crdt-handle'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              1-Click Handle
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('signin');
+                setErrorMsg(null);
+                setInfoMsg(null);
+              }}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                authMode !== 'crdt-handle'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Supabase Auth
+            </button>
+          </div>
+
+          {/* Feedback Alerts */}
+          {errorMsg && (
+            <div className="mb-5 flex items-center gap-2 rounded-xl bg-rose-500/10 border border-rose-500/30 p-3 text-xs text-rose-500">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {infoMsg && (
+            <div className="mb-5 flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 text-xs text-emerald-500">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{infoMsg}</span>
+            </div>
+          )}
+
+          {/* ========================================= */}
+          {/* TAB 1: 1-CLICK CRDT MULTIPLAYER IDENTITY */}
+          {/* ========================================= */}
+          {authMode === 'crdt-handle' && (
+            <div className="space-y-5">
+              {/* 1-Click Guest Button */}
+              {onGuestDemo && (
+                <button
+                  type="button"
+                  onClick={onGuestDemo}
+                  className="w-full py-2.5 px-4 rounded-xl border theme-border theme-bg-surface-2 hover:border-indigo-500/50 font-mono text-xs font-bold flex items-center justify-center gap-2.5 transition-all shadow-xs cursor-pointer theme-text-primary"
+                >
+                  <Zap className="w-4 h-4 text-emerald-500 fill-current" />
+                  INSTANT 1-CLICK GUEST DEMO
+                </button>
+              )}
+
+              <div className="flex items-center gap-3 my-4">
+                <div className="h-px border-b border-slate-200 dark:border-white/10 flex-1" />
+                <span className="font-mono text-[10px] text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider">
+                  OR CUSTOMIZE IDENTITY
+                </span>
+                <div className="h-px border-b border-slate-200 dark:border-white/10 flex-1" />
               </div>
 
+              <form onSubmit={handleCrdtLogin} className="space-y-5">
+                {/* Developer Handle Input */}
+                <div>
+                  <label className="block font-mono text-[11px] uppercase text-slate-800 dark:text-slate-200 mb-2 font-bold tracking-wide">
+                    01 // DEVELOPER_HANDLE
+                  </label>
+                  <div className="flex items-center rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/15 focus-within:border-indigo-600 focus-within:ring-1 focus-within:ring-indigo-600 px-3.5 py-2.5 font-mono text-xs transition-colors shadow-xs">
+                    <span className="text-slate-600 dark:text-slate-400 font-bold select-none">nexathon://@</span>
+                    <input
+                      type="text"
+                      required
+                      value={handle}
+                      onChange={(e) => setHandle(e.target.value)}
+                      className="bg-transparent text-slate-900 dark:text-white focus:outline-none w-full font-bold ml-1.5 placeholder:text-slate-400"
+                      placeholder="username"
+                    />
+                  </div>
+                </div>
 
-              {/* Mode Switcher Tabs (Sign In vs Create Account) */}
-              {(authMode === 'signin' || authMode === 'signup') && (
-                <div className="mb-5 grid grid-cols-2 rounded-xl border theme-border theme-bg-surface-2 p-1 text-xs font-semibold">
+                {/* Yjs Cursor Color Spectrum Selector */}
+                <div>
+                  <label className="block font-mono text-[11px] uppercase text-slate-800 dark:text-slate-200 mb-2 font-bold tracking-wide">
+                    02 // YJS_CURSOR_SPECTRUM
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {CURSOR_COLORS.map((color) => {
+                      const isSelected = selectedColor.name === color.name;
+                      return (
+                        <button
+                          key={color.name}
+                          type="button"
+                          onClick={() => setSelectedColor(color)}
+                          className={`py-2 px-2 rounded-lg border font-mono text-[10px] flex items-center justify-center gap-1.5 transition-all cursor-pointer font-bold ${
+                            isSelected
+                              ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-950 dark:text-white shadow-sm ring-1 ring-indigo-500'
+                              : 'border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:border-indigo-500/50'
+                          }`}
+                        >
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
+                            style={{ backgroundColor: color.hex }}
+                          />
+                          <span className="truncate">{color.name.split(' ')[1]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Magnet + StarBorder Submit CTA */}
+                <div className="pt-2">
+                  <Magnet padding={20} magnetStrength={2} className="w-full">
+                    <StarBorder
+                      type="submit"
+                      color={selectedColor.hex}
+                      speed="3s"
+                      className="w-full cursor-pointer shadow-lg"
+                    >
+                      <span className="py-1 flex items-center justify-center gap-2 font-mono text-xs font-bold text-white">
+                        MOUNT WORKSPACE <ArrowRight className="w-4 h-4" />
+                      </span>
+                    </StarBorder>
+                  </Magnet>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* ========================================= */}
+          {/* TAB 2: PERSISTENT SUPABASE ACCOUNT */}
+          {/* ========================================= */}
+          {authMode !== 'crdt-handle' && (
+            <div>
+              {/* Sub-Tabs: Sign In vs Sign Up */}
+              {authMode !== 'forgot' && authMode !== 'reset' && (
+                <div className="flex border-b theme-border mb-5">
                   <button
                     type="button"
-                    onClick={() => handleToggleMode('signin')}
-                    className={`flex items-center justify-center gap-2 rounded-lg py-2 transition-all cursor-pointer ${
+                    onClick={() => setAuthMode('signin')}
+                    className={`pb-2 px-3 text-xs font-mono font-semibold transition border-b-2 cursor-pointer ${
                       authMode === 'signin'
-                        ? 'bg-teal-600 text-white shadow-xs'
-                        : 'theme-text-muted hover:theme-text-primary'
+                        ? 'border-indigo-500 text-indigo-500'
+                        : 'border-transparent theme-text-secondary hover:theme-text-primary'
                     }`}
                   >
-                    <Lock className="h-3.5 w-3.5" />
-                    <span>Sign In</span>
+                    Sign In
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleToggleMode('signup')}
-                    className={`flex items-center justify-center gap-2 rounded-lg py-2 transition-all cursor-pointer ${
+                    onClick={() => setAuthMode('signup')}
+                    className={`pb-2 px-3 text-xs font-mono font-semibold transition border-b-2 cursor-pointer ${
                       authMode === 'signup'
-                        ? 'bg-teal-600 text-white shadow-xs'
-                        : 'theme-text-muted hover:theme-text-primary'
+                        ? 'border-indigo-500 text-indigo-500'
+                        : 'border-transparent theme-text-secondary hover:theme-text-primary'
                     }`}
                   >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    <span>Create Account</span>
+                    Create Account
                   </button>
                 </div>
               )}
 
-              {/* 1-Click Demo Auto-fill Pill (Evaluator / Judge Convenience) */}
-              {authMode === 'signin' && (
-                <div className="mb-4 flex items-center justify-between rounded-lg border theme-border theme-bg-surface-1 p-2">
-                  <div className="flex items-center gap-2 text-[11px] theme-text-secondary">
-                    <Zap className="h-3.5 w-3.5 text-amber-400" />
-                    <span>Evaluating for Hackathon?</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAutoFillDemo}
-                    className="inline-flex items-center gap-1 rounded bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 px-2 py-0.5 text-[10px] font-semibold text-teal-600 dark:text-teal-400 transition cursor-pointer"
-                  >
-                    {copiedDemo ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                    <span>{copiedDemo ? 'Filled!' : 'Auto-fill Demo'}</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Alert Banners */}
-              {errorMsg && (
-                <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300 animate-in fade-in">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
-                  <div className="flex-1 leading-relaxed">{errorMsg}</div>
-                </div>
-              )}
-
-              {infoMsg && (
-                <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-300 animate-in fade-in">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
-                  <div className="flex-1 leading-relaxed">{infoMsg}</div>
-                </div>
-              )}
-
-              {/* FORGOT PASSWORD FORM */}
-              {authMode === 'forgot' && (
-                <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium theme-text-secondary mb-1.5">
-                      Account Email Address
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 theme-text-muted" />
-                      <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="developer@example.com"
-                        autoFocus
-                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-3.5 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="group flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 hover:bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-all disabled:opacity-60 cursor-pointer"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Sending Recovery Link...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Send Password Reset Link</span>
-                        <KeyRound className="h-4 w-4 transition-transform group-hover:scale-110" />
-                      </>
-                    )}
-                  </button>
-
-                  <div className="pt-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleMode('signin')}
-                      className="inline-flex items-center gap-1.5 text-xs text-teal-600 dark:text-teal-400 hover:underline transition cursor-pointer"
-                    >
-                      <ArrowLeft className="h-3 w-3" />
-                      <span>Back to Sign In</span>
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* RESET PASSWORD FORM */}
-              {authMode === 'reset' && (
-                <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium theme-text-secondary mb-1.5">
-                      New Secure Password
-                    </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 theme-text-muted" />
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Min. 6 characters"
-                        autoFocus
-                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-10 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition cursor-pointer"
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium theme-text-secondary mb-1.5">
-                      Confirm New Password
-                    </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 theme-text-muted" />
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Re-enter password"
-                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-3.5 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-[10px]">
-                    <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${hasMinLength ? 'bg-emerald-500/20 text-emerald-400' : 'theme-bg-surface-2 theme-text-muted'}`}>
-                      {hasMinLength ? '✓' : '•'} 6+ characters
-                    </span>
-                    <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${hasMixedChars ? 'bg-teal-500/20 text-teal-400' : 'theme-bg-surface-2 theme-text-muted'}`}>
-                      {hasMixedChars ? '✓' : '•'} Letters & numbers
-                    </span>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="group flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 hover:bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-all disabled:opacity-60 cursor-pointer"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Updating Password...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Update Password & Launch Workspace</span>
-                        <RotateCcw className="h-4 w-4 transition-transform group-hover:rotate-180" />
-                      </>
-                    )}
-                  </button>
-
-                  <div className="pt-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleMode('signin')}
-                      className="inline-flex items-center gap-1.5 text-xs text-teal-600 dark:text-teal-400 hover:underline transition cursor-pointer"
-                    >
-                      <ArrowLeft className="h-3 w-3" />
-                      <span>Cancel & Return to Sign In</span>
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* SIGN IN & SIGN UP FORM */}
+              {/* Sign In & Sign Up Form */}
               {(authMode === 'signin' || authMode === 'signup') && (
-                <form onSubmit={handleAuthSubmit} className="space-y-4">
-                  {/* Email */}
+                <form onSubmit={handleSupabaseAuthSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-medium theme-text-secondary mb-1.5">
+                    <label className="block font-mono text-[11px] uppercase theme-text-secondary mb-1.5 font-medium">
                       Email Address
                     </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 theme-text-muted" />
+                    <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-indigo-500 px-3.5 py-2 text-xs">
+                      <Mail className="w-4 h-4 theme-text-muted mr-2 shrink-0" />
                       <input
                         type="email"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="developer@example.com"
-                        autoComplete="email"
-                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-3.5 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                        placeholder="you@company.com"
+                        className="bg-transparent theme-text-primary focus:outline-none w-full font-mono"
                       />
                     </div>
                   </div>
 
-                  {/* Password */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-medium theme-text-secondary">
+                      <label className="font-mono text-[11px] uppercase theme-text-secondary font-medium">
                         Password
                       </label>
-                      {authMode === 'signin' ? (
+                      {authMode === 'signin' && (
                         <button
                           type="button"
-                          onClick={() => handleToggleMode('forgot')}
-                          className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline transition cursor-pointer"
+                          onClick={() => setAuthMode('forgot')}
+                          className="text-[10px] font-mono text-indigo-500 hover:underline cursor-pointer"
                         >
-                          Forgot password?
+                          Forgot Password?
                         </button>
-                      ) : (
-                        <span className="text-[10px] theme-text-muted">Min. 6 characters</span>
                       )}
                     </div>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 theme-text-muted" />
+                    <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-indigo-500 px-3.5 py-2 text-xs">
+                      <Lock className="w-4 h-4 theme-text-muted mr-2 shrink-0" />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
-                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-10 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30"
+                        className="bg-transparent theme-text-primary focus:outline-none w-full font-mono"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition cursor-pointer"
+                        className="theme-text-muted hover:theme-text-primary cursor-pointer"
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
                     </div>
-
-                    {authMode === 'signup' && (
-                      <div className="mt-2 flex items-center gap-2 text-[10px]">
-                        <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${hasMinLength ? 'bg-emerald-500/20 text-emerald-400' : 'theme-bg-surface-2 theme-text-muted'}`}>
-                          {hasMinLength ? '✓' : '•'} 6+ characters
-                        </span>
-                        <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${hasMixedChars ? 'bg-teal-500/20 text-teal-400' : 'theme-bg-surface-2 theme-text-muted'}`}>
-                          {hasMixedChars ? '✓' : '•'} Letters & numbers
-                        </span>
-                      </div>
-                    )}
                   </div>
 
-                  {/* Sign Up Details */}
-                  {authMode === 'signup' && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-medium theme-text-secondary mb-1.5">
-                          Developer Display Name
-                        </label>
-                        <div className="relative">
-                          <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 theme-text-muted" />
-                          <input
-                            type="text"
-                            required
-                            value={displayName}
-                            onChange={(e) => setDisplayName(e.target.value)}
-                            placeholder="e.g., Alex Carter"
-                            className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-3.5 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium theme-text-secondary mb-2">
-                          Awareness Cursor Color
-                        </label>
-                        <div className="flex items-center justify-between gap-2 rounded-lg border theme-border theme-bg-surface-2 p-2">
-                          {PRESET_COLORS.map((c) => {
-                            const isSelected = selectedColor === c.hex;
-                            return (
-                              <button
-                                key={c.hex}
-                                type="button"
-                                onClick={() => setSelectedColor(c.hex)}
-                                title={c.name}
-                                className={`group relative flex h-7 w-7 items-center justify-center rounded-full transition-all duration-150 cursor-pointer ${
-                                  isSelected
-                                    ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-[#0f121d]'
-                                    : 'opacity-70 hover:scale-105 hover:opacity-100'
-                                }`}
-                                style={{
-                                  backgroundColor: c.hex,
-                                  boxShadow: isSelected ? `0 0 14px ${c.hex}` : undefined,
-                                }}
-                              />
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Submit Button */}
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="group flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 hover:bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-all disabled:opacity-60 cursor-pointer"
+                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
                   >
                     {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Verifying with Supabase Auth...</span>
-                      </>
-                    ) : authMode === 'signin' ? (
-                      <>
-                        <span>Sign In to Cloud IDE</span>
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                      </>
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <>
-                        <span>Create Account & Launch</span>
-                        <Sparkles className="h-4 w-4 transition-transform group-hover:scale-110" />
+                        {authMode === 'signup' ? 'REGISTER ACCOUNT' : 'AUTHENTICATE'}
+                        <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </button>
                 </form>
               )}
 
-              {/* Guest Sandbox Option */}
-              {onGuestDemo && (
-                <div className="mt-5 pt-4 border-t theme-border">
+              {/* Forgot Password Form */}
+              {authMode === 'forgot' && (
+                <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+                  <div>
+                    <label className="block font-mono text-[11px] uppercase theme-text-secondary mb-1.5">
+                      Account Email
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@company.com"
+                      className="w-full rounded-xl theme-bg-surface-1 border theme-border px-3.5 py-2 text-xs theme-text-primary font-mono focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
+                  >
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'SEND RECOVERY LINK'}
+                  </button>
                   <button
                     type="button"
-                    onClick={onGuestDemo}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-xs font-semibold theme-text-secondary hover:border-emerald-500/40 hover:text-emerald-400 hover:theme-bg-surface-1 transition cursor-pointer"
+                    onClick={() => setAuthMode('signin')}
+                    className="w-full text-center text-xs font-mono text-indigo-500 hover:underline cursor-pointer"
                   >
-                    <Zap className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>Instant 1-Click Guest Demo (No Password Needed)</span>
+                    Back to Sign In
                   </button>
-                </div>
+                </form>
               )}
 
-              {/* Operational Trust Ribbon */}
-              <div className="mt-5 pt-4 border-t theme-border flex items-center justify-between text-[11px] font-mono theme-text-muted">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  All systems nominal
-                </span>
-                <span>WASM Core 0.26 • Bcrypt + JWT</span>
-              </div>
+              {/* Reset Password Form */}
+              {authMode === 'reset' && (
+                <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+                  <div>
+                    <label className="block font-mono text-[11px] uppercase theme-text-secondary mb-1.5">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                      className="w-full rounded-xl theme-bg-surface-1 border theme-border px-3.5 py-2 text-xs theme-text-primary font-mono focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-mono text-[11px] uppercase theme-text-secondary mb-1.5">
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter password"
+                      className="w-full rounded-xl theme-bg-surface-1 border theme-border px-3.5 py-2 text-xs theme-text-primary font-mono focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
+                  >
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'UPDATE PASSWORD & LAUNCH'}
+                  </button>
+                </form>
+              )}
             </div>
+          )}
+
+          {/* Security Footer */}
+          <div className="mt-8 pt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between font-mono text-[10px] text-slate-600 dark:text-slate-400">
+            <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold">
+              <ShieldCheck className="w-3.5 h-3.5" /> WebWorker Isolated
+            </span>
+            <span className="font-semibold">TLS 1.3 / CRDT Lamport</span>
           </div>
-
-          {/* Right Column (7 Cols): Architectural Showcase & Live Multi-Peer Preview */}
-          <div className="hidden lg:flex lg:col-span-7 flex-col space-y-5">
-            {/* Live Monaco Multi-Cursor Simulation Card */}
-            <div className="rounded-2xl border theme-border theme-bg-glass p-6 theme-shadow backdrop-blur-2xl">
-              <div className="flex items-center justify-between border-b theme-border pb-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-rose-500/80" />
-                  <span className="h-3 w-3 rounded-full bg-amber-500/80" />
-                  <span className="h-3 w-3 rounded-full bg-emerald-500/80" />
-                  <span className="ml-2 font-mono text-xs theme-text-muted">src/distributed_crdt_sync.py</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono text-emerald-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    3 Peers Active
-                  </span>
-                </div>
-              </div>
-
-              {/* Simulated Code Lines with Active Awareness Flags */}
-              <div className="font-mono text-xs space-y-2 rounded-xl theme-bg-code p-4 border theme-border">
-                <div className="flex items-center gap-3">
-                  <span className="theme-text-muted w-6 text-right select-none">1</span>
-                  <span className="theme-text-primary"><span className="text-teal-600 dark:text-teal-400 font-semibold">import</span> pyodide, yjs</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="theme-text-muted w-6 text-right select-none">2</span>
-                  <span className="theme-text-primary"><span className="text-teal-600 dark:text-teal-400 font-semibold">from</span> runtime <span className="text-teal-600 dark:text-teal-400 font-semibold">import</span> CRDTEngine</span>
-                </div>
-                <div className="relative flex items-center gap-3 py-0.5">
-                  <span className="theme-text-muted w-6 text-right select-none">3</span>
-                  <span className="theme-text-primary">engine = CRDTEngine(room_id=<span className="text-emerald-600 dark:text-emerald-400 font-medium">"global-mesh"</span>)</span>
-                  {/* Cursor 1: Alex */}
-                  <span className="absolute right-20 inline-flex items-center">
-                    <span className="h-4 w-0.5 bg-teal-500 animate-pulse" />
-                    <span className="rounded-r bg-teal-600 px-1.5 py-0.2 text-[9px] font-bold text-white shadow-xs">
-                      Alex (You)
-                    </span>
-                  </span>
-                </div>
-                <div className="relative flex items-center gap-3 py-0.5">
-                  <span className="theme-text-muted w-6 text-right select-none">4</span>
-                  <span className="theme-text-primary">state_vector = engine.converge_updates()</span>
-                  {/* Cursor 2: Elena */}
-                  <span className="absolute left-64 inline-flex items-center">
-                    <span className="h-4 w-0.5 bg-emerald-500 animate-pulse" />
-                    <span className="rounded-r bg-emerald-600 px-1.5 py-0.2 text-[9px] font-bold text-white shadow-xs">
-                      Elena
-                    </span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="theme-text-muted w-6 text-right select-none">5</span>
-                  <span className="text-teal-600 dark:text-teal-400 font-medium">print</span>(<span className="text-emerald-600 dark:text-emerald-400">"Converged CRDT Vector with 0 conflicts"</span>)
-                </div>
-              </div>
-
-              {/* Collaborator Presence Pill Row */}
-              <div className="mt-4 flex items-center justify-between pt-3 border-t theme-border text-xs">
-                <span className="theme-text-muted">Connected Awareness Peers:</span>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 rounded-full border theme-border theme-bg-surface-2 px-2.5 py-1 text-[11px]">
-                    <div className="h-3 w-3 rounded-full bg-teal-500" />
-                    <span>{previewName} (You)</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 rounded-full border theme-border theme-bg-surface-2 px-2.5 py-1 text-[11px]">
-                    <div className="h-3 w-3 rounded-full bg-emerald-500" />
-                    <span>Elena S.</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 rounded-full border theme-border theme-bg-surface-2 px-2.5 py-1 text-[11px]">
-                    <div className="h-3 w-3 rounded-full bg-teal-500" />
-                    <span>David K.</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Architecture Metrics Grid */}
-            <div className="grid grid-cols-3 gap-3.5">
-              <div className="rounded-xl border theme-border theme-bg-glass p-3.5 theme-shadow">
-                <div className="flex items-center gap-2 theme-text-secondary text-xs mb-1">
-                  <Cpu className="h-3.5 w-3.5 text-teal-400" />
-                  <span className="font-semibold">Pyodide WASM</span>
-                </div>
-                <div className="text-lg font-bold theme-text-primary font-mono">4.2ms</div>
-                <div className="text-[10px] theme-text-muted">In-browser cold start</div>
-              </div>
-
-              <div className="rounded-xl border theme-border theme-bg-glass p-3.5 theme-shadow">
-                <div className="flex items-center gap-2 theme-text-secondary text-xs mb-1">
-                  <Activity className="h-3.5 w-3.5 text-emerald-400" />
-                  <span className="font-semibold">Yjs CRDT</span>
-                </div>
-                <div className="text-lg font-bold theme-text-primary font-mono">&lt; 15ms</div>
-                <div className="text-[10px] theme-text-muted">P99 Convergence RTT</div>
-              </div>
-
-              <div className="rounded-xl border theme-border theme-bg-glass p-3.5 theme-shadow">
-                <div className="flex items-center gap-2 theme-text-secondary text-xs mb-1">
-                  <ShieldCheck className="h-3.5 w-3.5 text-teal-400" />
-                  <span className="font-semibold">Security Guard</span>
-                </div>
-                <div className="text-lg font-bold theme-text-primary font-mono">Bcrypt + JWT</div>
-                <div className="text-[10px] theme-text-muted">Supabase Auth</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t theme-border py-4 px-6 text-center text-xs theme-text-muted">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <span>NexathonIDE • High-Performance Cloud Collaboration</span>
-          <span className="font-mono text-[11px]">PostgreSQL • Node-PTY • Pyodide • Yjs CRDT</span>
-        </div>
-      </footer>
+        </SpotlightCard>
+      </div>
     </div>
   );
 };
+
+export default Login;

@@ -139,11 +139,12 @@ export const App: React.FC = () => {
       });
   }, []);
 
-  // Synchronize `.dark` / `.light` class on `document.documentElement`
+  // Synchronize `.dark` / `.light` class and `data-theme` on `document.documentElement`
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove('dark', 'light');
     root.classList.add(theme);
+    root.setAttribute('data-theme', theme);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, theme);
     } catch {
@@ -292,74 +293,75 @@ export const App: React.FC = () => {
     navigateTo('landing', null, true);
   }, [navigateTo]);
 
-  if (view === 'landing') {
-    return (
-      <Landing
-        existingUser={user}
-        theme={theme}
-        onToggleTheme={setTheme}
-        onCompleteOnboarding={(newUser) => {
-          persistUser(newUser);
-          navigateTo('workspaces');
-        }}
-        onInstantGuestDemo={handleInstantGuestDemo}
-        onResumeSession={() => {
-          if (activeRoom) {
-            navigateTo('workspace', activeRoom);
-          } else {
-            navigateTo('workspaces');
-          }
-        }}
-        onNavigateToLogin={() => navigateTo('login')}
-      />
-    );
-  }
-
-  if (view === 'login') {
-    return (
-      <Login
-        theme={theme}
-        onToggleTheme={setTheme}
-        onLogin={handleLoginSuccess}
-        onBackToLanding={() => navigateTo('landing')}
-        onGuestDemo={handleInstantGuestDemo}
-      />
-    );
-  }
-
-  // If user accesses authenticated views without a profile, generate guest identity seamlessly
-  // or prompt for login
   const effectiveUser = user || {
-    id: `usr_guest_auto`,
-    name: `dev_guest`,
+    id: 'usr_guest_auto',
+    name: 'dev_architect',
     color: '#35B8A6',
   };
 
-  if (view === 'workspaces' || !activeRoom) {
-    return (
-      <WorkspaceSelection
-        user={effectiveUser}
-        theme={theme}
-        onToggleTheme={setTheme}
-        onSelectRoom={(room) => {
-          navigateTo('workspace', room);
-        }}
-        onLogout={handleLogout}
-      />
-    );
-  }
-
   return (
-    <Workspace
-      room={activeRoom}
-      user={effectiveUser}
-      theme={theme}
-      onToggleTheme={setTheme}
-      onSwitchWorkspace={() => {
-        navigateTo('workspaces');
-      }}
-      onLogout={handleLogout}
-    />
+    <div
+      className={`min-h-screen w-screen overflow-hidden ${
+        theme === 'dark' ? 'dark' : 'light'
+      }`}
+      data-theme={theme}
+    >
+      {view === 'landing' && (
+        <Landing
+          existingUser={user}
+          theme={theme}
+          onToggleTheme={setTheme}
+          onCompleteOnboarding={(newUser) => {
+            persistUser(newUser);
+            navigateTo('workspaces');
+          }}
+          onInstantGuestDemo={handleInstantGuestDemo}
+          onResumeSession={() => {
+            if (activeRoom) {
+              navigateTo('workspace', activeRoom);
+            } else {
+              navigateTo('workspaces');
+            }
+          }}
+          onNavigateToLogin={() => navigateTo('login')}
+        />
+      )}
+
+      {view === 'login' && (
+        <Login
+          theme={theme}
+          onToggleTheme={setTheme}
+          onLogin={handleLoginSuccess}
+          onBackToLanding={() => navigateTo('landing')}
+          onGuestDemo={handleInstantGuestDemo}
+        />
+      )}
+
+      {(view === 'workspaces' || (view === 'workspace' && !activeRoom)) && (
+        <WorkspaceSelection
+          user={effectiveUser}
+          theme={theme}
+          onToggleTheme={setTheme}
+          onSelectRoom={(room) => {
+            navigateTo('workspace', room);
+          }}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {view === 'workspace' && activeRoom && (
+        <Workspace
+          room={activeRoom}
+          user={effectiveUser}
+          theme={theme}
+          onToggleTheme={setTheme}
+          onSwitchWorkspace={() => {
+            navigateTo('workspaces');
+          }}
+          onLogout={handleLogout}
+        />
+      )}
+    </div>
   );
 };
 
