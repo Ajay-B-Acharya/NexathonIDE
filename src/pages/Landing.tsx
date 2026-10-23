@@ -32,7 +32,20 @@ import {
 import { executionClient } from '../services/executionClient';
 import { SupportedLanguage, UserProfile } from '../types';
 import { AmbientCollaborationCanvas } from '../components/AmbientCollaborationCanvas';
+import { AdaptiveBackground } from '../components/AdaptiveBackground';
 import { ThemeMode, ThemeToggle } from '../components/ThemeToggle';
+import { SpotlightCard } from '../components/react-bits/cards/SpotlightCard';
+import { TiltedCard } from '../components/react-bits/cards/TiltedCard';
+import { DecryptedText } from '../components/react-bits/text/DecryptedText';
+import { ShinyText } from '../components/react-bits/text/ShinyText';
+import { Squares } from '../components/react-bits/backgrounds/Squares';
+import { StarBorder } from '../components/react-bits/animations/StarBorder';
+import { ClickSpark } from '../components/react-bits/animations/ClickSpark';
+import { SpeedBenchmarkWidget } from '../components/SpeedBenchmarkWidget';
+import { TechStackMarquee } from '../components/TechStackMarquee';
+import { TrueFocus } from '../components/react-bits/text/TrueFocus';
+import { DifferentiatorHUD } from '../components/DifferentiatorHUD';
+import { FolderOpen } from 'lucide-react';
 
 interface LandingProps {
   existingUser: UserProfile | null;
@@ -364,8 +377,12 @@ export const Landing: React.FC<LandingProps> = ({
       className={`relative h-screen w-screen overflow-y-auto overflow-x-hidden theme-bg-root theme-text-primary select-none scroll-smooth ${
         isDark ? 'dark' : 'light'
       }`}
+      data-theme={theme}
     >
-      {/* Clean Architectural Grid Background */}
+      {/* Theme-Adaptive CAD Grid + Aurora Background */}
+      <AdaptiveBackground variant="landing" theme={theme} />
+
+      {/* Clean Architectural Grid Background & Live CRDT Packet Telemetry */}
       <AmbientCollaborationCanvas theme={theme} />
 
       {/* Atmospheric Aurora Light Cones (Linear & Vercel depth) */}
@@ -467,13 +484,16 @@ export const Landing: React.FC<LandingProps> = ({
         </div>
       </header>
 
+      {/* Signature Differentiators HUD: Hybrid Engine Clutch + X-Ray Telemetry + Figma Cursor Chat */}
+      <DifferentiatorHUD theme={theme} topOffsetClass="top-20" />
+
       {/* 2. HERO SECTION */}
-      <section className="relative z-10 mx-auto max-w-7xl px-6 pt-14 pb-8 text-center">
+      <section className="relative z-10 mx-auto max-w-7xl px-6 pt-24 sm:pt-28 pb-8 text-center">
         <div
-          className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-1 text-xs font-medium backdrop-blur-md shadow-xs ${
+          className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold backdrop-blur-md shadow-xs ${
             isDark
               ? 'border-indigo-500/30 bg-[#141824]/90 text-indigo-300'
-              : 'border-indigo-500/25 bg-indigo-50/90 text-indigo-700'
+              : 'border-indigo-300 bg-indigo-50/95 text-indigo-800'
           }`}
         >
           <Radio className="h-3.5 w-3.5 text-indigo-500 animate-pulse" />

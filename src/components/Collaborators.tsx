@@ -65,8 +65,8 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
         })}
       </div>
 
-      {/* Color Legend Pill Bar */}
-      <div className="hidden xl:flex items-center gap-1.5">
+      {/* Color Legend Pill Bar (visible on very wide 2xl screens to preserve TopBar action space) */}
+      <div className="hidden 2xl:flex items-center gap-1.5">
         {uniqueCollaborators.slice(0, 3).map((collab) => (
           <div
             key={collab.clientId}

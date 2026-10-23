@@ -9,6 +9,7 @@ import { OutputPanel } from '../components/OutputPanel';
 import { TerminalPanel } from '../components/TerminalPanel';
 import { AIDebuggerPanel } from '../components/AIDebuggerPanel';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { WasmBootHud } from '../components/WasmBootHud';
 import { workspaceApi, detectLanguageFromPath } from '../services/workspaceApi';
 import { executionClient } from '../services/executionClient';
 import { useCollaborativeEditor } from '../hooks/useCollaborativeEditor';
@@ -288,8 +289,15 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     void workspaceApi.updateFile(room.id, file.id, { language });
   };
 
+  const isDark = theme === 'dark';
+
   return (
-    <div className="flex h-screen w-screen flex-col theme-bg-root theme-text-primary overflow-hidden transition-colors">
+    <div
+      className={`flex h-screen w-screen flex-col theme-bg-root theme-text-primary overflow-hidden transition-colors ${
+        isDark ? 'dark' : 'light'
+      }`}
+      data-theme={theme}
+    >
       <TopBar
         roomName={room.name}
         roomId={room.id}
@@ -355,6 +363,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               setEditorInstance(editor);
               setMonacoInstance(monaco);
             }}
+            onSwitchWorkspace={onSwitchWorkspace}
           />
 
           {isBottomDrawerOpen && (

@@ -46,11 +46,12 @@ export const App: React.FC = () => {
   const [activeRoom, setActiveRoom] = useState<WorkspaceRoom | null>(null);
   const [view, setView] = useState<AppView>('landing');
 
-  // Synchronize `.dark` / `.light` class on `document.documentElement`
+  // Synchronize `.dark` / `.light` class and `data-theme` on `document.documentElement`
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove('dark', 'light');
     root.classList.add(theme);
+    root.setAttribute('data-theme', theme);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, theme);
     } catch {
@@ -146,68 +147,71 @@ export const App: React.FC = () => {
     setView('landing');
   }, []);
 
-  if (view === 'landing') {
-    return (
-      <Landing
-        existingUser={user}
-        theme={theme}
-        onToggleTheme={setTheme}
-        onCompleteOnboarding={(newUser) => {
-          persistUser(newUser);
-          setView('workspaces');
-        }}
-        onInstantGuestDemo={handleInstantGuestDemo}
-        onResumeSession={() => {
-          if (activeRoom) {
-            setView('workspace');
-          } else {
-            setView('workspaces');
-          }
-        }}
-        onNavigateToLogin={() => setView('login')}
-      />
-    );
-  }
-
-  if (view === 'login' || !user) {
-    return (
-      <Login
-        theme={theme}
-        onToggleTheme={setTheme}
-        onLogin={handleLoginSuccess}
-        onBackToLanding={() => setView('landing')}
-        onGuestDemo={handleInstantGuestDemo}
-      />
-    );
-  }
-
-  if (view === 'workspaces' || !activeRoom) {
-    return (
-      <WorkspaceSelection
-        user={user}
-        theme={theme}
-        onToggleTheme={setTheme}
-        onSelectRoom={(room) => {
-          setActiveRoom(room);
-          setView('workspace');
-        }}
-        onLogout={handleLogout}
-      />
-    );
-  }
-
   return (
-    <Workspace
-      room={activeRoom}
-      user={user}
-      theme={theme}
-      onToggleTheme={setTheme}
-      onSwitchWorkspace={() => {
-        setActiveRoom(null);
-        setView('workspaces');
-      }}
-      onLogout={handleLogout}
-    />
+    <div
+      className={`min-h-screen w-screen overflow-hidden ${
+        theme === 'dark' ? 'dark' : 'light'
+      }`}
+      data-theme={theme}
+    >
+      {view === 'landing' && (
+        <Landing
+          existingUser={user}
+          theme={theme}
+          onToggleTheme={setTheme}
+          onCompleteOnboarding={(newUser) => {
+            persistUser(newUser);
+            setView('workspaces');
+          }}
+          onInstantGuestDemo={handleInstantGuestDemo}
+          onResumeSession={() => {
+            if (activeRoom) {
+              setView('workspace');
+            } else {
+              setView('workspaces');
+            }
+          }}
+          onNavigateToLogin={() => setView('login')}
+        />
+      )}
+
+      {(view === 'login' || (!user && view !== 'landing')) && (
+        <Login
+          theme={theme}
+          onToggleTheme={setTheme}
+          onLogin={handleLoginSuccess}
+          onBackToLanding={() => setView('landing')}
+          onGuestDemo={handleInstantGuestDemo}
+        />
+      )}
+
+      {view === 'workspaces' && user && !activeRoom && (
+        <WorkspaceSelection
+          user={user}
+          theme={theme}
+          onToggleTheme={setTheme}
+          onSelectRoom={(room) => {
+            setActiveRoom(room);
+            setView('workspace');
+          }}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {view === 'workspace' && user && activeRoom && (
+        <Workspace
+          room={activeRoom}
+          user={user}
+          theme={theme}
+          onToggleTheme={setTheme}
+          onSwitchWorkspace={() => {
+            setActiveRoom(null);
+            setView('workspaces');
+          }}
+          onLogout={handleLogout}
+        />
+      )}
+    </div>
   );
 };
 
