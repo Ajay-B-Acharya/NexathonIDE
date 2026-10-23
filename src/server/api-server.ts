@@ -22,9 +22,9 @@ const pool = new Pool({
   max: 20,
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 let dbConnected = false;
 const memoryUsers = new Map<string, any>();
@@ -330,7 +330,7 @@ app.post('/api/ai/debug', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Code and language are required' });
     }
     
-    if (!process.env.OPENAI_API_KEY) {
+    if (!openai) {
       return res.status(503).json({ 
         error: 'AI service not configured',
         explanation: 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.',
