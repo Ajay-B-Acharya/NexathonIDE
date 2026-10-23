@@ -46,11 +46,11 @@ interface LoginProps {
 type AuthMode = 'signin' | 'signup' | 'forgot' | 'reset';
 
 const PRESET_COLORS = [
-  { hex: '#6366f1', name: 'Indigo' },
+  { hex: '#168c7d', name: 'Teal' },
   { hex: '#10b981', name: 'Emerald' },
   { hex: '#f59e0b', name: 'Amber' },
   { hex: '#ec4899', name: 'Rose' },
-  { hex: '#a855f7', name: 'Violet' },
+  { hex: '#3b82f6', name: 'Blue' },
   { hex: '#06b6d4', name: 'Cyan' },
 ];
 
@@ -240,11 +240,7 @@ export const Login: React.FC<LoginProps> = ({
                         /[0-9]/.test(authMode === 'reset' ? newPassword : password);
 
   return (
-    <div className="relative min-h-screen theme-bg-root bg-obsidian-glow bg-grid-pattern theme-text-primary select-none flex flex-col justify-between overflow-y-auto">
-      {/* Background Ambient Spotlights */}
-      <div className="pointer-events-none absolute -top-40 left-1/3 h-96 w-[700px] -translate-x-1/2 rounded-full bg-indigo-500/15 blur-[140px]" />
-      <div className="pointer-events-none absolute bottom-10 right-10 h-80 w-80 rounded-full bg-purple-500/10 blur-[120px]" />
-
+    <div className="relative min-h-screen theme-bg-root bg-grid-pattern theme-text-primary select-none flex flex-col justify-between overflow-y-auto">
       {/* Top Header Bar */}
       <header className="sticky top-0 z-30 border-b theme-border theme-bg-glass backdrop-blur-md px-6 py-3.5">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
@@ -261,11 +257,11 @@ export const Login: React.FC<LoginProps> = ({
             )}
 
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600 text-white shadow-xs">
                 <Code2 className="h-4 w-4" />
               </div>
               <span className="text-sm font-bold tracking-tight theme-text-primary">
-                Nexathon<span className="text-indigo-400">IDE</span>
+                Nexathon<span className="text-teal-600 dark:text-teal-400">IDE</span>
               </span>
             </div>
           </div>
@@ -287,12 +283,9 @@ export const Login: React.FC<LoginProps> = ({
       <main className="mx-auto my-auto w-full max-w-7xl px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           
-          {/* Left Column (5 Cols): Glassmorphic Credentials Box */}
+          {/* Left Column (5 Cols): Credentials Box */}
           <div className="lg:col-span-5 max-w-md mx-auto w-full">
             <div className="relative rounded-2xl border theme-border theme-bg-glass p-7 theme-shadow backdrop-blur-2xl">
-              {/* Top Accent Gradient Line */}
-              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-indigo-500/60 to-transparent" />
-
               {/* Card Header & Title */}
               <div className="mb-5">
                 <div className="flex items-center justify-between mb-1.5">
@@ -305,7 +298,7 @@ export const Login: React.FC<LoginProps> = ({
                       ? 'Create Developer Account'
                       : 'Welcome Back'}
                   </h2>
-                  <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-semibold text-indigo-400 font-mono">
+                  <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold text-teal-600 dark:text-teal-400 font-mono">
                     v2.4 CRDT
                   </span>
                 </div>
@@ -329,7 +322,7 @@ export const Login: React.FC<LoginProps> = ({
                     onClick={() => handleToggleMode('signin')}
                     className={`flex items-center justify-center gap-2 rounded-lg py-2 transition-all cursor-pointer ${
                       authMode === 'signin'
-                        ? 'bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)]'
+                        ? 'bg-teal-600 text-white shadow-xs'
                         : 'theme-text-muted hover:theme-text-primary'
                     }`}
                   >
@@ -341,7 +334,7 @@ export const Login: React.FC<LoginProps> = ({
                     onClick={() => handleToggleMode('signup')}
                     className={`flex items-center justify-center gap-2 rounded-lg py-2 transition-all cursor-pointer ${
                       authMode === 'signup'
-                        ? 'bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)]'
+                        ? 'bg-teal-600 text-white shadow-xs'
                         : 'theme-text-muted hover:theme-text-primary'
                     }`}
                   >
@@ -361,7 +354,7 @@ export const Login: React.FC<LoginProps> = ({
                   <button
                     type="button"
                     onClick={handleAutoFillDemo}
-                    className="inline-flex items-center gap-1 rounded bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 text-[10px] font-semibold text-indigo-400 transition cursor-pointer"
+                    className="inline-flex items-center gap-1 rounded bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 px-2 py-0.5 text-[10px] font-semibold text-teal-600 dark:text-teal-400 transition cursor-pointer"
                   >
                     {copiedDemo ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                     <span>{copiedDemo ? 'Filled!' : 'Auto-fill Demo'}</span>
@@ -400,7 +393,7 @@ export const Login: React.FC<LoginProps> = ({
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="developer@example.com"
                         autoFocus
-                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-3.5 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-3.5 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30"
                       />
                     </div>
                   </div>
@@ -408,7 +401,7 @@ export const Login: React.FC<LoginProps> = ({
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="group flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(99,102,241,0.35)] transition-all hover:bg-indigo-500 disabled:opacity-60 cursor-pointer"
+                    className="group flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 hover:bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-all disabled:opacity-60 cursor-pointer"
                   >
                     {isLoading ? (
                       <>
@@ -427,7 +420,7 @@ export const Login: React.FC<LoginProps> = ({
                     <button
                       type="button"
                       onClick={() => handleToggleMode('signin')}
-                      className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
+                      className="inline-flex items-center gap-1.5 text-xs text-teal-600 dark:text-teal-400 hover:underline transition cursor-pointer"
                     >
                       <ArrowLeft className="h-3 w-3" />
                       <span>Back to Sign In</span>
@@ -452,7 +445,7 @@ export const Login: React.FC<LoginProps> = ({
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="Min. 6 characters"
                         autoFocus
-                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-10 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-10 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30"
                       />
                       <button
                         type="button"
@@ -476,7 +469,7 @@ export const Login: React.FC<LoginProps> = ({
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="Re-enter password"
-                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-3.5 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-3.5 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30"
                       />
                     </div>
                   </div>
@@ -485,7 +478,7 @@ export const Login: React.FC<LoginProps> = ({
                     <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${hasMinLength ? 'bg-emerald-500/20 text-emerald-400' : 'theme-bg-surface-2 theme-text-muted'}`}>
                       {hasMinLength ? '✓' : '•'} 6+ characters
                     </span>
-                    <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${hasMixedChars ? 'bg-indigo-500/20 text-indigo-400' : 'theme-bg-surface-2 theme-text-muted'}`}>
+                    <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${hasMixedChars ? 'bg-teal-500/20 text-teal-400' : 'theme-bg-surface-2 theme-text-muted'}`}>
                       {hasMixedChars ? '✓' : '•'} Letters & numbers
                     </span>
                   </div>
@@ -493,7 +486,7 @@ export const Login: React.FC<LoginProps> = ({
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="group flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(99,102,241,0.35)] transition-all hover:from-indigo-500 hover:to-violet-500 disabled:opacity-60 cursor-pointer"
+                    className="group flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 hover:bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-all disabled:opacity-60 cursor-pointer"
                   >
                     {isLoading ? (
                       <>
@@ -512,7 +505,7 @@ export const Login: React.FC<LoginProps> = ({
                     <button
                       type="button"
                       onClick={() => handleToggleMode('signin')}
-                      className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
+                      className="inline-flex items-center gap-1.5 text-xs text-teal-600 dark:text-teal-400 hover:underline transition cursor-pointer"
                     >
                       <ArrowLeft className="h-3 w-3" />
                       <span>Cancel & Return to Sign In</span>
@@ -538,7 +531,7 @@ export const Login: React.FC<LoginProps> = ({
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="developer@example.com"
                         autoComplete="email"
-                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-3.5 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-3.5 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                       />
                     </div>
                   </div>
@@ -553,7 +546,7 @@ export const Login: React.FC<LoginProps> = ({
                         <button
                           type="button"
                           onClick={() => handleToggleMode('forgot')}
-                          className="text-[11px] text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
+                          className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline transition cursor-pointer"
                         >
                           Forgot password?
                         </button>
@@ -570,7 +563,7 @@ export const Login: React.FC<LoginProps> = ({
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
                         autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
-                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-10 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-10 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30"
                       />
                       <button
                         type="button"
@@ -586,7 +579,7 @@ export const Login: React.FC<LoginProps> = ({
                         <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${hasMinLength ? 'bg-emerald-500/20 text-emerald-400' : 'theme-bg-surface-2 theme-text-muted'}`}>
                           {hasMinLength ? '✓' : '•'} 6+ characters
                         </span>
-                        <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${hasMixedChars ? 'bg-indigo-500/20 text-indigo-400' : 'theme-bg-surface-2 theme-text-muted'}`}>
+                        <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${hasMixedChars ? 'bg-teal-500/20 text-teal-400' : 'theme-bg-surface-2 theme-text-muted'}`}>
                           {hasMixedChars ? '✓' : '•'} Letters & numbers
                         </span>
                       </div>
@@ -608,7 +601,7 @@ export const Login: React.FC<LoginProps> = ({
                             value={displayName}
                             onChange={(e) => setDisplayName(e.target.value)}
                             placeholder="e.g., Alex Carter"
-                            className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-3.5 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-3.5 py-2.5 text-sm theme-text-primary placeholder-slate-500 transition focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30"
                           />
                         </div>
                       </div>
@@ -647,7 +640,7 @@ export const Login: React.FC<LoginProps> = ({
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="group flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(99,102,241,0.35)] transition-all hover:from-indigo-500 hover:to-violet-500 hover:shadow-[0_0_25px_rgba(99,102,241,0.55)] disabled:opacity-60 cursor-pointer"
+                    className="group flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 hover:bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-all disabled:opacity-60 cursor-pointer"
                   >
                     {isLoading ? (
                       <>
@@ -717,19 +710,19 @@ export const Login: React.FC<LoginProps> = ({
               <div className="font-mono text-xs space-y-2 rounded-xl theme-bg-code p-4 border theme-border">
                 <div className="flex items-center gap-3">
                   <span className="theme-text-muted w-6 text-right select-none">1</span>
-                  <span className="theme-text-primary"><span className="text-purple-600 dark:text-purple-400 font-semibold">import</span> pyodide, yjs</span>
+                  <span className="theme-text-primary"><span className="text-teal-600 dark:text-teal-400 font-semibold">import</span> pyodide, yjs</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="theme-text-muted w-6 text-right select-none">2</span>
-                  <span className="theme-text-primary"><span className="text-purple-600 dark:text-purple-400 font-semibold">from</span> runtime <span className="text-purple-600 dark:text-purple-400 font-semibold">import</span> CRDTEngine</span>
+                  <span className="theme-text-primary"><span className="text-teal-600 dark:text-teal-400 font-semibold">from</span> runtime <span className="text-teal-600 dark:text-teal-400 font-semibold">import</span> CRDTEngine</span>
                 </div>
                 <div className="relative flex items-center gap-3 py-0.5">
                   <span className="theme-text-muted w-6 text-right select-none">3</span>
                   <span className="theme-text-primary">engine = CRDTEngine(room_id=<span className="text-emerald-600 dark:text-emerald-400 font-medium">"global-mesh"</span>)</span>
                   {/* Cursor 1: Alex */}
                   <span className="absolute right-20 inline-flex items-center">
-                    <span className="h-4 w-0.5 bg-indigo-500 animate-pulse" />
-                    <span className="rounded-r bg-indigo-600 px-1.5 py-0.2 text-[9px] font-bold text-white shadow-xs">
+                    <span className="h-4 w-0.5 bg-teal-500 animate-pulse" />
+                    <span className="rounded-r bg-teal-600 px-1.5 py-0.2 text-[9px] font-bold text-white shadow-xs">
                       Alex (You)
                     </span>
                   </span>
@@ -747,7 +740,7 @@ export const Login: React.FC<LoginProps> = ({
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="theme-text-muted w-6 text-right select-none">5</span>
-                  <span className="text-indigo-600 dark:text-indigo-400 font-medium">print</span>(<span className="text-emerald-600 dark:text-emerald-400">"Converged CRDT Vector with 0 conflicts"</span>)
+                  <span className="text-teal-600 dark:text-teal-400 font-medium">print</span>(<span className="text-emerald-600 dark:text-emerald-400">"Converged CRDT Vector with 0 conflicts"</span>)
                 </div>
               </div>
 
@@ -756,7 +749,7 @@ export const Login: React.FC<LoginProps> = ({
                 <span className="theme-text-muted">Connected Awareness Peers:</span>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1.5 rounded-full border theme-border theme-bg-surface-2 px-2.5 py-1 text-[11px]">
-                    <div className="h-3 w-3 rounded-full bg-indigo-500" />
+                    <div className="h-3 w-3 rounded-full bg-teal-500" />
                     <span>{previewName} (You)</span>
                   </div>
                   <div className="flex items-center gap-1.5 rounded-full border theme-border theme-bg-surface-2 px-2.5 py-1 text-[11px]">
@@ -764,7 +757,7 @@ export const Login: React.FC<LoginProps> = ({
                     <span>Elena S.</span>
                   </div>
                   <div className="flex items-center gap-1.5 rounded-full border theme-border theme-bg-surface-2 px-2.5 py-1 text-[11px]">
-                    <div className="h-3 w-3 rounded-full bg-purple-500" />
+                    <div className="h-3 w-3 rounded-full bg-teal-500" />
                     <span>David K.</span>
                   </div>
                 </div>
@@ -775,10 +768,10 @@ export const Login: React.FC<LoginProps> = ({
             <div className="grid grid-cols-3 gap-3.5">
               <div className="rounded-xl border theme-border theme-bg-glass p-3.5 theme-shadow">
                 <div className="flex items-center gap-2 theme-text-secondary text-xs mb-1">
-                  <Cpu className="h-3.5 w-3.5 text-indigo-400" />
+                  <Cpu className="h-3.5 w-3.5 text-teal-400" />
                   <span className="font-semibold">Pyodide WASM</span>
                 </div>
-                <div className="text-lg font-bold text-white font-mono">4.2ms</div>
+                <div className="text-lg font-bold theme-text-primary font-mono">4.2ms</div>
                 <div className="text-[10px] theme-text-muted">In-browser cold start</div>
               </div>
 
@@ -787,16 +780,16 @@ export const Login: React.FC<LoginProps> = ({
                   <Activity className="h-3.5 w-3.5 text-emerald-400" />
                   <span className="font-semibold">Yjs CRDT</span>
                 </div>
-                <div className="text-lg font-bold text-white font-mono">&lt; 15ms</div>
+                <div className="text-lg font-bold theme-text-primary font-mono">&lt; 15ms</div>
                 <div className="text-[10px] theme-text-muted">P99 Convergence RTT</div>
               </div>
 
               <div className="rounded-xl border theme-border theme-bg-glass p-3.5 theme-shadow">
                 <div className="flex items-center gap-2 theme-text-secondary text-xs mb-1">
-                  <ShieldCheck className="h-3.5 w-3.5 text-purple-400" />
+                  <ShieldCheck className="h-3.5 w-3.5 text-teal-400" />
                   <span className="font-semibold">Security Guard</span>
                 </div>
-                <div className="text-lg font-bold text-white font-mono">Bcrypt + JWT</div>
+                <div className="text-lg font-bold theme-text-primary font-mono">Bcrypt + JWT</div>
                 <div className="text-[10px] theme-text-muted">Supabase Auth</div>
               </div>
             </div>

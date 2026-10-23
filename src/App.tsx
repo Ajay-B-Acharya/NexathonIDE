@@ -1,9 +1,19 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { WorkspaceSelection } from './pages/WorkspaceSelection';
 import { Workspace } from './pages/Workspace';
 import { workspaceApi } from './services/workspaceApi';
+import {
+  parseCurrentRoute,
+  syncRoute,
+  getStoredActiveRoom,
+  saveStoredActiveRoom,
+  getStoredUser,
+  saveStoredUser,
+  clearStoredUser,
+  AppView,
+} from './services/refreshEngine';
 import {
   supabase,
   getCurrentUserProfile,
@@ -14,21 +24,14 @@ import {
 import { UserProfile, WorkspaceRoom } from './types';
 import { ThemeMode } from './components/ThemeToggle';
 
-const USER_STORAGE_KEY = 'nexathon_ide_user';
 const THEME_STORAGE_KEY = 'nexathon_ide_theme';
-
-type AppView = 'landing' | 'login' | 'workspaces' | 'workspace';
-
-const GUEST_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#a855f7', '#06b6d4'];
+const GUEST_COLORS = ['#35B8A6', '#218653', '#E6B450', '#2563EB', '#0D9488', '#475569'];
 
 export const App: React.FC = () => {
+  const initialRoute = useMemo(() => parseCurrentRoute(), []);
+
   const [user, setUser] = useState<UserProfile | null>(() => {
-    try {
-      const saved = sessionStorage.getItem(USER_STORAGE_KEY);
-      return saved ? (JSON.parse(saved) as UserProfile) : null;
-    } catch {
-      return null;
-    }
+    return getStoredUser();
   });
 
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -43,8 +46,36 @@ export const App: React.FC = () => {
     }
   });
 
-  const [activeRoom, setActiveRoom] = useState<WorkspaceRoom | null>(null);
-  const [view, setView] = useState<AppView>('landing');
+  const [activeRoom, setActiveRoom] = useState<WorkspaceRoom | null>(() => {
+    if (initialRoute.view === 'workspace') {
+      const storedRoom = getStoredActiveRoom();
+      if (storedRoom && (!initialRoute.roomId || storedRoom.id === initialRoute.roomId)) {
+        return storedRoom;
+      }
+      if (initialRoute.roomId) {
+        return {
+          id: initialRoute.roomId,
+          name: storedRoom?.name || initialRoute.roomId,
+          description: storedRoom?.description || 'Collaborative workspace',
+          createdAt: storedRoom?.createdAt || new Date().toISOString(),
+          updatedAt: storedRoom?.updatedAt || new Date().toISOString(),
+          ownerId: storedRoom?.ownerId || 'guest',
+        };
+      }
+    }
+    return null;
+  });
+
+  const [view, setView] = useState<AppView>(() => {
+    return initialRoute.view;
+  });
+
+  // Centralized navigation engine syncing browser history and persistent storage
+  const navigateTo = useCallback((nextView: AppView, room: WorkspaceRoom | null = null, replace: boolean = false) => {
+    setView(nextView);
+    setActiveRoom(room);
+    syncRoute(nextView, room, replace);
+  }, []);
 
   // Synchronize browser URL query param with activeRoom ID
   useEffect(() => {
@@ -78,7 +109,7 @@ export const App: React.FC = () => {
         name: `dev_${randomSuffix.toLowerCase()}`,
         color: randomColor,
       };
-      sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(currentUser));
+      saveStoredUser(currentUser);
       setUser(currentUser);
     }
 
@@ -114,8 +145,40 @@ export const App: React.FC = () => {
     }
   }, [theme]);
 
+  // Initial synchronization of route so URL always reflects initial view on mount/reload
+  useEffect(() => {
+    syncRoute(view, activeRoom, true);
+  }, []);
+
+  // Listen to browser Back / Forward events (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = parseCurrentRoute();
+      if (route.view === 'workspace') {
+        const storedRoom = getStoredActiveRoom();
+        if (storedRoom && (!route.roomId || storedRoom.id === route.roomId)) {
+          setActiveRoom(storedRoom);
+        } else if (route.roomId) {
+          void workspaceApi.getRoom(route.roomId)
+            .then((fresh) => {
+              setActiveRoom(fresh);
+              saveStoredActiveRoom(fresh);
+            })
+            .catch(() => {});
+        }
+      } else if (route.view === 'workspaces') {
+        setActiveRoom(null);
+      }
+      setView(route.view);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Persist user both in state and dual storage (localStorage + sessionStorage)
   const persistUser = useCallback((loggedInUser: UserProfile) => {
-    sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(loggedInUser));
+    saveStoredUser(loggedInUser);
     setUser(loggedInUser);
   }, []);
 
@@ -145,12 +208,34 @@ export const App: React.FC = () => {
     }
   }, [persistUser]);
 
+  // Background refresh of room metadata when on a workspace page
+  useEffect(() => {
+    if (view === 'workspace' && activeRoom?.id) {
+      let isMounted = true;
+      workspaceApi.getRoom(activeRoom.id).then((freshRoom) => {
+        if (isMounted && freshRoom) {
+          setActiveRoom(freshRoom);
+          saveStoredActiveRoom(freshRoom);
+        }
+      }).catch((err) => {
+        console.debug('Active room background sync status:', err?.message);
+      });
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [view, activeRoom?.id]);
+
   const handleLoginSuccess = useCallback(
     (loggedInUser: UserProfile) => {
       persistUser(loggedInUser);
-      setView('workspaces');
+      if (activeRoom) {
+        navigateTo('workspace', activeRoom);
+      } else {
+        navigateTo('workspaces');
+      }
     },
-    [persistUser]
+    [persistUser, activeRoom, navigateTo]
   );
 
   const handleInstantGuestDemo = useCallback(async () => {
@@ -168,8 +253,7 @@ export const App: React.FC = () => {
     try {
       const existingRooms = await workspaceApi.listRooms();
       if (existingRooms.length > 0) {
-        setActiveRoom(existingRooms[0]);
-        setView('workspace');
+        navigateTo('workspace', existingRooms[0]);
         return;
       }
 
@@ -178,8 +262,7 @@ export const App: React.FC = () => {
         description: 'Ephemeral CRDT + Pyodide WASM + Node-PTY Room',
         ownerId: guestUser.id,
       });
-      setActiveRoom(createdRoom);
-      setView('workspace');
+      navigateTo('workspace', createdRoom);
     } catch {
       const fallbackDemoRoom: WorkspaceRoom = {
         id: 'room_local_wasm_01',
@@ -189,18 +272,17 @@ export const App: React.FC = () => {
         updatedAt: new Date().toISOString(),
         ownerId: guestUser.id,
       };
-      setActiveRoom(fallbackDemoRoom);
-      setView('workspace');
+      navigateTo('workspace', fallbackDemoRoom);
     }
-  }, [user, persistUser]);
+  }, [user, persistUser, navigateTo]);
 
   const handleLogout = useCallback(async () => {
     await signOutUser();
-    sessionStorage.removeItem(USER_STORAGE_KEY);
+    clearStoredUser();
     setActiveRoom(null);
     setUser(null);
-    setView('landing');
-  }, []);
+    navigateTo('landing', null, true);
+  }, [navigateTo]);
 
   if (view === 'landing') {
     return (
@@ -210,42 +292,49 @@ export const App: React.FC = () => {
         onToggleTheme={setTheme}
         onCompleteOnboarding={(newUser) => {
           persistUser(newUser);
-          setView('workspaces');
+          navigateTo('workspaces');
         }}
         onInstantGuestDemo={handleInstantGuestDemo}
         onResumeSession={() => {
           if (activeRoom) {
-            setView('workspace');
+            navigateTo('workspace', activeRoom);
           } else {
-            setView('workspaces');
+            navigateTo('workspaces');
           }
         }}
-        onNavigateToLogin={() => setView('login')}
+        onNavigateToLogin={() => navigateTo('login')}
       />
     );
   }
 
-  if (view === 'login' || !user) {
+  if (view === 'login') {
     return (
       <Login
         theme={theme}
         onToggleTheme={setTheme}
         onLogin={handleLoginSuccess}
-        onBackToLanding={() => setView('landing')}
+        onBackToLanding={() => navigateTo('landing')}
         onGuestDemo={handleInstantGuestDemo}
       />
     );
   }
 
+  // If user accesses authenticated views without a profile, generate guest identity seamlessly
+  // or prompt for login
+  const effectiveUser = user || {
+    id: `usr_guest_auto`,
+    name: `dev_guest`,
+    color: '#35B8A6',
+  };
+
   if (view === 'workspaces' || !activeRoom) {
     return (
       <WorkspaceSelection
-        user={user}
+        user={effectiveUser}
         theme={theme}
         onToggleTheme={setTheme}
         onSelectRoom={(room) => {
-          setActiveRoom(room);
-          setView('workspace');
+          navigateTo('workspace', room);
         }}
         onLogout={handleLogout}
       />
@@ -255,12 +344,11 @@ export const App: React.FC = () => {
   return (
     <Workspace
       room={activeRoom}
-      user={user}
+      user={effectiveUser}
       theme={theme}
       onToggleTheme={setTheme}
       onSwitchWorkspace={() => {
-        setActiveRoom(null);
-        setView('workspaces');
+        navigateTo('workspaces');
       }}
       onLogout={handleLogout}
     />

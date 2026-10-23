@@ -231,33 +231,30 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
   }, [rooms, searchQuery, filterCategory, user.id]);
 
   return (
-    <div className="relative min-h-screen w-full theme-bg-root bg-obsidian-glow bg-grid-pattern theme-text-primary flex flex-col select-none overflow-x-hidden">
+    <div className="relative min-h-screen w-full theme-bg-root bg-grid-pattern theme-text-primary flex flex-col select-none overflow-x-hidden">
       {/* Dynamic Ambient Constellation Mesh Background */}
-      <div className="pointer-events-none fixed inset-0 z-0 opacity-40">
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-25">
         <AmbientCollaborationCanvas theme={theme} />
       </div>
 
-      {/* Top Ambient Glow Spotlights */}
-      <div className="pointer-events-none fixed -top-40 left-1/2 h-80 w-[800px] -translate-x-1/2 rounded-full bg-indigo-500/10 blur-[130px]" />
-
-      {/* Executive Glassmorphic Navigation Bar */}
+      {/* Executive Navigation Bar */}
       <header className="sticky top-0 z-30 border-b theme-border theme-bg-glass backdrop-blur-md px-6 py-3.5">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           {/* Brand & Telemetry */}
           <div className="flex items-center gap-3.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-600 text-white shadow-xs">
               <Code2 className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-bold tracking-tight theme-text-primary">
-                  Nexathon<span className="text-indigo-400">IDE</span>
+                  Nexathon<span className="text-teal-600 dark:text-teal-400">IDE</span>
                 </h1>
-                <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-semibold text-indigo-400 font-mono">
+                <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold text-teal-600 dark:text-teal-400 font-mono">
                   Hub
                 </span>
                 <span className="hidden md:inline-flex items-center gap-1 text-[11px] font-mono text-emerald-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                   Supabase Pooler Connected
                 </span>
               </div>
@@ -322,7 +319,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
             <div key={idx} className="p-3.5 rounded-xl border theme-border theme-bg-surface-1 theme-shadow shadow-xs">
               <div className="text-[11px] font-mono theme-text-muted uppercase tracking-wider">{metric.label}</div>
               <div className="text-sm font-semibold theme-text-primary mt-0.5">{metric.value}</div>
-              <span className="inline-block mt-2 text-[10px] font-mono text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded">
+              <span className="inline-block mt-2 text-[10px] font-mono text-teal-600 dark:text-teal-400 bg-teal-500/10 border border-teal-500/20 px-2 py-0.5 rounded">
                 {metric.tag}
               </span>
             </div>
@@ -355,10 +352,10 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
             >
               <div className="flex items-center justify-between border-b theme-border pb-3">
                 <div className="flex items-center gap-2 text-sm font-semibold theme-text-primary">
-                  <FolderPlus className="h-4 w-4 text-indigo-400" />
+                  <FolderPlus className="h-4 w-4 text-teal-600 dark:text-teal-400" />
                   <span>Provision New Workspace</span>
                 </div>
-                <Sparkles className="h-4 w-4 text-indigo-400/80" />
+                <Sparkles className="h-4 w-4 text-teal-600 dark:text-teal-400" />
               </div>
 
               {/* Starter Templates */}
@@ -375,15 +372,15 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                         setNewRoomName(tpl.name);
                         setNewRoomDesc(tpl.desc);
                       }}
-                      className="group flex w-full items-center justify-between rounded-lg border theme-border theme-bg-surface-2 p-2 text-left hover:border-indigo-500/40 hover:theme-bg-surface-1 transition cursor-pointer"
+                      className="group flex w-full items-center justify-between rounded-lg border theme-border theme-bg-surface-2 p-2 text-left hover:border-teal-500/40 hover:theme-bg-surface-1 transition cursor-pointer"
                     >
                       <div>
-                        <div className="text-xs font-medium theme-text-primary group-hover:text-indigo-400 transition">
+                        <div className="text-xs font-medium theme-text-primary group-hover:text-teal-600 dark:group-hover:text-teal-400 transition">
                           {tpl.label}
                         </div>
                         <div className="text-[10px] theme-text-muted line-clamp-1">{tpl.desc}</div>
                       </div>
-                      <ArrowRight className="h-3 w-3 theme-text-muted group-hover:translate-x-1 group-hover:text-indigo-400 transition" />
+                      <ArrowRight className="h-3 w-3 theme-text-muted group-hover:translate-x-1 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition" />
                     </button>
                   ))}
                 </div>
@@ -400,7 +397,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                   value={newRoomName}
                   onChange={(e) => setNewRoomName(e.target.value)}
                   placeholder="e.g., Distributed Algorithm Sandbox"
-                  className="w-full rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-xs theme-text-primary placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition"
+                  className="w-full rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-xs theme-text-primary placeholder-slate-500 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30 transition"
                 />
               </div>
 
@@ -413,14 +410,14 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                   value={newRoomDesc}
                   onChange={(e) => setNewRoomDesc(e.target.value)}
                   placeholder="Python & TypeScript CRDT sync session"
-                  className="w-full rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-xs theme-text-primary placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition"
+                  className="w-full rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-xs theme-text-primary placeholder-slate-500 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30 transition"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isCreating}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 py-2.5 text-xs font-semibold text-white shadow-[0_0_20px_rgba(99,102,241,0.35)] hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 transition cursor-pointer"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 hover:bg-teal-500 py-2.5 text-xs font-semibold text-white shadow-xs disabled:opacity-50 transition cursor-pointer"
               >
                 {isCreating ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -449,11 +446,11 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                   value={joinRoomId}
                   onChange={(e) => setJoinRoomId(e.target.value)}
                   placeholder="e.g., room_8f2b1a9c..."
-                  className="flex-1 rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-xs font-mono theme-text-primary placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition"
+                  className="flex-1 rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-xs font-mono theme-text-primary placeholder-slate-500 focus:border-teal-500 focus:outline-none transition"
                 />
                 <button
                   type="submit"
-                  className="rounded-lg border theme-border theme-bg-surface-1 px-4 py-2 text-xs font-semibold theme-text-primary hover:border-indigo-500 hover:bg-indigo-600 hover:text-white transition cursor-pointer"
+                  className="rounded-lg border theme-border theme-bg-surface-1 px-4 py-2 text-xs font-semibold theme-text-primary hover:border-teal-500 hover:bg-teal-600 hover:text-white transition cursor-pointer"
                 >
                   Join
                 </button>
@@ -469,7 +466,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                 <h2 className="text-base font-semibold theme-text-primary">
                   Active Workspace Directory
                 </h2>
-                <span className="rounded-full theme-bg-surface-2 border theme-border px-2.5 py-0.5 text-xs font-mono text-indigo-400">
+                <span className="rounded-full theme-bg-surface-2 border theme-border px-2.5 py-0.5 text-xs font-mono text-teal-600 dark:text-teal-400">
                   {filteredRooms.length} of {rooms.length}
                 </span>
               </div>
@@ -480,7 +477,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                 onClick={() => void fetchRooms()}
                 className="inline-flex items-center gap-1.5 rounded-lg border theme-border theme-bg-surface-1 px-3 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary hover:theme-bg-surface-2 transition cursor-pointer"
               >
-                <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin text-indigo-400' : ''}`} />
+                <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin text-teal-600 dark:text-teal-400' : ''}`} />
                 <span>Sync Directory</span>
               </button>
             </div>
@@ -497,7 +494,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                     onChange={(e) => setSearchQuery(e.target.value)}
                     ref={searchInputRef}
                     placeholder="Search workspaces by title, ID, or description..."
-                    className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-24 py-2 text-xs theme-text-primary placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition"
+                    className="w-full rounded-lg border theme-border theme-bg-surface-2 pl-9 pr-24 py-2 text-xs theme-text-primary placeholder-slate-500 focus:border-teal-500 focus:outline-none transition"
                   />
                   <span className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-1 rounded border theme-border theme-bg-surface-1 px-1.5 py-0.5 text-[10px] font-mono theme-text-muted">
                     ⌘K or /
@@ -512,7 +509,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                   onClick={() => setFilterCategory('all')}
                   className={`rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
                     filterCategory === 'all'
-                      ? 'bg-indigo-600 text-white shadow-xs'
+                      ? 'bg-teal-600 text-white shadow-xs'
                       : 'theme-text-muted hover:theme-text-primary'
                   }`}
                 >
@@ -523,7 +520,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                   onClick={() => setFilterCategory('mine')}
                   className={`rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
                     filterCategory === 'mine'
-                      ? 'bg-indigo-600 text-white shadow-xs'
+                      ? 'bg-teal-600 text-white shadow-xs'
                       : 'theme-text-muted hover:theme-text-primary'
                   }`}
                 >
@@ -534,7 +531,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                   onClick={() => setFilterCategory('recent')}
                   className={`rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
                     filterCategory === 'recent'
-                      ? 'bg-indigo-600 text-white shadow-xs'
+                      ? 'bg-teal-600 text-white shadow-xs'
                       : 'theme-text-muted hover:theme-text-primary'
                   }`}
                 >
@@ -546,12 +543,12 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
             {/* Workspaces List / State */}
             {isLoading ? (
               <div className="flex flex-1 flex-col items-center justify-center py-20 text-xs theme-text-muted">
-                <Loader2 className="h-8 w-8 animate-spin mb-3 text-indigo-400" />
+                <Loader2 className="h-8 w-8 animate-spin mb-3 text-teal-600 dark:text-teal-400" />
                 <span>Polling real-time workspaces from PostgreSQL & Supabase...</span>
               </div>
             ) : filteredRooms.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed theme-border theme-bg-surface-2/40 p-12 text-center">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-400 ring-1 ring-teal-500/20">
                   <FolderGit2 className="h-6 w-6" />
                 </div>
                 <h3 className="text-sm font-semibold theme-text-primary">
@@ -566,7 +563,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
-                    className="mt-3 text-xs text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
+                    className="mt-3 text-xs text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
                   >
                     Clear search filter
                   </button>
@@ -582,17 +579,16 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                     <div
                       key={room.id}
                       onClick={() => onSelectRoom(room)}
-                      className="group relative flex cursor-pointer flex-col justify-between rounded-xl border theme-border theme-bg-surface-2 p-4.5 transition-all duration-200 hover:-translate-y-1 hover:border-indigo-500/60 hover:theme-bg-surface-1 hover:shadow-[0_12px_35px_rgba(99,102,241,0.2)]"
+                      className="group relative flex cursor-pointer flex-col justify-between rounded-xl border theme-border theme-bg-surface-2 p-4.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-500/50 hover:theme-bg-surface-1 shadow-xs"
                     >
                       <div>
                         {/* Card Header */}
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="flex items-center gap-2">
                             <span className="relative flex h-2 w-2 shrink-0">
-                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                             </span>
-                            <h3 className="font-semibold text-sm theme-text-primary group-hover:text-indigo-400 transition truncate max-w-[190px]">
+                            <h3 className="font-semibold text-sm theme-text-primary group-hover:text-teal-600 dark:group-hover:text-teal-400 transition truncate max-w-[190px]">
                               {room.name}
                             </h3>
                           </div>
@@ -602,7 +598,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                             type="button"
                             onClick={(e) => handleCopyRoomId(room.id, e)}
                             title="Copy Room ID to clipboard"
-                            className="inline-flex items-center gap-1 rounded border theme-border theme-bg-surface-1 px-1.5 py-0.5 text-[10px] font-mono theme-text-muted hover:theme-text-primary hover:border-indigo-500/40 transition cursor-pointer"
+                            className="inline-flex items-center gap-1 rounded border theme-border theme-bg-surface-1 px-1.5 py-0.5 text-[10px] font-mono theme-text-muted hover:theme-text-primary hover:border-teal-500/40 transition cursor-pointer"
                           >
                             {isCopied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                             <span>{isCopied ? 'Copied' : `#${room.id.slice(0, 6)}`}</span>
@@ -622,7 +618,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                           <span className="rounded theme-bg-surface-1 border theme-border px-1.5 py-0.5 theme-text-secondary">
                             QuickJS
                           </span>
-                          <span className="rounded theme-bg-surface-1 border theme-border px-1.5 py-0.5 text-indigo-400">
+                          <span className="rounded theme-bg-surface-1 border theme-border px-1.5 py-0.5 text-teal-600 dark:text-teal-400">
                             Yjs CRDT
                           </span>
                         </div>
@@ -634,13 +630,13 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                           <Clock className="h-3 w-3" />
                           <span>{new Date(room.updatedAt || room.createdAt || Date.now()).toLocaleDateString()}</span>
                           {isOwner && (
-                            <span className="ml-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 px-1.5 py-0.2 text-[9px] font-semibold text-indigo-400">
+                            <span className="ml-1 rounded-full bg-teal-500/10 border border-teal-500/30 px-1.5 py-0.2 text-[9px] font-semibold text-teal-600 dark:text-teal-400">
                               You
                             </span>
                           )}
                         </div>
 
-                        <span className="inline-flex items-center gap-1 rounded-md bg-indigo-600/15 border border-indigo-500/30 px-2.5 py-1 text-[11px] font-semibold text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white group-hover:shadow-[0_0_12px_rgba(99,102,241,0.4)] transition">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-teal-600/15 border border-teal-500/30 px-2.5 py-1 text-[11px] font-semibold text-teal-600 dark:text-teal-400 group-hover:bg-teal-600 group-hover:text-white transition shadow-xs">
                           <span>Launch IDE</span>
                           <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
                         </span>

@@ -38,7 +38,7 @@ export function mapSupabaseUserToProfile(user: User): UserProfile {
   const metadata = user.user_metadata || {};
   const fallbackName = user.email ? user.email.split('@')[0] : 'Developer';
   const name = metadata.name || metadata.full_name || fallbackName;
-  const color = metadata.color || '#6366f1';
+  const color = metadata.color || '#35B8A6';
   const username = metadata.username || fallbackName.toLowerCase().replace(/\s+/g, '_');
 
   return {
@@ -55,7 +55,7 @@ export async function signUpWithEmail(
   email: string,
   password: string,
   displayName: string,
-  color: string = '#6366f1'
+  color: string = '#35B8A6'
 ) {
   if (!isSupabaseConfigured) {
     throw new Error('Supabase is not configured. Please check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env');

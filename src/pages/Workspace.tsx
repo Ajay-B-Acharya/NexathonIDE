@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type * as Monaco from 'monaco-editor';
 import { Terminal, Play, Sparkles, ChevronUp, ChevronDown } from 'lucide-react';
 import { TopBar } from '../components/TopBar';
@@ -14,6 +14,13 @@ import { executionClient } from '../services/executionClient';
 import { useCollaborativeEditor } from '../hooks/useCollaborativeEditor';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useResizablePanel } from '../hooks/useResizablePanel';
+import {
+  getStoredWorkspaceUI,
+  saveStoredWorkspaceUI,
+  getFileDraft,
+  saveFileDraft,
+  clearFileDraft,
+} from '../services/refreshEngine';
 import {
   BottomTabType,
   ExecutionResult,
@@ -40,6 +47,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   onSwitchWorkspace,
   onLogout,
 }) => {
+  const initialSavedUI = useMemo(() => getStoredWorkspaceUI(room.id), [room.id]);
+
   const [files, setFiles] = useState<WorkspaceFile[]>([]);
   const [openFileIds, setOpenFileIds] = useState<string[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
@@ -47,9 +56,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [dbContentSnapshot, setDbContentSnapshot] = useState<Record<string, string>>({});
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'dirty' | 'error'>('saved');
 
-  const [isExplorerOpen, setIsExplorerOpen] = useState(true);
-  const [isBottomDrawerOpen, setIsBottomDrawerOpen] = useState(true);
-  const [activeBottomTab, setActiveBottomTab] = useState<BottomTabType>('output');
+  const [isExplorerOpen, setIsExplorerOpen] = useState(() => initialSavedUI?.isExplorerOpen ?? true);
+  const [isBottomDrawerOpen, setIsBottomDrawerOpen] = useState(() => initialSavedUI?.isBottomDrawerOpen ?? true);
+  const [activeBottomTab, setActiveBottomTab] = useState<BottomTabType>(() => initialSavedUI?.activeBottomTab ?? 'output');
 
   const [isRunning, setIsRunning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -85,6 +94,17 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     .map((id) => files.find((f) => f.id === id))
     .filter((f): f is WorkspaceFile => Boolean(f));
 
+  // Sync workspace UI layout and open tabs into persistent storage
+  useEffect(() => {
+    saveStoredWorkspaceUI(room.id, {
+      openFileIds,
+      activeFileId,
+      activeBottomTab,
+      isBottomDrawerOpen,
+      isExplorerOpen,
+    });
+  }, [room.id, openFileIds, activeFileId, activeBottomTab, isBottomDrawerOpen, isExplorerOpen]);
+
   // Load files on room initial mount
   useEffect(() => {
     let isMounted = true;
@@ -93,17 +113,46 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         const fetched = await workspaceApi.listFiles(room.id);
         if (!isMounted) return;
 
-        setFiles(fetched);
         const snapshots: Record<string, string> = {};
+        const dirtySet = new Set<string>();
         fetched.forEach((f) => {
           snapshots[f.id] = f.content;
           latestContentRef.current[f.id] = f.content;
         });
-        setDbContentSnapshot(snapshots);
 
-        if (fetched.length > 0) {
-          setOpenFileIds([fetched[0].id]);
-          setActiveFileId(fetched[0].id);
+        const filesWithDrafts = fetched.map((file) => {
+          snapshots[file.id] = file.content;
+          const draft = getFileDraft(room.id, file.id);
+          if (draft !== null && draft !== file.content) {
+            dirtySet.add(file.id);
+            return { ...file, content: draft };
+          }
+          return file;
+        });
+
+        setFiles(filesWithDrafts);
+        setDbContentSnapshot(snapshots);
+        setDirtyFileIds(dirtySet);
+
+        if (filesWithDrafts.length > 0) {
+          const validOpen = initialSavedUI?.openFileIds?.filter((id) =>
+            filesWithDrafts.some((f) => f.id === id)
+          );
+
+          if (validOpen && validOpen.length > 0) {
+            setOpenFileIds(validOpen);
+            const activeValid = Boolean(
+              initialSavedUI?.activeFileId && validOpen.includes(initialSavedUI.activeFileId)
+            );
+            setActiveFileId(
+              activeValid && initialSavedUI?.activeFileId
+                ? initialSavedUI.activeFileId
+                : validOpen[0]
+            );
+          } else {
+            setOpenFileIds([filesWithDrafts[0].id]);
+            setActiveFileId(filesWithDrafts[0].id);
+          }
         }
       } catch (err) {
         console.error('Failed to load workspace files:', err);
@@ -117,7 +166,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         window.clearTimeout(timerId)
       );
     };
-  }, [room.id]);
+  }, [room.id, initialSavedUI]);
 
   // Periodic peer file list reconciliation (detects files added/deleted by peers without manual refresh)
   useEffect(() => {
@@ -165,7 +214,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           name: fileName,
           language: fileLang,
         });
-
+clearFileDraft(room.id, fileId);
         setDbContentSnapshot((prev) => ({
           ...prev,
           [fileId]: contentToSave,
@@ -232,6 +281,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const handleCollaborativeContentChange = useCallback(
     (fileId: string, newContent: string) => {
       latestContentRef.current[fileId] = newContent;
+
+      saveFileDraft(room.id, fileId, newContent);
 
       setDirtyFileIds((prev) => {
         const isDirty = (dbContentSnapshot[fileId] ?? '') !== newContent;
@@ -507,8 +558,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
             <div
               onMouseDown={sidebarResize.startResize}
-              className={`w-1 cursor-col-resize theme-bg-surface-2 hover:bg-indigo-500 transition-colors ${
-                sidebarResize.isDragging ? 'bg-indigo-500 shadow-[0_0_10px_#6366f1]' : ''
+              className={`w-1 cursor-col-resize theme-bg-surface-2 hover:bg-teal-500 transition-colors ${
+                sidebarResize.isDragging ? 'bg-teal-500' : ''
               }`}
               title="Drag to resize sidebar"
             />
@@ -540,8 +591,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           {isBottomDrawerOpen && (
             <div
               onMouseDown={bottomDrawerResize.startResize}
-              className={`h-1 cursor-row-resize theme-bg-surface-2 hover:bg-indigo-500 transition-colors ${
-                bottomDrawerResize.isDragging ? 'bg-indigo-500 shadow-[0_0_10px_#6366f1]' : ''
+              className={`h-1 cursor-row-resize theme-bg-surface-2 hover:bg-teal-500 transition-colors ${
+                bottomDrawerResize.isDragging ? 'bg-teal-500' : ''
               }`}
               title="Drag to resize bottom panel"
             />
@@ -558,11 +609,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 }}
                 className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
                   isBottomDrawerOpen && activeBottomTab === 'output'
-                    ? 'border theme-border theme-bg-surface-2 text-indigo-500 dark:text-indigo-400 font-semibold'
+? 'border theme-border theme-bg-surface-2 text-teal-600 dark:text-teal-400 font-semibold'
                     : 'theme-text-secondary hover:theme-text-primary'
                 }`}
               >
-                <Play className="h-3 w-3" />
+                <Play className="h-3 w-3 text-emerald-500" />
                 <span>Execution Output</span>
               </button>
 
@@ -574,11 +625,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 }}
                 className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
                   isBottomDrawerOpen && activeBottomTab === 'terminal'
-                    ? 'border theme-border theme-bg-surface-2 text-indigo-500 dark:text-indigo-400 font-semibold'
+? 'border theme-border theme-bg-surface-2 text-teal-600 dark:text-teal-400 font-semibold'
                     : 'theme-text-secondary hover:theme-text-primary'
                 }`}
               >
-                <Terminal className="h-3 w-3" />
+                <Terminal className="h-3 w-3 text-teal-600 dark:text-teal-400" />
                 <span>Cloud Terminal</span>
               </button>
 
@@ -590,7 +641,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 }}
                 className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
                   isBottomDrawerOpen && activeBottomTab === 'ai-debugger'
-                    ? 'border theme-border theme-bg-surface-2 text-purple-400 font-semibold'
+? 'border theme-border theme-bg-surface-2 text-purple-400 font-semibold'
                     : 'theme-text-secondary hover:theme-text-primary'
                 }`}
               >
@@ -642,7 +693,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
               {activeBottomTab === 'ai-debugger' && (
                 <AIDebuggerPanel
-                  activeFile={activeFile}
+                  activeFile={
+                    activeFile && editorInstance
+                      ? { ...activeFile, content: editorInstance.getValue() }
+                      : activeFile
+                  }
                   initialError={aiErrorSeed}
                   onApplyFixToEditor={(newCode: string) => {
                     applyContentToSharedDoc(newCode);
