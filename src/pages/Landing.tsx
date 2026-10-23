@@ -412,28 +412,28 @@ export const Landing: React.FC<LandingProps> = ({
           </div>
 
           {/* Center: Floating Capsule Navigation Tabs */}
-          <nav className="hidden lg:flex items-center gap-1 rounded-full border theme-border bg-slate-900/30 dark:bg-black/20 p-1 backdrop-blur-md">
+          <nav className="hidden lg:flex items-center gap-1 rounded-full border border-slate-200/90 dark:border-white/10 bg-slate-100/90 dark:bg-white/[0.04] p-1 backdrop-blur-md shadow-xs">
             <a
               href="#live-sandbox"
-              className="rounded-full px-4 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary hover:bg-white/[0.08] dark:hover:bg-white/[0.08] transition-all"
+              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
             >
               WASM Sandbox
             </a>
             <a
               href="#comparison"
-              className="rounded-full px-4 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary hover:bg-white/[0.08] dark:hover:bg-white/[0.08] transition-all"
+              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
             >
               Docker vs WASM
             </a>
             <a
               href="#bento"
-              className="rounded-full px-4 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary hover:bg-white/[0.08] dark:hover:bg-white/[0.08] transition-all"
+              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
             >
               Core Innovations
             </a>
             <a
               href="#telemetry"
-              className="rounded-full px-4 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary hover:bg-white/[0.08] dark:hover:bg-white/[0.08] transition-all"
+              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
             >
               Cluster Telemetry
             </a>
@@ -465,7 +465,7 @@ export const Landing: React.FC<LandingProps> = ({
               <button
                 type="button"
                 onClick={onNavigateToLogin}
-                className="hidden sm:inline-flex items-center rounded-xl border theme-border bg-slate-900/40 dark:bg-slate-800/40 px-3.5 py-1.5 text-xs font-medium theme-text-secondary hover:border-teal-500/40 hover:theme-text-primary hover:bg-white/[0.04] transition cursor-pointer whitespace-nowrap shrink-0"
+                className="hidden sm:inline-flex items-center rounded-xl border border-slate-200/90 dark:border-white/10 bg-white/80 hover:bg-white dark:bg-white/[0.04] dark:hover:bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white hover:border-teal-500/50 transition cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
               >
                 Sign In
               </button>
