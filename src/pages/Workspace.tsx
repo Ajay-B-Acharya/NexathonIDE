@@ -28,6 +28,7 @@ import {
   BottomTabType,
   ExecutionResult,
   ProposedPatch,
+  ProjectProfile,
   SupportedLanguage,
   UserProfile,
   WorkspaceFile,
@@ -74,6 +75,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [folderPendingDelete, setFolderPendingDelete] = useState<string | null>(null);
   const [emptyFolders, setEmptyFolders] = useState<Set<string>>(new Set());
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
+  const [projectProfile, setProjectProfile] = useState<ProjectProfile | null>(null);
 
   const [editorInstance, setEditorInstance] =
     useState<Monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -171,6 +173,14 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             setActiveFileId(filesWithDrafts[0].id);
           }
         }
+
+        // Fetch language-agnostic project profile
+        void workspaceApi
+          .getProjectProfile(room.id)
+          .then((prof) => {
+            if (isMounted) setProjectProfile(prof);
+          })
+          .catch(() => {});
       } catch (err) {
         console.error('Failed to load workspace files:', err);
       }
@@ -690,6 +700,9 @@ clearFileDraft(room.id, fileId);
         }}
         isAgentSidebarOpen={isAgentSidebarOpen}
         onToggleAgentSidebar={() => setIsAgentSidebarOpen((prev) => !prev)}
+        branch={room.branch}
+        repositoryUrl={room.repositoryUrl}
+        primaryLanguage={projectProfile?.primaryLanguage || room.primaryLanguage}
         onSwitchWorkspace={onSwitchWorkspace}
         onLogout={onLogout}
         onOpenDiagnostics={() => setIsDiagnosticsOpen(true)}
@@ -903,6 +916,7 @@ clearFileDraft(room.id, fileId);
                 recentError={
                   executionResult?.stderr || executionResult?.error || undefined
                 }
+                projectProfile={projectProfile || undefined}
                 isOpen={isAgentSidebarOpen}
                 onClose={() => setIsAgentSidebarOpen(false)}
                 onApplyPatch={handleApplyAgentPatch}

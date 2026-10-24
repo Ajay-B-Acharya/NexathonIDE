@@ -256,6 +256,35 @@ CRITICAL WORKFLOW & TOOL RULES:
       if (context.fileTree && context.fileTree.length > 0) {
         prompt += `\nProject File Tree:\n` + context.fileTree.map((f) => `- ${f.path} (${f.language})`).join('\n');
       }
+
+      if (context.projectProfile) {
+        const p = context.projectProfile;
+        prompt += `\n\n=== REPOSITORY & LANGUAGE PROFILE ===`;
+        prompt += `\nPrimary Language: ${p.primaryLanguage}`;
+        if (p.detectedLanguages && p.detectedLanguages.length > 0) {
+          prompt += `\nLanguages: ` + p.detectedLanguages.map((l) => `${l.language} (${l.percentage}%)`).join(', ');
+        }
+        if (p.frameworks && p.frameworks.length > 0) {
+          prompt += `\nFrameworks: ` + p.frameworks.join(', ');
+        }
+        if (p.buildSystems && p.buildSystems.length > 0) {
+          prompt += `\nBuild Systems: ` + p.buildSystems.join(', ');
+        }
+        if (p.manifests && p.manifests.length > 0) {
+          prompt += `\nManifests: ` + p.manifests.join(', ');
+        }
+        if (p.entryPoints && p.entryPoints.length > 0) {
+          prompt += `\nEntry Points: ` + p.entryPoints.join(', ');
+        }
+        if (p.suggestedCommands && p.suggestedCommands.length > 0) {
+          prompt += `\nRecognized Commands:\n` + p.suggestedCommands.map((c) => `- ${c.command} (${c.title})`).join('\n');
+        }
+      }
+
+      prompt += `\n\nSECURITY RESTRICTIONS:
+- Do not inspect, read, or print sensitive secrets from .env, .env.local, .pem, private keys, or tokens.
+- Propose patches only for authorized project files.
+- Explain trade-offs for changes across files.`;
     }
 
     return prompt;

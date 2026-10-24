@@ -30,8 +30,20 @@ export function getLanguageFromPath(path: string): string {
     md: 'markdown',
     sql: 'sql',
     sh: 'shell',
+    bash: 'shell',
     yaml: 'yaml',
     yml: 'yaml',
+    rs: 'rust',
+    go: 'go',
+    java: 'java',
+    c: 'cpp',
+    cpp: 'cpp',
+    h: 'cpp',
+    hpp: 'cpp',
+    cs: 'csharp',
+    php: 'php',
+    rb: 'ruby',
+    dart: 'dart',
   };
   return langMap[ext || ''] || 'plaintext';
 }
@@ -43,6 +55,11 @@ export function formatRoom(room: any) {
     createdAt: room.created_at || room.createdAt || new Date().toISOString(),
     updatedAt: room.updated_at || room.updatedAt || new Date().toISOString(),
     ownerId: room.owner_id || room.ownerId || 'default',
+    repositoryUrl: room.repository_url || room.repositoryUrl || undefined,
+    branch: room.branch || 'main',
+    commitSha: room.commit_sha || room.commitSha || undefined,
+    primaryLanguage: room.primary_language || room.primaryLanguage || undefined,
+    isGitHubImport: Boolean(room.repository_url || room.repositoryUrl),
   };
 }
 

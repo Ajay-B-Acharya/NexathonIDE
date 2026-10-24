@@ -17,7 +17,9 @@ import {
   AlertCircle,
   X,
   Bot,
+  GitBranch,
 } from 'lucide-react';
+import { GithubIcon } from './icons/GithubIcon';
 import { CollaboratorPresence, ConnectionStatus, FollowState, UserProfile } from '../types';
 import { Collaborators } from './Collaborators';
 import { ThemeToggle, ThemeMode } from './ThemeToggle';
@@ -49,6 +51,9 @@ interface TopBarProps {
   isAgentSidebarOpen?: boolean;
   onToggleAgentSidebar?: () => void;
   onSwitchWorkspace: () => void;
+  branch?: string;
+  repositoryUrl?: string;
+  primaryLanguage?: string;
   onLogout: () => void;
   onOpenDiagnostics?: () => void;
 }
@@ -80,6 +85,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   isAgentSidebarOpen = false,
   onToggleAgentSidebar,
   onSwitchWorkspace,
+  branch,
+  repositoryUrl,
+  primaryLanguage,
   onLogout,
   onOpenDiagnostics,
 }) => {
@@ -185,6 +193,25 @@ export const TopBar: React.FC<TopBarProps> = ({
             #{roomId.slice(0, 6)}
           </span>
         </button>
+
+        {branch && (
+          <div
+            className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md border theme-border theme-bg-surface-2 font-mono text-[11px] theme-text-secondary"
+            title={repositoryUrl ? `Imported from ${repositoryUrl}` : `Active Branch: ${branch}`}
+          >
+            <GitBranch className="h-3 w-3 text-[#FF7057]" />
+            <span className="truncate max-w-[80px]">{branch}</span>
+          </div>
+        )}
+
+        {primaryLanguage && (
+          <div
+            className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-[#FF7057]/30 bg-[#FF7057]/10 font-mono text-[10px] text-[#FF7057] font-semibold"
+            title={`Primary Project Language: ${primaryLanguage}`}
+          >
+            <span>{primaryLanguage}</span>
+          </div>
+        )}
 
         {renderConnectionStatus()}
 

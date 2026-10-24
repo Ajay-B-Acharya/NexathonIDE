@@ -26,9 +26,20 @@ async function initDatabase() {
       CREATE TABLE IF NOT EXISTS rooms (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         name VARCHAR(255) NOT NULL,
+        description TEXT,
+        repository_url TEXT,
+        branch TEXT,
+        commit_sha TEXT,
+        primary_language TEXT,
         owner_id UUID REFERENCES users(id),
         created_at TIMESTAMP DEFAULT NOW()
       );
+      
+      ALTER TABLE rooms ADD COLUMN IF NOT EXISTS description TEXT;
+      ALTER TABLE rooms ADD COLUMN IF NOT EXISTS repository_url TEXT;
+      ALTER TABLE rooms ADD COLUMN IF NOT EXISTS branch TEXT;
+      ALTER TABLE rooms ADD COLUMN IF NOT EXISTS commit_sha TEXT;
+      ALTER TABLE rooms ADD COLUMN IF NOT EXISTS primary_language TEXT;
       
       CREATE TABLE IF NOT EXISTS workspace_files (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

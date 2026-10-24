@@ -5,7 +5,19 @@ export type SupportedLanguage =
   | 'json'
   | 'html'
   | 'css'
-  | 'markdown';
+  | 'markdown'
+  | 'rust'
+  | 'go'
+  | 'java'
+  | 'cpp'
+  | 'csharp'
+  | 'php'
+  | 'ruby'
+  | 'dart'
+  | 'sql'
+  | 'shell'
+  | 'yaml'
+  | 'plaintext';
 
 export interface UserProfile {
   id: string;
@@ -58,6 +70,11 @@ export interface WorkspaceRoom {
   updatedAt: string;
   ownerId: string;
   files?: WorkspaceFile[];
+  repositoryUrl?: string;
+  branch?: string;
+  commitSha?: string;
+  primaryLanguage?: string;
+  isGitHubImport?: boolean;
 }
 
 export interface ExecutionResult {
@@ -196,6 +213,95 @@ export interface AIAgentContextPayload {
   terminalSnippet?: string;
   openFilesList?: string[];
   fileTree?: Array<{ path: string; language: string; size?: number }>;
+  projectProfile?: ProjectProfile;
+}
+
+// ============================================================================
+// Multi-Language Project Detection & Analysis Types
+// ============================================================================
+
+export interface ProjectLanguageBreakdown {
+  language: string;
+  percentage: number;
+  fileCount: number;
+}
+
+export interface AvailableRuntimeInfo {
+  name: string;
+  environment: 'wasm' | 'container' | 'cloud' | 'preview' | 'none';
+  isReady: boolean;
+  description: string;
+}
+
+export interface SuggestedCommand {
+  title: string;
+  command: string;
+  description: string;
+  category?: 'build' | 'test' | 'run' | 'lint';
+}
+
+export interface ProjectProfile {
+  detectedLanguages: ProjectLanguageBreakdown[];
+  primaryLanguage: string;
+  frameworks: string[];
+  buildSystems: string[];
+  manifests: string[];
+  entryPoints: string[];
+  availableRuntimes: AvailableRuntimeInfo[];
+  suggestedCommands: SuggestedCommand[];
+  detectionConfidence: 'high' | 'medium' | 'low';
+  isMonorepo?: boolean;
+}
+
+// ============================================================================
+// GitHub Repository Import & Git Workflow Types
+// ============================================================================
+
+export interface GitHubRepoInfo {
+  owner: string;
+  repo: string;
+  defaultBranch: string;
+  branches: string[];
+  description: string;
+  stars: number;
+  isPrivate: boolean;
+  sizeKb: number;
+  primaryLanguage?: string;
+}
+
+export interface GitHubImportPayload {
+  url: string;
+  branch?: string;
+  ownerId: string;
+  name?: string;
+  githubToken?: string;
+}
+
+export interface GitHubImportResult {
+  room: WorkspaceRoom;
+  filesCount: number;
+  projectProfile: ProjectProfile;
+  repositoryUrl: string;
+  branch: string;
+  commitSha: string;
+}
+
+export interface GitCommitRecord {
+  sha: string;
+  message: string;
+  author: string;
+  timestamp: string;
+}
+
+export interface WorkspaceGitState {
+  branch: string;
+  commitSha: string;
+  repositoryUrl?: string;
+  branches: string[];
+  modifiedFiles: string[];
+  untrackedFiles: string[];
+  isClean: boolean;
+  commits: GitCommitRecord[];
 }
 
 

@@ -21,7 +21,9 @@ import {
   ArrowRight,
   Zap,
   X,
+  GitBranch,
 } from 'lucide-react';
+import { GithubIcon } from '../components/icons/GithubIcon';
 import { workspaceApi } from '../services/workspaceApi';
 import { getAccessibleRoomIds, addAccessibleRoomId } from '../services/refreshEngine';
 import { UserProfile, WorkspaceRoom } from '../types';
@@ -31,6 +33,7 @@ import { Folder } from '../components/react-bits/cards/Folder';
 import { DecryptedText } from '../components/react-bits/text/DecryptedText';
 import { FloatingCommandDock } from '../components/FloatingCommandDock';
 import { WorkspaceCreatorModal } from '../components/WorkspaceCreatorModal';
+import { GitHubImportModal } from '../components/GitHubImportModal';
 import { AdaptiveBackground } from '../components/AdaptiveBackground';
 
 interface WorkspaceSelectionProps {
@@ -85,6 +88,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
   const [search, setSearch] = useState('');
   const [roomInput, setRoomInput] = useState('');
   const [isCreatorModalOpen, setIsCreatorModalOpen] = useState(false);
+  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Live Terminal Modal state
@@ -353,11 +357,29 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
               </h2>
             </div>
 
-            {/* Direct CLI Spawner Bar & Advanced Modal Trigger */}
-            <div className="flex items-center gap-2">
+            {/* Primary Actions: Create Project, Import GitHub & CLI Spawner */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsCreatorModalOpen(true)}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold transition cursor-pointer shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Create Project</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsGitHubModalOpen(true)}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border theme-border theme-bg-surface-2 hover:border-[#FF7057] text-xs font-semibold theme-text-primary transition cursor-pointer shadow-xs"
+              >
+                <GithubIcon className="w-3.5 h-3.5 text-[#FF7057]" />
+                <span>Import from GitHub</span>
+              </button>
+
               <form
                 onSubmit={handleCliSpawn}
-                className="flex items-center gap-2 p-1 rounded-xl theme-bg-surface-2 border theme-border focus-within:border-[#FF7057] shadow-xs"
+                className="hidden lg:flex items-center gap-2 p-1 rounded-xl theme-bg-surface-2 border theme-border focus-within:border-[#FF7057] shadow-xs"
               >
                 <span className="pl-3 font-mono text-xs text-[#FF7057] font-bold">$ mkdir</span>
                 <input
@@ -365,25 +387,15 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                   placeholder="custom-room-id"
                   value={roomInput}
                   onChange={(e) => setRoomInput(e.target.value)}
-                  className="bg-transparent font-mono text-xs theme-text-primary focus:outline-none w-32 sm:w-40 font-medium"
+                  className="bg-transparent font-mono text-xs theme-text-primary focus:outline-none w-28 font-medium"
                 />
                 <button
                   type="submit"
-                  className="px-3 py-1.5 rounded-lg bg-[#FF7057] hover:bg-[#F26049] text-white font-mono text-xs font-bold transition cursor-pointer shadow-xs"
+                  className="px-2.5 py-1 rounded-lg bg-[#FF7057] hover:bg-[#F26049] text-white font-mono text-xs font-bold transition cursor-pointer shadow-xs"
                 >
-                  SPAWN →
+                  SPAWN
                 </button>
               </form>
-
-              <button
-                type="button"
-                onClick={() => setIsCreatorModalOpen(true)}
-                title="Configure custom runtime with RAM, threads, and container sandbox options"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border theme-border theme-bg-surface-2 hover:border-[#FF7057] text-xs font-mono font-medium theme-text-primary transition cursor-pointer shadow-xs"
-              >
-                <Sliders className="w-3.5 h-3.5 text-[#FF7057]" />
-                <span>Custom</span>
-              </button>
             </div>
           </div>
 
@@ -472,9 +484,23 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="px-2.5 py-0.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 font-mono text-[10px] text-indigo-500 dark:text-indigo-400 font-semibold">
-                        CRDT Document Mesh
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {room.repositoryUrl || room.isGitHubImport ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-neutral-700/40 bg-neutral-800/50 font-mono text-[10px] theme-text-primary font-semibold">
+                            <GithubIcon className="w-2.5 h-2.5 text-[#FF7057]" />
+                            <span>{room.branch || 'main'}</span>
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 font-mono text-[10px] text-indigo-500 dark:text-indigo-400 font-semibold">
+                            CRDT Document Mesh
+                          </span>
+                        )}
+                        {room.primaryLanguage && (
+                          <span className="px-2 py-0.5 rounded-full bg-[#FF7057]/10 text-[#FF7057] font-mono text-[10px] font-semibold">
+                            {room.primaryLanguage}
+                          </span>
+                        )}
+                      </div>
                       <span className="font-mono text-[10px] text-emerald-500 flex items-center gap-1 font-semibold">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                         LIVE NOW
@@ -867,6 +893,17 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
           </div>
         </div>
       )}
+      {/* GitHub Repository Importer Modal */}
+      <GitHubImportModal
+        isOpen={isGitHubModalOpen}
+        userId={user.id}
+        onClose={() => setIsGitHubModalOpen(false)}
+        onImportSuccess={(result) => {
+          setIsGitHubModalOpen(false);
+          addAccessibleRoomId(user.id, result.room.id);
+          onSelectRoom(result.room);
+        }}
+      />
     </div>
   );
 };

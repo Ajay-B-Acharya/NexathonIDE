@@ -1,4 +1,13 @@
-import { SupportedLanguage, WorkspaceFile, WorkspaceRoom } from '../types';
+import {
+  SupportedLanguage,
+  WorkspaceFile,
+  WorkspaceRoom,
+  ProjectProfile,
+  GitHubRepoInfo,
+  GitHubImportPayload,
+  GitHubImportResult,
+  WorkspaceGitState,
+} from '../types';
 import { getApiBaseUrl } from '../config/endpoints';
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -52,8 +61,37 @@ export function detectLanguageFromPath(filePath: string): SupportedLanguage {
       return 'css';
     case 'md':
       return 'markdown';
+    case 'rs':
+      return 'rust';
+    case 'go':
+      return 'go';
+    case 'java':
+      return 'java';
+    case 'c':
+    case 'cpp':
+    case 'cc':
+    case 'cxx':
+    case 'h':
+    case 'hpp':
+      return 'cpp';
+    case 'cs':
+      return 'csharp';
+    case 'php':
+      return 'php';
+    case 'rb':
+      return 'ruby';
+    case 'dart':
+      return 'dart';
+    case 'sql':
+      return 'sql';
+    case 'sh':
+    case 'bash':
+      return 'shell';
+    case 'yaml':
+    case 'yml':
+      return 'yaml';
     default:
-      return 'javascript';
+      return 'plaintext';
   }
 }
 
@@ -121,6 +159,39 @@ export const workspaceApi = {
         method: 'DELETE',
       }
     );
+  },
+
+  // GitHub Import & Git APIs
+  async validateGitHubRepo(url: string, githubToken?: string): Promise<GitHubRepoInfo> {
+    return request<GitHubRepoInfo>('/github/validate', {
+      method: 'POST',
+      body: JSON.stringify({ url, githubToken }),
+    });
+  },
+
+  async importGitHubRepo(payload: GitHubImportPayload): Promise<GitHubImportResult> {
+    return request<GitHubImportResult>('/github/import', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getProjectProfile(roomId: string): Promise<ProjectProfile> {
+    return request<ProjectProfile>(`/workspaces/${encodeURIComponent(roomId)}/profile`);
+  },
+
+  async getWorkspaceGitState(roomId: string): Promise<WorkspaceGitState> {
+    return request<WorkspaceGitState>(`/workspaces/${encodeURIComponent(roomId)}/git`);
+  },
+
+  async commitWorkspaceChanges(
+    roomId: string,
+    payload: { message: string; author: string }
+  ): Promise<{ success: boolean; commit: { sha: string; message: string; author: string; timestamp: string } }> {
+    return request(`/workspaces/${encodeURIComponent(roomId)}/git/commit`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 };
 

@@ -33,6 +33,7 @@ import type {
   ProposedCommand,
   AIAgentContextPayload,
   AIAgentActivityStatus,
+  ProjectProfile,
 } from '../types';
 
 interface AIAgentSidebarProps {
@@ -44,6 +45,7 @@ interface AIAgentSidebarProps {
   selectedCode?: string;
   selectedRange?: { startLine: number; endLine: number };
   recentError?: string;
+  projectProfile?: ProjectProfile;
   isOpen: boolean;
   onClose: () => void;
   onApplyPatch: (patch: ProposedPatch) => Promise<void>;
@@ -59,6 +61,7 @@ export const AIAgentSidebar: React.FC<AIAgentSidebarProps> = ({
   selectedCode,
   selectedRange,
   recentError,
+  projectProfile,
   isOpen,
   onClose,
   onApplyPatch,
@@ -200,6 +203,7 @@ export const AIAgentSidebar: React.FC<AIAgentSidebarProps> = ({
         language: f.language,
         size: f.content.length,
       })),
+      projectProfile,
     };
 
     // Optimistic user message in UI
@@ -518,6 +522,16 @@ export const AIAgentSidebar: React.FC<AIAgentSidebarProps> = ({
       {/* 2. Context Attachment Indicator Ribbon */}
       <div className="flex flex-wrap items-center gap-1.5 px-3 py-1.5 border-b theme-border theme-bg-surface-2/60 text-[10px] font-mono">
         <span className="theme-text-muted">Context:</span>
+
+        {projectProfile && (
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold"
+            title={`Architecture: ${projectProfile.primaryLanguage} ${projectProfile.frameworks.length > 0 ? `(${projectProfile.frameworks.join(', ')})` : ''}`}
+          >
+            <Layers className="h-3 w-3" />
+            <span>{projectProfile.primaryLanguage}</span>
+          </span>
+        )}
 
         {activeFile && (
           <button
