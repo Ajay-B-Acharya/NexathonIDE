@@ -16,7 +16,10 @@ import {
   Share2,
   AlertCircle,
   X,
+  Bot,
+  GitBranch,
 } from 'lucide-react';
+import { GithubIcon } from './icons/GithubIcon';
 import { CollaboratorPresence, ConnectionStatus, FollowState, UserProfile } from '../types';
 import { Collaborators } from './Collaborators';
 import { ThemeToggle, ThemeMode } from './ThemeToggle';
@@ -45,7 +48,12 @@ interface TopBarProps {
   onRunCode: () => void;
   onSaveFile: () => void;
   onOpenAIDebugger: () => void;
+  isAgentSidebarOpen?: boolean;
+  onToggleAgentSidebar?: () => void;
   onSwitchWorkspace: () => void;
+  branch?: string;
+  repositoryUrl?: string;
+  primaryLanguage?: string;
   onLogout: () => void;
   onOpenDiagnostics?: () => void;
 }
@@ -74,7 +82,12 @@ export const TopBar: React.FC<TopBarProps> = ({
   onRunCode,
   onSaveFile,
   onOpenAIDebugger,
+  isAgentSidebarOpen = false,
+  onToggleAgentSidebar,
   onSwitchWorkspace,
+  branch,
+  repositoryUrl,
+  primaryLanguage,
   onLogout,
   onOpenDiagnostics,
 }) => {
@@ -181,6 +194,25 @@ export const TopBar: React.FC<TopBarProps> = ({
           </span>
         </button>
 
+        {branch && (
+          <div
+            className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md border theme-border theme-bg-surface-2 font-mono text-[11px] theme-text-secondary"
+            title={repositoryUrl ? `Imported from ${repositoryUrl}` : `Active Branch: ${branch}`}
+          >
+            <GitBranch className="h-3 w-3 text-[#FF7057]" />
+            <span className="truncate max-w-[80px]">{branch}</span>
+          </div>
+        )}
+
+        {primaryLanguage && (
+          <div
+            className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-[#FF7057]/30 bg-[#FF7057]/10 font-mono text-[10px] text-[#FF7057] font-semibold"
+            title={`Primary Project Language: ${primaryLanguage}`}
+          >
+            <span>{primaryLanguage}</span>
+          </div>
+        )}
+
         {renderConnectionStatus()}
 
         {onRefreshWorkspace && (
@@ -274,6 +306,23 @@ export const TopBar: React.FC<TopBarProps> = ({
           <Sparkles className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">AI Debugger</span>
         </button>
+
+        {/* Personal AI Agent Button */}
+        {onToggleAgentSidebar && (
+          <button
+            type="button"
+            onClick={onToggleAgentSidebar}
+            title="Toggle Personal AI Coding Agent"
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 sm:px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer shadow-xs ${
+              isAgentSidebarOpen
+                ? 'border-[#FF7057] bg-[#FF7057] text-white shadow-sm'
+                : 'theme-border theme-bg-surface-2 hover:border-[#FF7057] text-[var(--accent-primary)]'
+            }`}
+          >
+            <Bot className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">AI Agent</span>
+          </button>
+        )}
 
         {/* 1-Click Share & Invite Button */}
         <button

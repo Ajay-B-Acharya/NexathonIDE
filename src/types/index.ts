@@ -5,7 +5,19 @@ export type SupportedLanguage =
   | 'json'
   | 'html'
   | 'css'
-  | 'markdown';
+  | 'markdown'
+  | 'rust'
+  | 'go'
+  | 'java'
+  | 'cpp'
+  | 'csharp'
+  | 'php'
+  | 'ruby'
+  | 'dart'
+  | 'sql'
+  | 'shell'
+  | 'yaml'
+  | 'plaintext';
 
 export interface UserProfile {
   id: string;
@@ -58,6 +70,11 @@ export interface WorkspaceRoom {
   updatedAt: string;
   ownerId: string;
   files?: WorkspaceFile[];
+  repositoryUrl?: string;
+  branch?: string;
+  commitSha?: string;
+  primaryLanguage?: string;
+  isGitHubImport?: boolean;
 }
 
 export interface ExecutionResult {
@@ -113,6 +130,178 @@ export interface FollowState {
   targetUserColor: string;
   targetFile?: string;
   lastLineNumber?: number;
+}
+
+// ============================================================================
+// Personal Autonomous AI Coding Agent Types
+// ============================================================================
+
+export type AIProviderType = 'groq' | 'openai' | 'anthropic';
+
+export interface UserAICredential {
+  provider: AIProviderType;
+  selectedModel: string;
+  hasKey: boolean;
+  updatedAt?: string;
+}
+
+export interface AIConversation {
+  id: string;
+  userId: string;
+  roomId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProposedPatch {
+  filePath: string;
+  explanation: string;
+  originalContentHash: string;
+  originalContent: string;
+  patchedContent: string;
+  diffSummary?: {
+    additions: number;
+    deletions: number;
+    modifications: number;
+  };
+  status: 'pending' | 'applied' | 'rejected' | 'stale';
+}
+
+export interface ProposedCommand {
+  id: string;
+  command: string;
+  workingDir: string;
+  reason: string;
+  status: 'pending' | 'running' | 'completed' | 'rejected' | 'failed';
+  output?: string;
+  exitCode?: number;
+}
+
+export type AIAgentActivityStatus =
+  | 'idle'
+  | 'thinking'
+  | 'reading_files'
+  | 'investigating_error'
+  | 'preparing_patch'
+  | 'waiting_approval'
+  | 'running_command'
+  | 'completed'
+  | 'error';
+
+export interface AIMessage {
+  id: string;
+  conversationId: string;
+  userId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  status?: 'sending' | 'streaming' | 'complete' | 'error';
+  proposedPatches?: ProposedPatch[];
+  proposedCommands?: ProposedCommand[];
+  activityStatus?: AIAgentActivityStatus;
+  activityLogs?: string[];
+  createdAt: string;
+}
+
+export interface AIAgentContextPayload {
+  roomId: string;
+  currentFilePath?: string;
+  currentFileContent?: string;
+  selectedCode?: string;
+  selectedRange?: { startLine: number; endLine: number };
+  recentError?: string;
+  terminalSnippet?: string;
+  openFilesList?: string[];
+  fileTree?: Array<{ path: string; language: string; size?: number }>;
+  projectProfile?: ProjectProfile;
+}
+
+// ============================================================================
+// Multi-Language Project Detection & Analysis Types
+// ============================================================================
+
+export interface ProjectLanguageBreakdown {
+  language: string;
+  percentage: number;
+  fileCount: number;
+}
+
+export interface AvailableRuntimeInfo {
+  name: string;
+  environment: 'wasm' | 'container' | 'cloud' | 'preview' | 'none';
+  isReady: boolean;
+  description: string;
+}
+
+export interface SuggestedCommand {
+  title: string;
+  command: string;
+  description: string;
+  category?: 'build' | 'test' | 'run' | 'lint';
+}
+
+export interface ProjectProfile {
+  detectedLanguages: ProjectLanguageBreakdown[];
+  primaryLanguage: string;
+  frameworks: string[];
+  buildSystems: string[];
+  manifests: string[];
+  entryPoints: string[];
+  availableRuntimes: AvailableRuntimeInfo[];
+  suggestedCommands: SuggestedCommand[];
+  detectionConfidence: 'high' | 'medium' | 'low';
+  isMonorepo?: boolean;
+}
+
+// ============================================================================
+// GitHub Repository Import & Git Workflow Types
+// ============================================================================
+
+export interface GitHubRepoInfo {
+  owner: string;
+  repo: string;
+  defaultBranch: string;
+  branches: string[];
+  description: string;
+  stars: number;
+  isPrivate: boolean;
+  sizeKb: number;
+  primaryLanguage?: string;
+}
+
+export interface GitHubImportPayload {
+  url: string;
+  branch?: string;
+  ownerId: string;
+  name?: string;
+  githubToken?: string;
+}
+
+export interface GitHubImportResult {
+  room: WorkspaceRoom;
+  filesCount: number;
+  projectProfile: ProjectProfile;
+  repositoryUrl: string;
+  branch: string;
+  commitSha: string;
+}
+
+export interface GitCommitRecord {
+  sha: string;
+  message: string;
+  author: string;
+  timestamp: string;
+}
+
+export interface WorkspaceGitState {
+  branch: string;
+  commitSha: string;
+  repositoryUrl?: string;
+  branches: string[];
+  modifiedFiles: string[];
+  untrackedFiles: string[];
+  isClean: boolean;
+  commits: GitCommitRecord[];
 }
 
 

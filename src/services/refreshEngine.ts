@@ -13,6 +13,7 @@ export interface StoredWorkspaceUI {
   activeBottomTab?: BottomTabType;
   isBottomDrawerOpen?: boolean;
   isExplorerOpen?: boolean;
+  isAgentSidebarOpen?: boolean;
 }
 
 const STORAGE_KEY_VIEW = 'nexathon_ide_active_view';
