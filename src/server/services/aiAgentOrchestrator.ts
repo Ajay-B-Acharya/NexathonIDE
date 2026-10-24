@@ -1,11 +1,12 @@
 import crypto from 'crypto';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import Groq from 'groq-sdk';
-import OpenAI from 'openai';
 import { supabaseAdmin } from '../supabase.js';
 import { WorkspaceService } from './workspaceService.js';
 import { AICredentialService } from './aiCredentialService.js';
+import { AIProviderService } from './aiProviders/providerService.js';
+import { getProviderMetadata } from './aiProviders/providerMetadata.js';
+import type { AIProviderType } from './aiProviders/types.js';
 import type {
   AIConversation,
   AIMessage,
@@ -418,14 +419,16 @@ CRITICAL WORKFLOW & TOOL RULES:
     );
 
     const provider = creds?.provider || (isServerKeyValid ? 'groq' : 'none');
-    const apiKey = creds?.rawApiKey || serverGroqKey;
-    const model =
-      creds?.selectedModel ||
-      (provider === 'openai' ? 'gpt-4o-mini' : 'llama-3.3-70b-versatile');
+    const apiKey = creds?.rawApiKey || (provider === 'groq' ? serverGroqKey : '');
+    const meta = getProviderMetadata(provider);
+    let model = creds?.selectedModel || meta.defaultModel;
+    if (model === 'llama-3.1-70b-versatile') {
+      model = 'llama-3.3-70b-versatile';
+    }
 
-    if (!apiKey) {
+    if (!apiKey && provider !== 'custom') {
       const errorMsg =
-        'No AI provider configured. Please open AI Agent Settings to configure your personal Groq or OpenAI API key.';
+        'No AI provider credentials configured. Please open AI Agent Settings to configure your preferred AI provider (OpenAI, Anthropic, Gemini, Groq, OpenRouter, DeepSeek, etc.)';
       return this.saveMessage(userId, conversationId, 'assistant', errorMsg, {
         status: 'error',
       });
@@ -466,37 +469,25 @@ CRITICAL WORKFLOW & TOOL RULES:
       }
     }
 
-    // 6. Invoke selected provider
+    // 6. Invoke selected provider via unified provider service
     let fullResponse = '';
 
     try {
-      if (provider === 'groq') {
-        const client = new Groq({ apiKey });
-        const completion = await client.chat.completions.create({
+      fullResponse = await AIProviderService.generateCompletion(
+        {
+          provider: provider as AIProviderType,
+          apiKey: apiKey || '',
           model,
-          messages: messages as any,
-          temperature: 0.2,
-          max_tokens: 3500,
-        });
-
-        fullResponse = completion.choices[0]?.message?.content || '';
-      } else if (provider === 'openai') {
-        const client = new OpenAI({ apiKey });
-        const completion = await client.chat.completions.create({
-          model,
-          messages: messages as any,
-          temperature: 0.2,
-          max_tokens: 3500,
-        });
-
-        fullResponse = completion.choices[0]?.message?.content || '';
-      } else {
-        throw new Error(`Provider "${provider}" is currently not supported.`);
-      }
+          apiEndpoint: creds?.apiEndpoint,
+          customProviderName: creds?.customProviderName,
+          customProtocol: creds?.customProtocol,
+        },
+        messages,
+        { temperature: 0.2, maxTokens: 3500 }
+      );
     } catch (err: any) {
-      const status = err?.status === 401 ? 'Invalid API Key' : err?.status === 429 ? 'Rate Limit Exceeded' : 'AI Error';
-      const cleanError = `AI Provider Error (${status}): ${err?.message || 'Failed to complete request.'}`;
-      return this.saveMessage(userId, conversationId, 'assistant', cleanError, {
+      const normalized = AIProviderService.normalizeError(err, provider as AIProviderType, model);
+      return this.saveMessage(userId, conversationId, 'assistant', normalized.message, {
         status: 'error',
       });
     }

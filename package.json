@@ -18,6 +18,7 @@
     "test:collab": "tsx collaboration-backend/test/collaboration.test.ts",
     "test:cross-device": "tsx collaboration-backend/test/cross-device.test.ts",
     "test:conflict": "tsx test/file-conflict.test.ts",
+    "test:ai": "tsx --test test/aiProviders.test.ts",
     "start": "tsx src/server/api-server.ts",
     "server:all": "tsx src/server/api-server.ts"
   },

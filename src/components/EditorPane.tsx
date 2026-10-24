@@ -152,9 +152,9 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   return (
     <div className="flex flex-1 flex-col overflow-hidden theme-bg-root">
       {/* File Tabs Bar & Action Strip */}
-      <div className="flex h-10 items-center justify-between border-b theme-border theme-bg-surface-1 px-2 neu-inset">
+      <div className="flex h-11 items-center justify-between border-b theme-border theme-bg-surface-1 px-3 neu-inset">
         {/* Open Files Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
           {openFiles.map((file) => {
             const isActive = file.id === activeFile.id;
             const isDirty = dirtyFileIds.has(file.id);
@@ -163,14 +163,14 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
               <div
                 key={file.id}
                 onClick={() => onSelectTab(file)}
-                className={`group flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
+                className={`group flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition cursor-pointer shrink-0 h-8 ${
                   isActive
                     ? 'border-[#FF7057]/40 bg-[#FF7057]/10 text-[#FF7057] shadow-xs neu-card'
                     : 'border-transparent theme-text-secondary hover:theme-bg-surface-2 hover:theme-text-primary'
                 }`}
               >
                 <Code2 className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                <span className="max-w-[130px] truncate">{file.name}</span>
+                <span className="max-w-[140px] truncate">{file.name}</span>
                 {isDirty && (
                   <span
                     className="h-1.5 w-1.5 rounded-full bg-[#FF7057]"
@@ -180,10 +180,10 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
                 <button
                   type="button"
                   onClick={(e) => onCloseTab(file.id, e)}
-                  className="rounded p-0.5 theme-text-secondary opacity-70 hover:theme-bg-surface-2 hover:theme-text-primary group-hover:opacity-100"
+                  className="rounded p-0.5 theme-text-secondary opacity-70 hover:theme-bg-surface-2 hover:theme-text-primary group-hover:opacity-100 transition-opacity"
                   title="Close Tab"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             );
@@ -191,8 +191,8 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
         </div>
 
         {/* File Path Breadcrumb & Language Selector */}
-        <div className="flex items-center gap-2.5">
-          <div className="hidden lg:flex items-center gap-1 text-[11px] font-mono theme-text-secondary truncate max-w-[200px]">
+        <div className="flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-1 text-xs font-mono theme-text-secondary truncate max-w-[220px]">
             {activeFile.path.split('/').map((segment, idx, arr) => (
               <React.Fragment key={`${segment}-${idx}`}>
                 <span className={idx === arr.length - 1 ? 'theme-text-primary font-medium' : ''}>
@@ -211,7 +211,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
               onLanguageChange(activeFile, e.target.value as SupportedLanguage)
             }
             aria-label="Syntax Highlighting Language"
-            className="rounded-md border theme-border theme-bg-surface-2 px-2.5 py-0.5 text-xs font-medium theme-text-primary focus:border-[#FF7057] focus:outline-none cursor-pointer"
+            className="h-8 rounded-lg border theme-border theme-bg-surface-2 px-2.5 text-xs font-semibold theme-text-primary focus:border-[#FF7057] focus:outline-none cursor-pointer shadow-2xs"
           >
             {LANGUAGES.map((lang) => (
               <option key={lang.value} value={lang.value} className="theme-bg-surface-1 theme-text-primary">

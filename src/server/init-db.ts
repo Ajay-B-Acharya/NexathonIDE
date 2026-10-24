@@ -68,9 +68,20 @@ async function initDatabase() {
         iv TEXT NOT NULL,
         tag TEXT NOT NULL,
         selected_model VARCHAR(100) DEFAULT 'llama-3.3-70b-versatile',
+        api_endpoint VARCHAR(500),
+        custom_provider_name VARCHAR(100),
+        custom_protocol VARCHAR(50) DEFAULT 'openai',
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
+
+      ALTER TABLE user_ai_credentials ADD COLUMN IF NOT EXISTS api_endpoint VARCHAR(500);
+      ALTER TABLE user_ai_credentials ADD COLUMN IF NOT EXISTS custom_provider_name VARCHAR(100);
+      ALTER TABLE user_ai_credentials ADD COLUMN IF NOT EXISTS custom_protocol VARCHAR(50) DEFAULT 'openai';
+
+      UPDATE user_ai_credentials
+        SET selected_model = 'llama-3.3-70b-versatile'
+        WHERE selected_model = 'llama-3.1-70b-versatile';
 
       CREATE TABLE IF NOT EXISTS ai_conversations (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

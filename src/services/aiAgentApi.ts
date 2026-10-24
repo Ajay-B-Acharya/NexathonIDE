@@ -2,6 +2,9 @@ import { getApiBaseUrl } from '../config/endpoints';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import type {
   AIProviderType,
+  AIProviderProtocol,
+  ProviderMetadata,
+  ProviderModelInfo,
   UserAICredential,
   AIConversation,
   AIMessage,
@@ -58,6 +61,34 @@ async function request<T>(endpoint: string, options: RequestInit = {}, userId?: 
 
 export const aiAgentApi = {
   /**
+   * Get supported AI provider metadata.
+   */
+  async getProviders(userId?: string): Promise<ProviderMetadata[]> {
+    return request<ProviderMetadata[]>('/providers', { method: 'GET' }, userId);
+  },
+
+  /**
+   * Get live or curated models for a provider.
+   */
+  async getModels(
+    params: {
+      provider: AIProviderType;
+      apiKey?: string;
+      endpoint?: string;
+      protocol?: AIProviderProtocol;
+    },
+    userId?: string
+  ): Promise<ProviderModelInfo[]> {
+    const query = new URLSearchParams({
+      provider: params.provider,
+      ...(params.apiKey ? { apiKey: params.apiKey } : {}),
+      ...(params.endpoint ? { endpoint: params.endpoint } : {}),
+      ...(params.protocol ? { protocol: params.protocol } : {}),
+    });
+    return request<ProviderModelInfo[]>(`/models?${query.toString()}`, { method: 'GET' }, userId);
+  },
+
+  /**
    * Get current user's provider settings (never exposes key).
    */
   async getSettings(userId?: string): Promise<UserAICredential & { isServerKeyAvailable: boolean }> {
@@ -68,7 +99,14 @@ export const aiAgentApi = {
    * Save user's encrypted provider credentials.
    */
   async saveSettings(
-    payload: { provider: AIProviderType; apiKey: string; selectedModel?: string },
+    payload: {
+      provider: AIProviderType;
+      apiKey?: string;
+      selectedModel?: string;
+      apiEndpoint?: string;
+      customProviderName?: string;
+      customProtocol?: AIProviderProtocol;
+    },
     userId?: string
   ): Promise<{ success: boolean; message: string }> {
     return request<{ success: boolean; message: string }>(
@@ -92,10 +130,16 @@ export const aiAgentApi = {
    * Test connection with a key or stored credentials.
    */
   async testConnection(
-    payload: { provider: AIProviderType; apiKey?: string; model?: string },
+    payload: {
+      provider: AIProviderType;
+      apiKey?: string;
+      model?: string;
+      apiEndpoint?: string;
+      customProtocol?: AIProviderProtocol;
+    },
     userId?: string
-  ): Promise<{ success: boolean; latencyMs: number; error?: string }> {
-    return request<{ success: boolean; latencyMs: number; error?: string }>(
+  ): Promise<{ success: boolean; latencyMs: number; error?: string; modelUsed?: string }> {
+    return request<{ success: boolean; latencyMs: number; error?: string; modelUsed?: string }>(
       '/test-connection',
       {
         method: 'POST',
