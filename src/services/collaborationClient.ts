@@ -116,14 +116,16 @@ class CollaborationManager {
     activeFile: string,
     cursor?: { lineNumber: number; column: number } | null,
     isInactive?: boolean,
-    isTyping?: boolean
+    isTyping?: boolean,
+    editingLine?: number | null
   ): void {
     provider.awareness.setLocalStateField('user', {
       id: user.id,
       name: user.name,
       color: user.color,
     });
-    provider.awareness.setLocalStateField('activeFile', activeFile);
+    const normalizedFile = activeFile.replace(/^\/+/, '');
+    provider.awareness.setLocalStateField('activeFile', normalizedFile);
     if (cursor !== undefined) {
       provider.awareness.setLocalStateField('cursor', cursor);
     }
@@ -132,6 +134,14 @@ class CollaborationManager {
     }
     if (isTyping !== undefined) {
       provider.awareness.setLocalStateField('isTyping', isTyping);
+    }
+    if (editingLine !== undefined) {
+      provider.awareness.setLocalStateField('editingLine', editingLine);
+      if (editingLine !== null) {
+        provider.awareness.setLocalStateField('editingTimestamp', Date.now());
+      } else {
+        provider.awareness.setLocalStateField('editingTimestamp', null);
+      }
     }
     provider.awareness.setLocalStateField('lastActive', Date.now());
   }
