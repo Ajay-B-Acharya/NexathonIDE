@@ -282,6 +282,9 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
             renderLineHighlight: 'all',
             glyphMargin: true,
             dragAndDrop: false,
+            readOnlyMessage: {
+              value: '🔒 Line is locked by another collaborator actively typing here.',
+            },
           }}
         />
       </div>

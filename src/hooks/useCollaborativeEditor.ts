@@ -192,11 +192,51 @@ export function useCollaborativeEditor({
     session.provider.on('sync', handleSync);
     setIsDocumentSynced(session.provider.synced);
 
+    // Enforce readOnly on Monaco if current cursor or selection overlaps a peer-locked line
+    const enforceLineLockReadOnly = (
+      targetSelection?: Monaco.Selection | null,
+      targetPosition?: Monaco.Position | null
+    ) => {
+      if (!editorInstance) return;
+      const sel = targetSelection || editorInstance.getSelection();
+      const pos = targetPosition || editorInstance.getPosition();
+      if (!sel && !pos) return;
+
+      const startLine = sel
+        ? Math.min(sel.startLineNumber, sel.endLineNumber)
+        : pos!.lineNumber;
+      const endLine = sel
+        ? Math.max(sel.startLineNumber, sel.endLineNumber)
+        : pos!.lineNumber;
+
+      let lockedBy: { line: number; userName: string; userColor: string } | null = null;
+      for (let l = startLine; l <= endLine; l++) {
+        const lock = lockedLinesMapRef.current.get(l);
+        if (lock) {
+          lockedBy = { line: l, userName: lock.userName, userColor: lock.userColor };
+          break;
+        }
+      }
+
+      if (lockedBy) {
+        editorInstance.updateOptions({ readOnly: true });
+        setLineLockNotice({
+          line: lockedBy.line,
+          userName: lockedBy.userName,
+          userColor: lockedBy.userColor,
+        });
+      } else {
+        editorInstance.updateOptions({ readOnly: false });
+        setLineLockNotice(null);
+      }
+    };
+
     // Attach peer awareness listener & calculate active line locks
     const handleAwareness = () => {
       const states = session.provider.awareness.getStates();
       const list: CollaboratorPresence[] = [];
       const newLockedMap = new Map<number, { userId: string; userName: string; userColor: string }>();
+      const currentNormActive = (activeFile.path || '').replace(/^\/+/, '');
 
       states.forEach((state, clientId) => {
         if (state && state.user) {
@@ -205,6 +245,8 @@ export function useCollaborativeEditor({
           const targetCursor = state.cursor as { lineNumber: number; column: number } | null | undefined;
           const isTyping = Boolean(state.isTyping);
           const lastActive = (state.lastActive as number) || Date.now();
+          const editingLine = state.editingLine as number | undefined;
+          const editingTimestamp = (state.editingTimestamp as number) || 0;
 
           list.push({
             clientId,
@@ -216,13 +258,18 @@ export function useCollaborativeEditor({
           });
 
           // Check if this collaborator locks a line for the local user:
-          if (
-            userObj.id !== user.id &&
-            targetActiveFile === activeFile.path &&
-            targetCursor?.lineNumber
-          ) {
-            const isRecent = Date.now() - lastActive < 8000;
-            if (isTyping || isRecent) {
+          const targetNormFile = (targetActiveFile || '').replace(/^\/+/, '');
+          if (userObj.id !== user.id && targetNormFile === currentNormActive) {
+            const isEditingActive = editingTimestamp > 0 && Date.now() - editingTimestamp < 5000;
+            const isTypingActive = isTyping || (Date.now() - lastActive < 4000);
+
+            if (editingLine && isEditingActive) {
+              newLockedMap.set(editingLine, {
+                userId: userObj.id,
+                userName: userObj.name,
+                userColor: userObj.color || '#FF7057',
+              });
+            } else if (targetCursor?.lineNumber && isTypingActive) {
               newLockedMap.set(targetCursor.lineNumber, {
                 userId: userObj.id,
                 userName: userObj.name,
@@ -260,10 +307,20 @@ export function useCollaborativeEditor({
           lockedDecorationsRef.current,
           decorations
         );
+
+        // Dynamically enforce read-only state if cursor/selection sits on a locked line
+        enforceLineLockReadOnly();
       }
     };
     session.provider.awareness.on('change', handleAwareness);
     handleAwareness();
+
+    // Periodic expiration timer for released line locks
+    const lockExpiryInterval = setInterval(() => {
+      if (lockedLinesMapRef.current.size > 0) {
+        handleAwareness();
+      }
+    }, 1000);
 
     // Ensure model reflects current Y.Text before binding to prevent blank flash
     if (session.ytext.length > 0) {
@@ -287,26 +344,50 @@ export function useCollaborativeEditor({
     };
     session.ytext.observe(handleYTextObserver);
 
-    // Track local cursor position in awareness
+    // Track local cursor position in awareness and enforce line lock
     const cursorDisposable = editorInstance.onDidChangeCursorPosition((e) => {
+      enforceLineLockReadOnly(null, e.position);
       collaborationClient.updateLocalAwareness(session.provider, user, activeFile.path, {
         lineNumber: e.position.lineNumber,
         column: e.position.column,
       });
     });
 
-    // Broadcast typing awareness when local user edits
+    const selectionDisposable = editorInstance.onDidChangeCursorSelection((e) => {
+      enforceLineLockReadOnly(e.selection, null);
+    });
+
+    // Broadcast typing awareness and guard line lock when local user edits
     const contentDisposable = editorInstance.onDidChangeModelContent((e) => {
       if (!e.isFlush && editorInstance.hasTextFocus()) {
+        // Guard against modifications on locked lines
+        const touchedLocked = e.changes.some((ch) => {
+          const startL = ch.range.startLineNumber;
+          const endL = ch.range.endLineNumber;
+          for (let l = startL; l <= endL; l++) {
+            if (lockedLinesMapRef.current.has(l)) return true;
+          }
+          return false;
+        });
+
+        if (touchedLocked) {
+          editorInstance.trigger('lineLock', 'undo', null);
+          enforceLineLockReadOnly();
+          return;
+        }
+
         const pos = editorInstance.getPosition();
-        collaborationClient.updateLocalAwareness(
-          session.provider,
-          user,
-          activeFile.path,
-          pos ? { lineNumber: pos.lineNumber, column: pos.column } : null,
-          false,
-          true
-        );
+        if (pos) {
+          collaborationClient.updateLocalAwareness(
+            session.provider,
+            user,
+            activeFile.path,
+            { lineNumber: pos.lineNumber, column: pos.column },
+            false,
+            true,
+            pos.lineNumber
+          );
+        }
 
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = setTimeout(() => {
@@ -317,13 +398,14 @@ export function useCollaborativeEditor({
             activeFile.path,
             cur ? { lineNumber: cur.lineNumber, column: cur.column } : null,
             false,
-            false
+            false,
+            null
           );
-        }, 1500);
+        }, 3000);
       }
     });
 
-    // Enforce line-level editing lock: block modifying key events on peer-locked lines
+    // Rapid keyboard interceptor to alert user immediately on keydown
     const keydownDisposable = editorInstance.onKeyDown((e) => {
       const selection = editorInstance.getSelection();
       const position = editorInstance.getPosition();
@@ -369,37 +451,31 @@ export function useCollaborativeEditor({
           e.keyCode === KeyCode.Meta;
 
         if (!isNavigation && !isCopyOrSelect && !isModifierOnly) {
-          // Block edit on the locked line
           e.preventDefault();
           e.stopPropagation();
-
-          setLineLockNotice({
-            line: lockedBy.line,
-            userName: lockedBy.userName,
-            userColor: lockedBy.userColor,
-          });
-
-          if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current);
-          noticeTimeoutRef.current = setTimeout(() => {
-            setLineLockNotice(null);
-          }, 2500);
+          enforceLineLockReadOnly(selection, position);
         }
       }
     });
 
     return () => {
+      clearInterval(lockExpiryInterval);
       session.provider.off('status', handleStatus);
       session.provider.off('sync', handleSync);
       session.provider.awareness.off('change', handleAwareness);
       cursorDisposable.dispose();
+      selectionDisposable.dispose();
       contentDisposable.dispose();
       keydownDisposable.dispose();
       session.ytext.unobserve(handleYTextObserver);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current);
-      if (editorInstance && lockedDecorationsRef.current.length > 0) {
-        editorInstance.deltaDecorations(lockedDecorationsRef.current, []);
-        lockedDecorationsRef.current = [];
+      if (editorInstance) {
+        editorInstance.updateOptions({ readOnly: false });
+        if (lockedDecorationsRef.current.length > 0) {
+          editorInstance.deltaDecorations(lockedDecorationsRef.current, []);
+          lockedDecorationsRef.current = [];
+        }
       }
       if (bindingRef.current) {
         bindingRef.current.destroy();
