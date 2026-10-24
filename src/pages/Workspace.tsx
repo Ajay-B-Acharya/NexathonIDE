@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import type * as Monaco from 'monaco-editor';
 import { Terminal, Play, Sparkles, ChevronUp, ChevronDown } from 'lucide-react';
 import { TopBar } from '../components/TopBar';
+import { StatusBar } from '../components/StatusBar';
 import { ThemeMode } from '../components/ThemeToggle';
 import { FileExplorer } from '../components/FileExplorer';
 import { EditorPane } from '../components/EditorPane';
@@ -77,6 +78,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [emptyFolders, setEmptyFolders] = useState<Set<string>>(new Set());
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const [projectProfile, setProjectProfile] = useState<ProjectProfile | null>(null);
+  const [cursorPosition, setCursorPosition] = useState<{ lineNumber: number; column: number } | null>(null);
 
   // Smart conflict resolution dialog state for concurrent creations
   const [conflictModalState, setConflictModalState] = useState<{
@@ -375,6 +377,8 @@ clearFileDraft(room.id, fileId);
     isDocumentSynced,
     collaborators,
     followState,
+    lineLockNotice,
+    lockedLines,
     startFollowing,
     stopFollowing,
     reconcileSession,
@@ -493,7 +497,16 @@ clearFileDraft(room.id, fileId);
           cleanPatchPath.endsWith(activeFile.path.replace(/^\/+/, '')));
 
       if (isActive) {
-        applyContentToSharedDoc(patch.patchedContent);
+        if (lockedLines.size > 0) {
+          const firstLock = Array.from(lockedLines.values())[0];
+          alert(`Cannot apply patch: Collaborator ${firstLock.userName} is actively editing a line in this file. Please wait until editing locks are released.`);
+          return;
+        }
+        const applied = applyContentToSharedDoc(patch.patchedContent);
+        if (!applied) {
+          alert('Cannot apply patch: Collaborator line locks prevent modifying this file at the moment.');
+          return;
+        }
       }
 
       const targetFile = files.find((f) => {
@@ -525,7 +538,7 @@ clearFileDraft(room.id, fileId);
         handleSelectFile(newFile);
       }
     },
-    [activeFile, files, room.id, applyContentToSharedDoc]
+    [activeFile, files, room.id, applyContentToSharedDoc, lockedLines]
   );
 
   const handleCreateFile = async (path: string, initialContent: string = '') => {
@@ -912,20 +925,12 @@ clearFileDraft(room.id, fileId);
         roomName={room.name}
         roomId={room.id}
         user={user}
-        theme={theme}
-        onToggleTheme={onToggleTheme}
-        connectionStatus={connectionStatus}
-        isDocumentSynced={isDocumentSynced}
         collaborators={collaborators}
         isRunning={isRunning}
         isSaving={isSaving}
         saveStatus={saveStatus}
         hasUnsavedChanges={dirtyFileIds.size > 0}
         isExplorerOpen={isExplorerOpen}
-        isRefreshing={isRefreshing}
-        refreshStatus={refreshStatus}
-        followState={followState}
-        onRefreshWorkspace={() => void handleRefreshWorkspace()}
         onFollowCollaborator={handleFollowCollaborator}
         onStopFollowing={stopFollowing}
         onToggleExplorer={() => setIsExplorerOpen((prev) => !prev)}
@@ -937,12 +942,8 @@ clearFileDraft(room.id, fileId);
         }}
         isAgentSidebarOpen={isAgentSidebarOpen}
         onToggleAgentSidebar={() => setIsAgentSidebarOpen((prev) => !prev)}
-        branch={room.branch}
-        repositoryUrl={room.repositoryUrl}
-        primaryLanguage={projectProfile?.primaryLanguage || room.primaryLanguage}
         onSwitchWorkspace={onSwitchWorkspace}
         onLogout={onLogout}
-        onOpenDiagnostics={() => setIsDiagnosticsOpen(true)}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -986,6 +987,7 @@ clearFileDraft(room.id, fileId);
             activeFile={activeFile}
             dirtyFileIds={dirtyFileIds}
             followState={followState}
+            lineLockNotice={lineLockNotice}
             currentUserId={user.id}
             theme={theme}
             onSelectTab={(file) => handleSelectFile(file)}
@@ -995,6 +997,9 @@ clearFileDraft(room.id, fileId);
             onEditorReady={(editor, monaco) => {
               setEditorInstance(editor);
               setMonacoInstance(monaco);
+              editor.onDidChangeCursorPosition((e) => {
+                setCursorPosition({ lineNumber: e.position.lineNumber, column: e.position.column });
+              });
             }}
             onSwitchWorkspace={onSwitchWorkspace}
           />
@@ -1172,6 +1177,24 @@ clearFileDraft(room.id, fileId);
           </>
         )}
       </div>
+
+      <StatusBar
+        roomId={room.id}
+        branch={room.branch}
+        repositoryUrl={room.repositoryUrl}
+        primaryLanguage={projectProfile?.primaryLanguage || room.primaryLanguage}
+        connectionStatus={connectionStatus}
+        isDocumentSynced={isDocumentSynced}
+        isRefreshing={isRefreshing}
+        refreshStatus={refreshStatus}
+        onRefreshWorkspace={() => void handleRefreshWorkspace()}
+        onOpenDiagnostics={() => setIsDiagnosticsOpen(true)}
+        followState={followState}
+        onStopFollowing={stopFollowing}
+        cursorPosition={cursorPosition}
+        theme={theme}
+        onToggleTheme={onToggleTheme}
+      />
 
       {filePendingDelete && (
         <ConfirmModal

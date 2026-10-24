@@ -7,8 +7,9 @@ import {
   Command,
   ChevronRight,
   Eye,
+  Lock,
 } from 'lucide-react';
-import { FollowState, SupportedLanguage, WorkspaceFile } from '../types';
+import { FollowState, LineLockNotice, SupportedLanguage, WorkspaceFile } from '../types';
 import { ThemeMode } from './ThemeToggle';
 
 interface EditorPaneProps {
@@ -16,6 +17,7 @@ interface EditorPaneProps {
   activeFile: WorkspaceFile | null;
   dirtyFileIds: Set<string>;
   followState?: FollowState | null;
+  lineLockNotice?: LineLockNotice | null;
   currentUserId?: string;
   theme?: ThemeMode;
   onSelectTab: (file: WorkspaceFile) => void;
@@ -44,6 +46,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   activeFile,
   dirtyFileIds,
   followState = null,
+  lineLockNotice = null,
   theme = 'dark',
   onSelectTab,
   onCloseTab,
@@ -244,6 +247,22 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
 
       {/* Monaco Editor Container */}
       <div className="relative flex-1 overflow-hidden">
+        {/* Real-time Line Lock Toast Notification */}
+        {lineLockNotice && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 px-4 py-2 rounded-xl bg-neutral-900/95 dark:bg-black/95 text-white border border-[#FF7057]/60 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 pointer-events-none select-none max-w-[90%]">
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF7057]/20 text-[#FF7057]">
+              <Lock className="h-3 w-3 stroke-[2.5]" />
+            </div>
+            <span className="text-xs font-medium text-neutral-200 truncate">
+              <span className="font-semibold text-white">Line {lineLockNotice.line}</span> is locked by{' '}
+              <span className="font-semibold" style={{ color: lineLockNotice.userColor || '#FF7057' }}>
+                {lineLockNotice.userName}
+              </span>
+              . Simultaneous editing on this line is disabled.
+            </span>
+          </div>
+        )}
+
         <Editor
           height="100%"
           theme={isDark ? 'nexathon-obsidian' : 'nexathon-titanium'}
@@ -263,6 +282,9 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
             renderLineHighlight: 'all',
             glyphMargin: true,
             dragAndDrop: false,
+            readOnlyMessage: {
+              value: '🔒 Line is locked by another collaborator actively typing here.',
+            },
           }}
         />
       </div>
