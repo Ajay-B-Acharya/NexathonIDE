@@ -381,6 +381,23 @@ const handleGetFile = async (req: Request, res: Response) => {
 app.get('/api/rooms/:roomId/files/:filePath', handleGetFile);
 app.get('/rooms/:roomId/files/:filePath', handleGetFile);
 
+// Idempotency store to safely handle retried creation requests
+interface IdempotencyRecord {
+  file: any;
+  status: number;
+  timestamp: number;
+}
+const idempotencyStore = new Map<string, IdempotencyRecord>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of idempotencyStore.entries()) {
+    if (now - record.timestamp > 10 * 60 * 1000) {
+      idempotencyStore.delete(key);
+    }
+  }
+}, 60 * 1000);
+
 const handleCreateFile = async (req: Request, res: Response) => {
   try {
     const token = getBearerToken(req);
@@ -388,52 +405,207 @@ const handleCreateFile = async (req: Request, res: Response) => {
     const rawPath = req.body.path || req.body.filePath || req.body.name;
     const content = req.body.content || '';
     const language = req.body.language;
-    const expectedVersion = req.body.expectedVersion;
+    const idempotencyKey = String(req.headers['idempotency-key'] || req.body.idempotencyKey || '').trim();
 
     if (!rawPath) {
       return res.status(400).json({ error: 'Path is required' });
     }
 
-    const filePath = String(rawPath);
-    const determinedLang = language || getLanguageFromPath(filePath);
+    const cleanPath = String(rawPath).trim().replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+    if (!cleanPath) {
+      return res.status(400).json({ error: 'Valid path is required' });
+    }
+    if (cleanPath.includes('..')) {
+      return res.status(400).json({ error: 'Path cannot contain directory traversal (..)' });
+    }
 
-    if (supabaseConnected && isValidUUID(roomId)) {
-      try {
-        const savedFile = await WorkspaceService.saveFile({
-          roomId,
-          path: filePath,
-          content,
-          language: determinedLang,
-          expectedVersion,
-          userToken: token,
-        });
-        return res.status(201).json(savedFile);
-      } catch (dbErr: any) {
-        if (dbErr?.message?.includes('CONFLICT')) {
-          return res.status(409).json({ error: dbErr.message });
-        }
-        console.warn('Notice: Database save error, falling back to memory store:', dbErr?.message);
+    const fileName = cleanPath.split('/').pop() || cleanPath;
+    const isFolderPlaceholder = fileName === '.gitkeep';
+    const itemType = isFolderPlaceholder ? 'folder' : 'file';
+    const displayPath = isFolderPlaceholder ? cleanPath.replace(/\/\.gitkeep$/, '') : cleanPath;
+    const displayName = isFolderPlaceholder ? displayPath.split('/').pop() || displayPath : fileName;
+
+    // Idempotency: If this exact creation request was already processed, return the cached result
+    if (idempotencyKey) {
+      const cacheKey = `${roomId}:${idempotencyKey}`;
+      const cached = idempotencyStore.get(cacheKey);
+      if (cached) {
+        return res.status(cached.status).json(cached.file);
       }
     }
 
-    const key = `${roomId}:${filePath}`;
-    const existing = memoryFiles.get(key);
-    const file = {
-      id: existing?.id || uuidv4(),
+    const determinedLang = language || getLanguageFromPath(cleanPath);
+
+    if (supabaseConnected && isValidUUID(roomId)) {
+      try {
+        const savedFile = await WorkspaceService.createFile({
+          roomId,
+          path: cleanPath,
+          content,
+          language: determinedLang,
+          userToken: token,
+        });
+
+        if (idempotencyKey) {
+          idempotencyStore.set(`${roomId}:${idempotencyKey}`, {
+            file: savedFile,
+            status: 201,
+            timestamp: Date.now(),
+          });
+        }
+
+        return res.status(201).json(savedFile);
+      } catch (dbErr: any) {
+        if (dbErr?.message?.includes('CONFLICT')) {
+          let existingItem: any = null;
+          try {
+            const found = await WorkspaceService.loadFile(roomId, cleanPath, token);
+            if (found) {
+              existingItem = {
+                id: found.id,
+                path: found.path,
+                name: found.name,
+                updatedAt: found.updatedAt,
+              };
+            }
+          } catch {}
+
+          return res.status(409).json({
+            error: dbErr.message,
+            code: 'CONFLICT_EXISTS',
+            conflict: {
+              type: itemType,
+              path: displayPath,
+              name: displayName,
+              existingItem,
+            },
+          });
+        }
+        console.warn('Notice: Database create error, falling back to memory store:', dbErr?.message);
+      }
+    }
+
+    // In-memory store (for demo workspaces or offline fallback)
+    const exactKey = `${roomId}:${cleanPath}`;
+    const existingExact = memoryFiles.get(exactKey);
+
+    if (existingExact) {
+      return res.status(409).json({
+        error: `CONFLICT: ${itemType === 'folder' ? 'Folder' : 'File'} "${displayPath}" already exists.`,
+        code: 'CONFLICT_EXISTS',
+        conflict: {
+          type: itemType,
+          path: displayPath,
+          name: displayName,
+          existingItem: {
+            id: existingExact.id,
+            path: existingExact.path,
+            name: existingExact.name || displayName,
+            updatedAt: existingExact.updated_at,
+          },
+        },
+      });
+    }
+
+    // Case-insensitive / folder vs file collision checks
+    for (const f of memoryFiles.values()) {
+      if (f.roomId === roomId || f.room_id === roomId) {
+        const existingPath = String(f.path).replace(/^\/+/, '');
+
+        // Exact or case collision in same directory
+        if (existingPath.toLowerCase() === cleanPath.toLowerCase()) {
+          return res.status(409).json({
+            error: `CONFLICT: An item with path "${displayPath}" already exists.`,
+            code: 'CONFLICT_EXISTS',
+            conflict: {
+              type: itemType,
+              path: displayPath,
+              name: displayName,
+              existingItem: {
+                id: f.id,
+                path: f.path,
+                name: f.name || displayName,
+                updatedAt: f.updated_at,
+              },
+            },
+          });
+        }
+
+        // Folder vs File collision: Cannot create a file where a folder exists
+        if (existingPath.toLowerCase().startsWith(`${cleanPath.toLowerCase()}/`)) {
+          return res.status(409).json({
+            error: `CONFLICT: Cannot create file "${cleanPath}" because a folder with that name already exists.`,
+            code: 'CONFLICT_EXISTS',
+            conflict: {
+              type: 'folder',
+              path: displayPath,
+              name: displayName,
+              existingItem: {
+                id: f.id,
+                path: f.path,
+                name: displayName,
+                updatedAt: f.updated_at,
+              },
+            },
+          });
+        }
+
+        // Folder vs File collision: Cannot create an item inside an existing file
+        const segments = cleanPath.split('/');
+        if (segments.length > 1) {
+          let prefix = '';
+          for (let i = 0; i < segments.length - 1; i++) {
+            prefix = prefix ? `${prefix}/${segments[i]}` : segments[i];
+            if (existingPath.toLowerCase() === prefix.toLowerCase()) {
+              return res.status(409).json({
+                error: `CONFLICT: Cannot create item inside "${prefix}" because it is a file, not a folder.`,
+                code: 'CONFLICT_EXISTS',
+                conflict: {
+                  type: 'file',
+                  path: prefix,
+                  name: segments[i],
+                  existingItem: {
+                    id: f.id,
+                    path: f.path,
+                    name: segments[i],
+                    updatedAt: f.updated_at,
+                  },
+                },
+              });
+            }
+          }
+        }
+      }
+    }
+
+    const newFile = {
+      id: uuidv4(),
       roomId,
       room_id: roomId,
-      path: filePath,
+      path: cleanPath,
+      name: fileName,
       content,
       language: determinedLang,
-      version: (existing?.version || 0) + 1,
+      version: 1,
+      created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    memoryFiles.set(key, file);
-    res.status(201).json(file);
+
+    memoryFiles.set(exactKey, newFile);
+
+    if (idempotencyKey) {
+      idempotencyStore.set(`${roomId}:${idempotencyKey}`, {
+        file: newFile,
+        status: 201,
+        timestamp: Date.now(),
+      });
+    }
+
+    return res.status(201).json(newFile);
   } catch (error: any) {
-    console.error('Error creating/updating file:', error);
+    console.error('Error creating file:', error);
     const status = error.message?.includes('CONFLICT') ? 409 : 500;
-    res.status(status).json({ error: error.message || 'Failed to save file' });
+    res.status(status).json({ error: error.message || 'Failed to create file' });
   }
 };
 
@@ -452,6 +624,9 @@ const handleUpdateFile = async (req: Request, res: Response) => {
         const updated = await WorkspaceService.updateFileContent(roomId, fileIdentifier, content, path, language, token);
         if (updated) return res.json(updated);
       } catch (err: any) {
+        if (err?.message?.includes('CONFLICT') || (err as any).code === '23505') {
+          return res.status(409).json({ error: 'CONFLICT: Target path already exists', code: 'CONFLICT_EXISTS' });
+        }
         console.warn('Notice: Could not update file in DB, checking memory:', err?.message);
       }
     }
@@ -468,14 +643,34 @@ const handleUpdateFile = async (req: Request, res: Response) => {
     if (!file) {
       return res.status(404).json({ error: 'File not found' });
     }
+
+    // Rename collision check for in-memory store
+    if (path !== undefined) {
+      const cleanNewPath = String(path).trim().replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+      if (cleanNewPath.toLowerCase() !== file.path.toLowerCase()) {
+        for (const other of memoryFiles.values()) {
+          if ((other.roomId === roomId || other.room_id === roomId) && other.id !== file.id) {
+            if (other.path.toLowerCase() === cleanNewPath.toLowerCase()) {
+              return res.status(409).json({
+                error: `CONFLICT: Target path "${cleanNewPath}" already exists.`,
+                code: 'CONFLICT_EXISTS',
+              });
+            }
+          }
+        }
+      }
+      file.path = cleanNewPath;
+      file.name = cleanNewPath.split('/').pop() || cleanNewPath;
+    }
+
     if (content !== undefined) file.content = content;
-    if (path !== undefined) file.path = path;
     if (language !== undefined) file.language = language;
     file.updated_at = new Date().toISOString();
     res.json(file);
   } catch (error: any) {
     console.error('Error updating file:', error);
-    res.status(500).json({ error: error.message || 'Failed to update file' });
+    const status = error.message?.includes('CONFLICT') ? 409 : 500;
+    res.status(status).json({ error: error.message || 'Failed to update file' });
   }
 };
 
