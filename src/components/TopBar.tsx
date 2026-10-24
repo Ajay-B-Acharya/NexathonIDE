@@ -12,7 +12,6 @@ import {
   ArrowLeft,
   RotateCw,
   Check,
-  Shield,
   Eye,
   Share2,
   AlertCircle,
@@ -39,7 +38,6 @@ interface TopBarProps {
   isExplorerOpen: boolean;
   isRefreshing?: boolean;
   refreshStatus?: 'idle' | 'success' | 'error';
-  activeReservationsCount?: number;
   followState?: FollowState | null;
   onRefreshWorkspace?: () => void;
   onFollowCollaborator?: (userId: string, name: string, color: string, activeFile?: string) => void;
@@ -71,7 +69,6 @@ export const TopBar: React.FC<TopBarProps> = ({
   isExplorerOpen,
   isRefreshing = false,
   refreshStatus = 'idle',
-  activeReservationsCount = 0,
   followState,
   onRefreshWorkspace,
   onFollowCollaborator,
@@ -214,17 +211,6 @@ export const TopBar: React.FC<TopBarProps> = ({
             <AlertCircle className="h-3 w-3" />
             <span className="hidden sm:inline">Diagnose</span>
           </button>
-        )}
-
-        {/* Active Reservations Counter Badge */}
-        {activeReservationsCount > 0 && (
-          <div
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-[#FF7057]/30 bg-[#FF7057]/10 px-2 py-0.5 text-[11px] font-medium text-[#FF7057]"
-            title={`${activeReservationsCount} active code section reservation(s)`}
-          >
-            <Shield className="h-3 w-3 text-[#FF7057]" />
-            <span>{activeReservationsCount} Reserved</span>
-          </div>
         )}
       </div>
 
