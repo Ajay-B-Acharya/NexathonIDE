@@ -1,0 +1,761 @@
+/* ==========================================================================
+   NexathonIDE - 7-Second Cinematic Developer Product Experience
+   Scoped strictly to the Landing page.
+   
+   CHOREOGRAPHED TIMELINE (0.0s - 7.0s):
+   - Phase 1 (0.0s - 1.0s): System Awakening (Central focus, radar rings, grid rails)
+   - Phase 2 (0.7s - 2.2s): Logo Reveal (Scale, SVG stroke draw, flash, sheen sweep)
+   - Phase 3 (1.5s - 2.8s): Wordmark Materialization (Masked rise, specular sweep)
+   - Phase 4 (2.4s - 4.1s): Main Heading Word-by-Word ("Distributed" -> "Real-Time" -> "Coding.")
+   - Phase 5 (3.2s - 5.0s): Collaboration Network Ignites (Paths draw, nodes light, packets travel)
+   - Phase 6 (4.0s - 5.5s): Description & CTA Buttons Arrival (Smooth float-in, tactile states)
+   - Phase 7 (5.0s - 7.0s): Final Composition Settles into serene, rock-solid premium state
+   ========================================================================== */
+
+/* ==========================================================================
+   PHASE 1 & 5: COLLABORATIVE NETWORK & BACKGROUND SYSTEM AWAKENING
+   ========================================================================== */
+.hero-cinematic-network-root {
+  opacity: 0;
+  animation: cinematicNetworkFadeIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+  will-change: opacity, transform;
+}
+
+@keyframes cinematicNetworkFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Radar Aperture Rings Expanding from Focal Center */
+.cinematic-radar-ring {
+  transform-origin: 600px 220px;
+  opacity: 0;
+}
+
+.cinematic-radar-ring.ring-1 {
+  animation: radarExpand1 2.2s cubic-bezier(0.1, 0.8, 0.2, 1) 0.3s forwards;
+}
+
+.cinematic-radar-ring.ring-2 {
+  animation: radarExpand2 2.6s cubic-bezier(0.1, 0.8, 0.2, 1) 0.6s forwards;
+}
+
+.cinematic-radar-ring.ring-3 {
+  animation: radarExpand3 3.0s cubic-bezier(0.1, 0.8, 0.2, 1) 0.9s forwards;
+}
+
+.cinematic-radar-ring.ring-4 {
+  animation: radarExpand4 3.4s cubic-bezier(0.1, 0.8, 0.2, 1) 1.2s forwards;
+}
+
+@keyframes radarExpand1 {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  30% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+}
+
+@keyframes radarExpand2 {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  40% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+}
+
+@keyframes radarExpand3 {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0.22;
+    transform: scale(1);
+  }
+}
+
+@keyframes radarExpand4 {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0.15;
+    transform: scale(1);
+  }
+}
+
+/* Architectural Rails */
+.cinematic-rail {
+  opacity: 0;
+  animation: railMaterialize 1.6s ease-out 0.2s forwards;
+}
+
+@keyframes railMaterialize {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.45;
+  }
+}
+
+/* Network Connection Paths: Drawn dynamically with stroke-dashoffset */
+.cinematic-network-path {
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-fill-mode: forwards;
+}
+
+.path-west-center {
+  animation-name: pathDraw;
+  animation-duration: 2.0s;
+  animation-delay: 0.8s;
+}
+
+.path-east-center {
+  animation-name: pathDraw;
+  animation-duration: 2.0s;
+  animation-delay: 0.9s;
+}
+
+.path-nw-center {
+  animation-name: pathDraw;
+  animation-duration: 1.8s;
+  animation-delay: 1.1s;
+}
+
+.path-ne-center {
+  animation-name: pathDraw;
+  animation-duration: 1.8s;
+  animation-delay: 1.2s;
+}
+
+.path-vertical-synapse {
+  stroke-dasharray: 240;
+  stroke-dashoffset: 240;
+  animation-name: pathDraw;
+  animation-duration: 1.6s;
+  animation-delay: 1.4s;
+}
+
+.path-south-mesh {
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  animation-name: pathDraw;
+  animation-duration: 2.2s;
+  animation-delay: 1.8s;
+}
+
+.path-diag-1, .path-diag-2 {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation-name: pathDraw;
+  animation-duration: 1.8s;
+  animation-delay: 2.0s;
+}
+
+@keyframes pathDraw {
+  0% {
+    stroke-dashoffset: 400;
+    opacity: 0.2;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.85;
+  }
+}
+
+/* Distributed Nodes (Peer Terminals) */
+.cinematic-node {
+  opacity: 0;
+  transform-origin: center;
+  animation: nodeIgnite 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.node-master { animation-delay: 0.7s; }
+.node-w1 { animation-delay: 1.2s; }
+.node-w2 { animation-delay: 1.5s; }
+.node-nw { animation-delay: 1.7s; }
+.node-e1 { animation-delay: 1.3s; }
+.node-e2 { animation-delay: 1.6s; }
+.node-ne { animation-delay: 1.8s; }
+.node-sc { animation-delay: 2.2s; }
+.node-sw { animation-delay: 2.4s; }
+.node-se { animation-delay: 2.5s; }
+
+@keyframes nodeIgnite {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Node Breathing Pulse (Ambient Phase 7) */
+.cinematic-node-pulse {
+  animation: nodeBreathe 4s ease-in-out 3.5s infinite alternate;
+}
+
+@keyframes nodeBreathe {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+}
+
+/* Data Packets Traveling Along Connecting Rails */
+.cinematic-packet {
+  opacity: 0;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+.packet-west {
+  animation: packetTravelWest 5.5s 2.2s infinite;
+}
+
+.packet-east {
+  animation: packetTravelEast 6.0s 2.8s infinite;
+}
+
+.packet-vertical {
+  animation: packetTravelVertical 4.8s 3.2s infinite;
+}
+
+.packet-nw {
+  animation: packetTravelNW 5.2s 3.6s infinite;
+}
+
+@keyframes packetTravelWest {
+  0% { cx: 220; cy: 360; opacity: 0; }
+  10% { opacity: 1; }
+  45% { cx: 380; cy: 360; opacity: 1; }
+  75% { cx: 480; cy: 280; opacity: 0.9; }
+  90% { cx: 600; cy: 220; opacity: 0; }
+  100% { cx: 600; cy: 220; opacity: 0; }
+}
+
+@keyframes packetTravelEast {
+  0% { cx: 980; cy: 360; opacity: 0; }
+  10% { opacity: 1; }
+  45% { cx: 820; cy: 360; opacity: 1; }
+  75% { cx: 720; cy: 280; opacity: 0.9; }
+  90% { cx: 600; cy: 220; opacity: 0; }
+  100% { cx: 600; cy: 220; opacity: 0; }
+}
+
+@keyframes packetTravelVertical {
+  0% { cx: 600; cy: 220; opacity: 0; }
+  15% { opacity: 1; }
+  85% { cx: 600; cy: 440; opacity: 0.9; }
+  100% { cx: 600; cy: 440; opacity: 0; }
+}
+
+@keyframes packetTravelNW {
+  0% { cx: 320; cy: 120; opacity: 0; }
+  15% { opacity: 1; }
+  50% { cx: 460; cy: 120; opacity: 1; }
+  85% { cx: 600; cy: 220; opacity: 0.8; }
+  100% { cx: 600; cy: 220; opacity: 0; }
+}
+
+
+/* ==========================================================================
+   PHASE 2: THE NEXATHONIDE LOGO REVEAL (0.7s - 2.2s)
+   ========================================================================== */
+.hero-logo-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ambient Ring behind the Logo Box */
+.hero-logo-aperture-ring {
+  position: absolute;
+  inset: -12px;
+  border-radius: 28px;
+  border: 1.5px solid rgba(255, 112, 87, 0.4);
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+  animation: logoAperturePulse 1.8s cubic-bezier(0.16, 1, 0.3, 1) 0.7s forwards;
+}
+
+@keyframes logoAperturePulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+    border-color: rgba(255, 112, 87, 0.8);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.15);
+    border-color: rgba(255, 112, 87, 0.6);
+    box-shadow: 0 0 24px rgba(255, 112, 87, 0.35);
+  }
+  100% {
+    opacity: 0.3;
+    transform: scale(1.04);
+    border-color: rgba(255, 112, 87, 0.25);
+    box-shadow: none;
+  }
+}
+
+/* Logo Box Container */
+.hero-logo-box {
+  position: relative;
+  overflow: hidden;
+  background-color: #FF7057 !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  transform: scale(0.5);
+  animation: heroLogoAssemble 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.7s forwards;
+  will-change: transform, opacity, box-shadow;
+}
+
+@keyframes heroLogoAssemble {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+    box-shadow: 0 2px 4px rgba(255, 112, 87, 0.1);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.06);
+    box-shadow: 0 10px 32px rgba(255, 112, 87, 0.48), 0 0 20px rgba(255, 112, 87, 0.3);
+  }
+  80% {
+    transform: scale(0.98);
+    box-shadow: 0 6px 18px rgba(255, 112, 87, 0.32);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 4px 14px rgba(255, 112, 87, 0.25);
+  }
+}
+
+/* Diagonal Specular Sheen across Logo Tile */
+.hero-logo-sheen {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    135deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.65) 50%,
+    transparent 65%
+  );
+  transform: rotate(-35deg) translateX(-150%);
+  pointer-events: none;
+  animation: logoSheenSweep 1.2s cubic-bezier(0.16, 1, 0.3, 1) 1.6s forwards;
+}
+
+@keyframes logoSheenSweep {
+  0% {
+    transform: rotate(-35deg) translateX(-150%);
+  }
+  100% {
+    transform: rotate(-35deg) translateX(150%);
+  }
+}
+
+/* SVG Code Brackets Stroke Drawing */
+.hero-logo-bracket {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: heroBracketDraw 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.0s forwards;
+}
+
+@keyframes heroBracketDraw {
+  0% {
+    stroke-dashoffset: 24;
+    opacity: 0.1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+/* Center Slash - Progressive Draw & Brilliant Optical Ignition */
+.hero-logo-center {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: heroCenterDrawFlash 1.1s cubic-bezier(0.16, 1, 0.3, 1) 1.1s forwards;
+}
+
+@keyframes heroCenterDrawFlash {
+  0% {
+    stroke-dashoffset: 30;
+    opacity: 0.1;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+    stroke: #FFFFFF;
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 1)) drop-shadow(0 0 16px rgba(255, 112, 87, 0.8));
+  }
+  80% {
+    stroke: #FFFFFF;
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.6));
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+    stroke: currentColor;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+}
+
+
+/* ==========================================================================
+   PHASE 3: THE WORDMARK MATERIALIZES (1.5s - 2.8s)
+   ========================================================================== */
+.hero-wordmark-container {
+  position: relative;
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(22px);
+  animation: wordmarkMaterialize 1.0s cubic-bezier(0.16, 1, 0.3, 1) 1.6s forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes wordmarkMaterialize {
+  0% {
+    opacity: 0;
+    transform: translateY(22px);
+    filter: blur(4px);
+  }
+  60% {
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+  }
+}
+
+/* Light beam shimmer passing across the Wordmark */
+.hero-wordmark-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 112, 87, 0.7) 50%,
+    transparent 100%
+  );
+  transform: translateX(-120%);
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  animation: wordmarkShimmerSweep 1.1s cubic-bezier(0.16, 1, 0.3, 1) 2.2s forwards;
+}
+
+@keyframes wordmarkShimmerSweep {
+  0% {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+}
+
+
+/* ==========================================================================
+   PHASE 4: MAIN HEADING WORD-BY-WORD REVEAL (2.4s - 4.1s)
+   ========================================================================== */
+.hero-word-inline {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(26px);
+  animation-duration: 0.85s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: forwards;
+  will-change: transform, opacity, filter;
+}
+
+/* Word 1: "Distributed" */
+.hero-word-1 {
+  animation-name: wordCinematicReveal;
+  animation-delay: 2.4s;
+}
+
+/* Word 2: "Real-Time" */
+.hero-word-2 {
+  animation-name: wordCinematicReveal;
+  animation-delay: 2.9s;
+}
+
+/* Word 3: "Coding." */
+.hero-word-3 {
+  animation-name: wordCinematicRevealLast;
+  animation-delay: 3.4s;
+}
+
+@keyframes wordCinematicReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(26px);
+    filter: blur(3px);
+  }
+  50% {
+    opacity: 0.9;
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes wordCinematicRevealLast {
+  0% {
+    opacity: 0;
+    transform: translateY(26px);
+    filter: blur(3px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+  }
+  75% {
+    text-shadow: 0 0 16px rgba(255, 112, 87, 0.4);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+    text-shadow: none;
+  }
+}
+
+
+/* ==========================================================================
+   PHASE 6: DESCRIPTION & CTA BUTTONS ARRIVAL (4.0s - 5.5s)
+   ========================================================================== */
+.hero-desc {
+  opacity: 0;
+  transform: translateY(18px);
+  animation: heroDescFloatIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) 4.2s forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes heroDescFloatIn {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+  }
+}
+
+.hero-actions {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: heroActionsFloatIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) 4.8s forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes heroActionsFloatIn {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stagger for secondary button */
+.hero-btn-secondary-wrap {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: heroSecondaryButtonFloatIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 5.1s forwards;
+}
+
+@keyframes heroSecondaryButtonFloatIn {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Tactile Hover and Click Interactions */
+.hero-btn-primary {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease;
+}
+
+.hero-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(255, 112, 87, 0.36);
+}
+
+.hero-btn-primary:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 8px rgba(255, 112, 87, 0.22);
+}
+
+.hero-btn-secondary {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease, color 0.15s ease;
+}
+
+.hero-btn-secondary:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 112, 87, 0.5);
+  box-shadow: 0 6px 16px rgba(212, 198, 180, 0.4);
+}
+
+.hero-btn-secondary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+
+/* ==========================================================================
+   PHASE 7: AMBIENT SERENITY (5.5s - 7.0s and beyond)
+   ========================================================================== */
+.cinematic-hub-glow {
+  animation: hubBreathingGlow 8s ease-in-out 4.0s infinite alternate;
+}
+
+@keyframes hubBreathingGlow {
+  0% {
+    opacity: 0.7;
+    r: 250;
+  }
+  50% {
+    opacity: 1;
+    r: 280;
+  }
+  100% {
+    opacity: 0.7;
+    r: 250;
+  }
+}
+
+.cinematic-hub-ring {
+  transform-origin: center;
+  animation: hubRingRotate 24s linear infinite;
+}
+
+@keyframes hubRingRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* ==========================================================================
+   ACCESSIBILITY: PREFERS-REDUCED-MOTION
+   Immediate, fully visible, static composition without animation delays
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .hero-cinematic-network-root,
+  .cinematic-radar-ring,
+  .cinematic-rail,
+  .cinematic-network-path,
+  .cinematic-node,
+  .cinematic-node-pulse,
+  .cinematic-packet,
+  .hero-logo-aperture-ring,
+  .hero-logo-box,
+  .hero-logo-sheen,
+  .hero-logo-bracket,
+  .hero-logo-center,
+  .hero-wordmark-container,
+  .hero-wordmark-shimmer,
+  .hero-word-inline,
+  .hero-desc,
+  .hero-actions,
+  .hero-btn-secondary-wrap,
+  .cinematic-hub-glow,
+  .cinematic-hub-ring {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    stroke-dashoffset: 0 !important;
+    filter: none !important;
+    text-shadow: none !important;
+  }
+
+  .cinematic-packet {
+    display: none !important;
+  }
+
+  .hero-btn-primary:hover,
+  .hero-btn-primary:active,
+  .hero-btn-secondary:hover,
+  .hero-btn-secondary:active {
+    transform: none !important;
+  }
+}

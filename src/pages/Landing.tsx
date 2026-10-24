@@ -13,9 +13,10 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { UserProfile } from '../types';
-import { AmbientCollaborationCanvas } from '../components/AmbientCollaborationCanvas';
 import { AdaptiveBackground } from '../components/AdaptiveBackground';
+import { HeroCinematicNetwork } from '../components/HeroCinematicNetwork';
 import { ThemeMode, ThemeToggle } from '../components/ThemeToggle';
+import './Landing.css';
 
 interface LandingProps {
   existingUser: UserProfile | null;
@@ -152,9 +153,6 @@ export const Landing: React.FC<LandingProps> = ({
       {/* Theme-Adaptive CAD Grid + Aurora Background */}
       <AdaptiveBackground variant="landing" theme={theme} />
 
-      {/* Clean Architectural Grid Background & Ambient Canvas */}
-      <AmbientCollaborationCanvas theme={theme} />
-
       {/* 1. COMMAND HEADER */}
       <header className="sticky top-0 z-40 border-b theme-border bg-[var(--bg-root)]/90 backdrop-blur-xl transition-all duration-200 shrink-0">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3.5">
@@ -204,32 +202,65 @@ export const Landing: React.FC<LandingProps> = ({
 
       {/* 2. HERO SECTION */}
       <section className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 py-12 sm:py-16 text-center flex flex-col items-center justify-center min-h-[calc(100vh-4.25rem)] shrink-0">
-        {/* Prominent Hero Brand Lockup: Logo Mark + Wordmark */}
-        <div className="inline-flex items-center gap-3 sm:gap-3.5 mb-5 sm:mb-6 select-none">
-          <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-[#FF7057] text-white shadow-xs neu-button">
-            <Code2 className="h-6 w-6 sm:h-6.5 sm:w-6.5" />
+        {/* Phase 1 & 5: Cinematic Collaborative Topology Network Visualization */}
+        <HeroCinematicNetwork theme={theme} />
+
+        {/* Phase 2: The Logo - Centered at top of hero, above product name, animated entrance */}
+        <div className="hero-logo-wrapper mb-3 select-none">
+          {/* Expanding Geometric Aperture Ring */}
+          <div className="hero-logo-aperture-ring" aria-hidden="true" />
+
+          {/* Logo Tile with Stroke Draw & Specular Sweep */}
+          <div className="hero-logo-box flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-[#FF7057] text-white neu-button select-none">
+            {/* Diagonal Specular Sheen Sweep */}
+            <div className="hero-logo-sheen" aria-hidden="true" />
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-7 w-7 sm:h-8 sm:w-8 relative z-10"
+              aria-hidden="true"
+            >
+              {/* Left bracket path */}
+              <path d="m6 8-4 4 4 4" className="hero-logo-bracket" />
+              {/* Center slash path */}
+              <path d="m14.5 4-5 16" className="hero-logo-center" />
+              {/* Right bracket path */}
+              <path d="m18 16 4-4-4-4" className="hero-logo-bracket" />
+            </svg>
           </div>
-          <span className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight theme-text-primary font-heading">
+        </div>
+
+        {/* Phase 3: The Product Name - Immediately below logo */}
+        <div className="hero-wordmark-container mb-4 sm:mb-5 select-none">
+          <div className="hero-wordmark-shimmer" aria-hidden="true" />
+          <span className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight theme-text-primary font-heading relative z-10">
             Nexathon<span className="text-[#FF7057]">IDE</span>
           </span>
         </div>
 
-        {/* Primary Descriptive Heading */}
-        <h1 className="mx-auto max-w-4xl text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight theme-text-primary leading-tight font-heading">
-          Distributed Real-Time Coding.
+        {/* Phase 4: The Main Heading - Dominant, word-by-word reveal */}
+        <h1 className="hero-heading mx-auto max-w-4xl text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight theme-text-primary leading-tight font-heading">
+          <span className="hero-word-inline hero-word-1">Distributed</span>{' '}
+          <span className="hero-word-inline hero-word-2">Real-Time</span>{' '}
+          <span className="hero-word-inline hero-word-3">Coding.</span>
         </h1>
 
-        {/* Clean, Persuasive Subheadline */}
-        <p className="mx-auto mt-5 sm:mt-6 max-w-2xl text-sm sm:text-base md:text-lg font-normal leading-relaxed theme-text-secondary px-2">
+        {/* Phase 6: The Existing Description - Fades in smoothly */}
+        <p className="hero-desc mx-auto mt-5 sm:mt-6 max-w-2xl text-sm sm:text-base md:text-lg font-normal leading-relaxed theme-text-secondary px-2">
           Conflict-free collaborative editing with CRDTs, instant in-browser Python &amp; JavaScript WebAssembly runtimes, and autonomous AI code guard rails.
         </p>
 
-        {/* Action CTAs */}
-        <div className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-3 w-full max-w-md sm:max-w-none mx-auto px-4">
+        {/* Phase 6: The Existing Buttons - Enter after text with premium hover & active interaction */}
+        <div className="hero-actions mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-3 w-full max-w-md sm:max-w-none mx-auto px-4">
           <button
             type="button"
             onClick={handlePrimaryCTA}
-            className="w-full sm:w-auto group relative inline-flex items-center justify-center gap-2.5 rounded-xl bg-[#FF7057] hover:bg-[#F26049] px-6 py-3.5 text-sm font-semibold text-white neu-button hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer min-h-[44px]"
+            className="hero-btn-primary w-full sm:w-auto group relative inline-flex items-center justify-center gap-2.5 rounded-xl bg-[#FF7057] hover:bg-[#F26049] px-6 py-3.5 text-sm font-semibold text-white neu-button cursor-pointer min-h-[44px]"
           >
             <span>
               {existingUser ? `Resume Workspace (${existingUser.name})` : 'Sign In / Sign Up'}
@@ -237,15 +268,17 @@ export const Landing: React.FC<LandingProps> = ({
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </button>
 
-          <button
-            type="button"
-            onClick={handleGuestDemoClick}
-            disabled={isLaunchingDemo}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border theme-border theme-bg-surface-2 hover:border-[#FF7057]/50 px-5 py-3.5 text-sm font-semibold theme-text-primary hover:text-[#FF7057] transition-all cursor-pointer min-h-[44px] disabled:opacity-50 neu-button"
-          >
-            <Zap className="h-4 w-4 text-[#FF7057]" />
-            <span>Instant Guest Demo</span>
-          </button>
+          <div className="hero-btn-secondary-wrap w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={handleGuestDemoClick}
+              disabled={isLaunchingDemo}
+              className="hero-btn-secondary w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border theme-border theme-bg-surface-2 hover:border-[#FF7057]/50 px-5 py-3.5 text-sm font-semibold theme-text-primary hover:text-[#FF7057] cursor-pointer min-h-[44px] disabled:opacity-50 neu-button"
+            >
+              <Zap className="h-4 w-4 text-[#FF7057]" />
+              <span>Instant Guest Demo</span>
+            </button>
+          </div>
         </div>
       </section>
 
