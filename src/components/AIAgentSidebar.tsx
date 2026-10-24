@@ -430,32 +430,35 @@ export const AIAgentSidebar: React.FC<AIAgentSidebarProps> = ({
       aria-label="Personal AI Coding Agent"
     >
       {/* 1. Header */}
-      <header className="flex h-12 shrink-0 items-center justify-between border-b theme-border px-3.5 theme-bg-surface-1">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FF7057] text-white neu-button shadow-xs">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b theme-border px-3.5 theme-bg-surface-1">
+        <div className="flex items-center gap-2 min-w-0 mr-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FF7057] text-white neu-button shadow-xs shrink-0">
             <Sparkles className="h-4 w-4" />
           </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-heading font-bold text-xs theme-text-primary">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-heading font-bold text-xs theme-text-primary shrink-0">
                 Nexathon Agent
               </span>
-              <span className="relative flex h-2 w-2">
+              <span className="relative flex h-2 w-2 shrink-0">
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
               {activeSettings?.provider && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#FF7057]/10 text-[#FF7057] border border-[#FF7057]/20 uppercase">
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#FF7057]/10 text-[#FF7057] border border-[#FF7057]/20 uppercase shrink-0">
                   {activeSettings.provider}
                 </span>
               )}
             </div>
-            <span className="font-mono text-[10px] theme-text-muted leading-none">
+            <div
+              className="font-mono text-[10px] theme-text-muted leading-none truncate max-w-[170px]"
+              title={`Private to @${user.name}${activeSettings?.selectedModel ? ` · ${activeSettings.selectedModel}` : ''}`}
+            >
               Private to @{user.name} {activeSettings?.selectedModel ? `· ${activeSettings.selectedModel}` : ''}
-            </span>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
             onClick={handleNewConversation}
@@ -500,7 +503,7 @@ export const AIAgentSidebar: React.FC<AIAgentSidebarProps> = ({
 
       {/* Conversation History Drawer Overlay */}
       {isHistoryDrawerOpen && (
-        <div className="absolute top-12 left-0 right-0 z-30 max-h-72 overflow-y-auto border-b theme-border theme-bg-surface-1 p-2 space-y-1 shadow-lg animate-in slide-in-from-top-2 duration-150">
+        <div className="absolute top-14 left-0 right-0 z-30 max-h-72 overflow-y-auto border-b theme-border theme-bg-surface-1 p-2 space-y-1 shadow-lg animate-in slide-in-from-top-2 duration-150">
           <div className="flex items-center justify-between px-2 py-1 text-[11px] font-mono theme-text-muted">
             <span>Your Private Conversations</span>
             <button

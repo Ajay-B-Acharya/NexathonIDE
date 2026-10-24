@@ -132,6 +132,12 @@ export interface FollowState {
   lastLineNumber?: number;
 }
 
+export interface LineLockNotice {
+  line: number;
+  userName: string;
+  userColor: string;
+}
+
 // ============================================================================
 // Personal Autonomous AI Coding Agent Types
 // ============================================================================
