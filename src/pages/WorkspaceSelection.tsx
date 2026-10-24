@@ -271,8 +271,8 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
 
   return (
     <div
-      className={`min-h-screen w-full select-none pb-28 relative overflow-x-hidden font-sans transition-colors duration-300 ${
-        isDark ? 'dark bg-[#06080e] text-slate-100' : 'light bg-[#f8fafc] text-slate-900'
+      className={`min-h-screen w-full select-none pb-28 relative overflow-x-hidden font-sans transition-colors duration-300 theme-bg-root theme-text-primary ${
+        isDark ? 'dark' : 'light'
       }`}
       data-theme={theme}
     >
@@ -280,22 +280,22 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
       <AdaptiveBackground variant="dashboard" theme={theme} />
 
       {/* ========================================================= */}
-      {/* 1. COLLAPSED MONOSPACE TELEMETRY HEADER (NO VIBECODED STATS) */}
+      {/* 1. COLLAPSED MONOSPACE TELEMETRY HEADER */}
       {/* ========================================================= */}
       <header className="relative z-10 border-b theme-border theme-bg-glass backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           {/* Left: Brand Identity */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_12px_#00f0ff]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#FF7057]" />
             <span className="font-mono font-bold text-sm tracking-tight theme-text-primary">
-              NEXATHON<span className="text-cyan-500 dark:text-cyan-400">.CONTROL</span>
+              NEXATHON<span className="text-[#FF7057]">.CONTROL</span>
             </span>
             <span className="theme-text-muted font-mono hidden sm:inline">/</span>
             <span className="font-mono text-xs theme-text-secondary hidden sm:inline">workspaces</span>
           </div>
 
           {/* Center: Command Search Input */}
-          <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-xl theme-bg-surface-2 border theme-border w-80 font-mono text-xs focus-within:border-cyan-500 shadow-xs">
+          <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-xl theme-bg-surface-2 border theme-border w-80 font-mono text-xs focus-within:border-[#FF7057] shadow-xs">
             <Search className="w-3.5 h-3.5 theme-text-muted shrink-0" />
             <input
               ref={searchInputRef}
@@ -387,9 +387,9 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
             <div className="flex items-center gap-2">
               <form
                 onSubmit={handleCliSpawn}
-                className="flex items-center gap-2 p-1 rounded-xl theme-bg-surface-2 border theme-border focus-within:border-cyan-500 shadow-xs"
+                className="flex items-center gap-2 p-1 rounded-xl theme-bg-surface-2 border theme-border focus-within:border-[#FF7057] shadow-xs"
               >
-                <span className="pl-3 font-mono text-xs text-cyan-500 dark:text-cyan-400 font-bold">$ mkdir</span>
+                <span className="pl-3 font-mono text-xs text-[#FF7057] font-bold">$ mkdir</span>
                 <input
                   type="text"
                   placeholder="custom-room-id"
@@ -399,7 +399,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                 />
                 <button
                   type="submit"
-                  className="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-mono text-xs font-bold transition cursor-pointer shadow-xs"
+                  className="px-3 py-1.5 rounded-lg bg-[#FF7057] hover:bg-[#F26049] text-white font-mono text-xs font-bold transition cursor-pointer shadow-xs"
                 >
                   SPAWN →
                 </button>
@@ -409,9 +409,9 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                 type="button"
                 onClick={() => setIsCreatorModalOpen(true)}
                 title="Configure custom runtime with RAM, threads, and container sandbox options"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border theme-border theme-bg-surface-2 hover:border-indigo-500/50 text-xs font-mono font-medium theme-text-primary transition cursor-pointer shadow-xs"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border theme-border theme-bg-surface-2 hover:border-[#FF7057] text-xs font-mono font-medium theme-text-primary transition cursor-pointer shadow-xs"
               >
-                <Sliders className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                <Sliders className="w-3.5 h-3.5 text-[#FF7057]" />
                 <span>Custom</span>
               </button>
             </div>
@@ -424,8 +424,8 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                 key={bp.id}
                 spotlightColor={`${bp.color}25`}
                 onClick={() => handleLaunchRoom(`${bp.id}-workspace`, bp.title)}
-                className={`group p-6 rounded-2xl border theme-border hover:border-cyan-500/40 cursor-pointer transition-all flex flex-col justify-between min-h-[230px] theme-shadow ${
-                  isDark ? 'bg-[#090d16]/90' : 'bg-white/95'
+                className={`group p-6 rounded-2xl border theme-border hover:border-[#FF7057] cursor-pointer transition-all flex flex-col justify-between min-h-[230px] ${
+                  isDark ? 'bg-[#000000]' : 'bg-[#FFF9F0] neu-card'
                 }`}
               >
                 <div className="flex items-start justify-between">
@@ -487,17 +487,17 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
               const logs = [
                 '>>> Epoch 50/50 — loss: 0.0142 (4.1ms WASM)',
                 '$ y-websocket-server --port 1234 [Synced]',
-                '✓ AI Patch applied on line 84 (ZeroDivisionError)',
+                '[AI-Patch] Applied on line 84 (ZeroDivisionError)',
               ];
               const logSnippet = logs[idx % logs.length];
 
               return (
                 <SpotlightCard
                   key={room.id}
-                  spotlightColor={idx === 0 ? 'rgba(0, 240, 255, 0.18)' : idx === 1 ? 'rgba(16, 185, 129, 0.18)' : 'rgba(244, 63, 94, 0.18)'}
+                  spotlightColor={idx === 0 ? 'rgba(255, 112, 87, 0.18)' : idx === 1 ? 'rgba(16, 185, 129, 0.18)' : 'rgba(244, 63, 94, 0.18)'}
                   onClick={() => onSelectRoom(room)}
-                  className={`p-6 rounded-2xl border theme-border hover:border-cyan-500/40 transition-all cursor-pointer flex flex-col justify-between theme-shadow ${
-                    isDark ? 'bg-[#090d16]' : 'bg-white/95'
+                  className={`p-6 rounded-2xl border theme-border hover:border-[#FF7057] transition-all cursor-pointer flex flex-col justify-between ${
+                    isDark ? 'bg-[#000000]' : 'bg-[#FFF9F0] neu-card'
                   }`}
                 >
                   <div>
@@ -552,7 +552,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
 
                     <button
                       type="button"
-                      className="px-3 py-1.5 rounded-lg border theme-border theme-bg-surface-2 hover:bg-cyan-500 hover:text-slate-950 font-mono text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      className="px-3 py-1.5 rounded-lg border theme-border theme-bg-surface-2 hover:bg-[#FF7057] hover:text-white font-mono text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
                     >
                       ATTACH <Play className="w-3 h-3 fill-current" />
                     </button>
@@ -597,31 +597,25 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
         <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200 ${
           isDark ? 'bg-black/75 backdrop-blur-md' : 'bg-slate-900/40 backdrop-blur-md'
         }`}>
-          <div className={`w-full max-w-2xl rounded-2xl border font-mono text-xs overflow-hidden flex flex-col transition-colors ${
+          <div className={`w-full max-w-2xl rounded-2xl border theme-border font-mono text-xs overflow-hidden flex flex-col transition-colors ${
             isDark
-              ? 'border-sky-500/40 bg-[#090d16] text-slate-100 shadow-[0_0_50px_rgba(14,165,233,0.25)]'
-              : 'border-sky-300 bg-white text-slate-900 shadow-2xl'
+              ? 'bg-[#000000] text-white'
+              : 'bg-[#FFF9F0] text-[#302820] neu-card'
           }`}>
             {/* Modal Header */}
-            <div className={`flex items-center justify-between border-b px-5 py-3.5 ${
-              isDark ? 'border-white/10 bg-[#0d121f]' : 'border-slate-200 bg-sky-50/80'
-            }`}>
+            <div className="flex items-center justify-between border-b theme-border px-5 py-3.5 theme-bg-surface-2">
               <div className="flex items-center gap-2.5">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                  isDark ? 'bg-sky-500/20 text-sky-400' : 'bg-sky-600 text-white shadow-xs'
-                }`}>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FF7057] text-white">
                   <Terminal className="h-4 w-4" />
                 </div>
                 <div>
-                  <div className={`font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <div className="font-bold flex items-center gap-2 theme-text-primary">
                     <span>Node-PTY Linux Terminal Container</span>
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded border font-semibold ${
-                      isDark ? 'bg-sky-500/15 text-sky-300 border-sky-500/30' : 'bg-sky-100 text-sky-800 border-sky-300 font-bold'
-                    }`}>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded border theme-border theme-bg-surface-1 text-[#FF7057] font-semibold">
                       WS :3001
                     </span>
                   </div>
-                  <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+                  <div className="text-[10px] theme-text-muted font-medium">
                     Active PID #4821 • xterm.js binary WebSocket stream
                   </div>
                 </div>
@@ -629,9 +623,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
               <button
                 type="button"
                 onClick={() => setIsTerminalModalOpen(false)}
-                className={`rounded-lg p-1.5 transition cursor-pointer ${
-                  isDark ? 'text-slate-400 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-200 hover:text-slate-900'
-                }`}
+                className="rounded-lg p-1.5 transition cursor-pointer theme-text-secondary hover:theme-text-primary hover:theme-bg-surface-1"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -639,7 +631,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
 
             {/* Terminal Output Area */}
             <div className={`h-64 overflow-y-auto p-4 space-y-1.5 select-text font-mono ${
-              isDark ? 'bg-[#06080e] text-slate-200' : 'bg-slate-950 text-slate-100'
+              isDark ? 'bg-[#000000] text-white' : 'bg-[#F1E8DA] text-[#302820]'
             }`}>
               {terminalLogs.map((log, idx) => (
                 <div
@@ -718,10 +710,10 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                 executeTerminalCommand(terminalCmd);
               }}
               className={`flex items-center gap-2 border-t px-4 py-2.5 ${
-                isDark ? 'border-white/10 bg-[#090d16]' : 'border-slate-200 bg-white'
+                isDark ? 'border-[#242424] bg-[#0A0A0A]' : 'border-[#E9DECE] bg-[#FFF9F0]'
               }`}
             >
-              <span className={`font-bold select-none ${isDark ? 'text-sky-400' : 'text-sky-600'}`}>$</span>
+              <span className="font-bold select-none text-[#FF7057]">$</span>
               <input
                 autoFocus
                 type="text"
@@ -729,12 +721,12 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                 onChange={(e) => setTerminalCmd(e.target.value)}
                 placeholder="Type bash command (e.g. ls, node -v, uname -a)..."
                 className={`w-full bg-transparent font-mono text-xs focus:outline-none font-bold ${
-                  isDark ? 'text-white placeholder:text-slate-500' : 'text-slate-900 placeholder:text-slate-400'
+                  isDark ? 'text-[#FFFFFF] placeholder:text-[#808080]' : 'text-[#302820] placeholder:text-[#8A7D6D]'
                 }`}
               />
               <button
                 type="submit"
-                className="px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs transition cursor-pointer shrink-0 shadow-xs"
+                className="px-3.5 py-1.5 rounded-lg bg-[#FF7057] hover:bg-[#F26049] text-white font-bold text-xs transition cursor-pointer shrink-0 neu-button"
               >
                 Execute
               </button>
@@ -742,9 +734,9 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
 
             {/* Modal Footer: Full Workspace Boot CTA */}
             <div className={`flex items-center justify-between border-t px-5 py-3.5 ${
-              isDark ? 'border-white/10 bg-[#0d121f]' : 'border-slate-200 bg-slate-50'
+              isDark ? 'border-[#242424] bg-[#000000]' : 'border-[#E9DECE] bg-[#F1E8DA]'
             }`}>
-              <span className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              <span className={`text-[11px] font-medium ${isDark ? 'text-[#B3B3B3]' : 'text-[#756858]'}`}>
                 Want a full bidirectional xterm terminal IDE window?
               </span>
               <button
@@ -753,7 +745,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                   setIsTerminalModalOpen(false);
                   handleLaunchRoom('node-pty-linux', 'Node-PTY Linux Container');
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#FF7057] hover:bg-[#F26049] text-white font-bold text-xs transition neu-button cursor-pointer"
               >
                 <span>Launch Container Workspace</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -766,33 +758,33 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
       {/* Autonomous AI Diff Guard & AST Diagnostics Modal */}
       {isAIDiffModalOpen && (
         <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200 ${
-          isDark ? 'bg-black/75 backdrop-blur-md' : 'bg-slate-900/40 backdrop-blur-md'
+          isDark ? 'bg-black/80 backdrop-blur-md' : 'bg-[#302820]/30 backdrop-blur-md'
         }`}>
           <div className={`w-full max-w-2xl rounded-2xl border font-mono text-xs overflow-hidden flex flex-col transition-colors ${
             isDark
-              ? 'border-purple-500/40 bg-[#090d16] text-slate-100 shadow-[0_0_50px_rgba(168,85,247,0.25)]'
-              : 'border-purple-300 bg-white text-slate-900 shadow-2xl'
+              ? 'border-[#242424] bg-[#000000] text-[#FFFFFF]'
+              : 'border-[#E9DECE] bg-[#FFF9F0] text-[#302820] neu-card'
           }`}>
             {/* Modal Header */}
             <div className={`flex items-center justify-between border-b px-5 py-3.5 ${
-              isDark ? 'border-white/10 bg-[#0e101f]' : 'border-slate-200 bg-purple-50/80'
+              isDark ? 'border-[#242424] bg-[#0A0A0A]' : 'border-[#E9DECE] bg-[#F1E8DA]'
             }`}>
               <div className="flex items-center gap-2.5">
                 <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                  isDark ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-600 text-white shadow-xs'
+                  isDark ? 'bg-[#FF7057]/15 text-[#FF7057]' : 'bg-[#FF7057] text-white neu-button'
                 }`}>
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div>
-                  <div className={`font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <div className={`font-bold flex items-center gap-2 ${isDark ? 'text-[#FFFFFF]' : 'text-[#302820]'}`}>
                     <span>AI Diff Guard & AST Diagnostic Engine</span>
-                    <span className={`text-[10px] px-2 py-0.2 rounded-full border font-bold ${
-                      isDark ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' : 'bg-purple-100 text-purple-800 border-purple-300'
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${
+                      isDark ? 'bg-[#FF7057]/15 text-[#FF7057] border-[#FF7057]/30' : 'bg-[#EFE3D2] text-[#302820] border-[#E9DECE]'
                     }`}>
                       GPT-4o + AST
                     </span>
                   </div>
-                  <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+                  <div className={`text-[10px] ${isDark ? 'text-[#808080]' : 'text-[#756858] font-medium'}`}>
                     Zero-Chatbot Autonomous Traceback Interception & Inline Patching
                   </div>
                 </div>
@@ -801,7 +793,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                 type="button"
                 onClick={() => setIsAIDiffModalOpen(false)}
                 className={`rounded-lg p-1.5 transition cursor-pointer ${
-                  isDark ? 'text-slate-400 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-200 hover:text-slate-900'
+                  isDark ? 'text-[#808080] hover:bg-[#111111] hover:text-white' : 'text-[#756858] hover:bg-[#EFE3D2] hover:text-[#302820]'
                 }`}
               >
                 <X className="h-4 w-4" />
@@ -810,31 +802,31 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
 
             {/* Diagnostics Telemetry Metrics */}
             <div className={`grid grid-cols-3 gap-3 p-4 border-b text-[11px] ${
-              isDark ? 'bg-[#06080e] border-white/10' : 'bg-slate-50 border-slate-200'
+              isDark ? 'bg-[#000000] border-[#242424]' : 'bg-[#F7F1E7] border-[#E9DECE]'
             }`}>
               <div className={`p-2.5 rounded-xl border ${
-                isDark ? 'border-white/5 bg-white/5' : 'border-slate-200 bg-white shadow-xs'
+                isDark ? 'border-[#242424] bg-[#0A0A0A]' : 'border-[#E9DECE] bg-[#FFF9F0] neu-card'
               }`}>
-                <div className={`text-[10px] uppercase font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>AST Parser</div>
-                <div className={`font-bold mt-0.5 ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>Tree-sitter Python / QuickJS</div>
+                <div className={`text-[10px] uppercase font-bold ${isDark ? 'text-[#808080]' : 'text-[#756858]'}`}>AST Parser</div>
+                <div className="font-bold mt-0.5 text-[#FF7057]">Tree-sitter Python / QuickJS</div>
               </div>
               <div className={`p-2.5 rounded-xl border ${
-                isDark ? 'border-white/5 bg-white/5' : 'border-slate-200 bg-white shadow-xs'
+                isDark ? 'border-[#242424] bg-[#0A0A0A]' : 'border-[#E9DECE] bg-[#FFF9F0] neu-card'
               }`}>
-                <div className={`text-[10px] uppercase font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Diff Verification</div>
+                <div className={`text-[10px] uppercase font-bold ${isDark ? 'text-[#808080]' : 'text-[#756858]'}`}>Diff Verification</div>
                 <div className={`font-bold mt-0.5 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Myers Diff • Yjs CRDT Vector</div>
               </div>
               <div className={`p-2.5 rounded-xl border ${
-                isDark ? 'border-white/5 bg-white/5' : 'border-slate-200 bg-white shadow-xs'
+                isDark ? 'border-[#242424] bg-[#0A0A0A]' : 'border-[#E9DECE] bg-[#FFF9F0] neu-card'
               }`}>
-                <div className={`text-[10px] uppercase font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Error Hook</div>
-                <div className={`font-bold mt-0.5 ${isDark ? 'text-cyan-400' : 'text-cyan-700'}`}>STDERR Exit Code Interceptor</div>
+                <div className={`text-[10px] uppercase font-bold ${isDark ? 'text-[#808080]' : 'text-[#756858]'}`}>Error Hook</div>
+                <div className="font-bold mt-0.5 text-[#FF7057]">STDERR Exit Code Interceptor</div>
               </div>
             </div>
 
             {/* Traceback and Unified Diff Sandbox */}
             <div className={`p-5 space-y-4 overflow-y-auto max-h-72 ${
-              isDark ? 'bg-[#080b14]' : 'bg-white'
+              isDark ? 'bg-[#000000]' : 'bg-[#FFF9F0]'
             }`}>
               <div>
                 <div className="text-[10px] text-rose-500 uppercase font-bold mb-1.5 flex items-center gap-1.5">
@@ -842,11 +834,11 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                   Captured Runtime Traceback
                 </div>
                 <div className={`p-3.5 rounded-xl border text-[11px] font-mono leading-relaxed ${
-                  isDark ? 'bg-black/60 border-rose-500/30 text-rose-300' : 'bg-rose-50/70 border-rose-200 text-rose-950 shadow-xs'
+                  isDark ? 'bg-[#0A0A0A] border-[#242424] text-rose-300' : 'bg-[#F1E8DA] border-[#E9DECE] text-rose-900'
                 }`}>
                   <div className={isDark ? 'text-rose-300' : 'text-rose-800'}>Traceback (most recent call last):</div>
                   <div className={isDark ? 'text-rose-300' : 'text-rose-800'}>&nbsp;&nbsp;File &quot;engine.py&quot;, line 14, in compute_rate</div>
-                  <div className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>&nbsp;&nbsp;&nbsp;&nbsp;return total_volume / rate</div>
+                  <div className={`font-bold ${isDark ? 'text-white' : 'text-[#302820]'}`}>&nbsp;&nbsp;&nbsp;&nbsp;return total_volume / rate</div>
                   <div className="text-rose-600 dark:text-rose-400 font-extrabold mt-1">ZeroDivisionError: float division by zero</div>
                 </div>
               </div>
@@ -861,9 +853,9 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                   )}
                 </div>
                 <div className={`p-3.5 rounded-xl border font-mono text-[11px] leading-relaxed ${
-                  isDark ? 'bg-black/60 border-emerald-500/30' : 'bg-slate-50 border-slate-200 shadow-xs'
+                  isDark ? 'bg-[#0A0A0A] border-[#242424]' : 'bg-[#F1E8DA] border-[#E9DECE]'
                 }`}>
-                  <div className={isDark ? 'text-slate-500' : 'text-slate-600 font-bold'}>@@ -13,3 +13,3 @@ def compute_rate(total_volume, rate):</div>
+                  <div className={isDark ? 'text-[#808080]' : 'text-[#756858] font-bold'}>@@ -13,3 +13,3 @@ def compute_rate(total_volume, rate):</div>
                   <div className={`px-1.5 py-0.5 rounded my-1 font-bold ${
                     isDark ? 'text-rose-400 bg-rose-500/10' : 'text-rose-700 bg-rose-100/80'
                   }`}>- &nbsp;&nbsp;return total_volume / rate</div>
@@ -876,14 +868,14 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
 
             {/* Modal Footer */}
             <div className={`flex items-center justify-between border-t px-5 py-3.5 ${
-              isDark ? 'border-white/10 bg-[#0e101f]' : 'border-slate-200 bg-slate-50'
+              isDark ? 'border-[#242424] bg-[#0A0A0A]' : 'border-[#E9DECE] bg-[#F1E8DA]'
             }`}>
               <button
                 type="button"
                 onClick={() => setIsDiffApplied(true)}
                 disabled={isDiffApplied}
                 className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border transition text-xs font-bold cursor-pointer disabled:opacity-50 ${
-                  isDark ? 'border-purple-500/40 bg-purple-600/20 text-purple-300 hover:bg-purple-600/30' : 'border-purple-300 bg-purple-100 text-purple-800 hover:bg-purple-200 shadow-xs'
+                  isDark ? 'border-[#242424] bg-[#111111] text-[#FFFFFF] hover:bg-[#171717]' : 'border-[#E9DECE] bg-[#FFF9F0] text-[#302820] hover:bg-[#EFE3D2] neu-button'
                 }`}
               >
                 <Sparkles className="h-3.5 w-3.5" />
@@ -896,7 +888,7 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
                   setIsAIDiffModalOpen(false);
                   handleLaunchRoom('ai-traceback-fixer', 'QuickJS + AI Debugger');
                 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition shadow-[0_0_15px_rgba(168,85,247,0.35)] cursor-pointer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#FF7057] hover:bg-[#F26049] text-white font-bold text-xs transition neu-button cursor-pointer"
               >
                 <span>Launch QuickJS + AI Debugger Room</span>
                 <ArrowRight className="w-3.5 h-3.5" />

@@ -51,13 +51,13 @@ export const SpeedBenchmarkWidget: React.FC = () => {
   return (
     <div className="mx-auto max-w-4xl my-12">
       <SpotlightCard
-        spotlightColor="rgba(99, 102, 241, 0.16)"
-        className="p-6 md:p-8 rounded-2xl border theme-border theme-bg-surface-1/90 backdrop-blur-xl theme-shadow"
+        spotlightColor="rgba(255, 112, 87, 0.15)"
+        className="p-6 md:p-8 rounded-2xl border theme-border theme-bg-surface-1/90 backdrop-blur-xl neu-card"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b theme-border">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-indigo-500 dark:text-indigo-400 font-bold">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF7057] font-bold">
                 Live Execution Benchmark
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-mono text-emerald-500">
@@ -74,7 +74,7 @@ export const SpeedBenchmarkWidget: React.FC = () => {
             type="button"
             onClick={triggerRace}
             disabled={racing}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-mono font-semibold transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] disabled:opacity-50 cursor-pointer self-start sm:self-auto shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#FF7057] hover:bg-[#F26049] text-white text-xs font-mono font-semibold transition-all neu-button disabled:opacity-50 cursor-pointer self-start sm:self-auto shrink-0"
           >
             <RotateCcw className={`w-3.5 h-3.5 ${racing ? 'animate-spin' : ''}`} />
             <span>{racing ? 'Simulating Race...' : 'Re-Run Live Benchmark'}</span>
@@ -95,7 +95,7 @@ export const SpeedBenchmarkWidget: React.FC = () => {
               </span>
             </div>
             <div className="h-3.5 w-full rounded-full theme-bg-surface-2 overflow-hidden p-0.5 border theme-border">
-              <div className="h-full w-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-400 to-indigo-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] transition-all duration-300" />
+              <div className="h-full w-full rounded-full bg-[#FF7057] transition-all duration-300" />
             </div>
             <div className="flex justify-between text-[11px] theme-text-secondary">
               <span>Status: Executed in local WebWorker heap (0 server latency)</span>

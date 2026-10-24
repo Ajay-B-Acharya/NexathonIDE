@@ -39,7 +39,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       <div
         className={`w-full ${
           diffPreview ? 'max-w-5xl' : 'max-w-md'
-        } rounded-2xl border theme-border theme-bg-surface-1 theme-text-primary theme-shadow overflow-hidden`}
+        } rounded-2xl border theme-border theme-bg-surface-1 theme-text-primary neu-card overflow-hidden`}
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b theme-border px-5 py-4 theme-bg-surface-2">
@@ -49,7 +49,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 <AlertTriangle className="h-4 w-4" />
               </div>
             ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 ring-1 ring-teal-500/30">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FF7057]/15 text-[#FF7057] ring-1 ring-[#FF7057]/30 neu-button">
                 <Sparkles className="h-4 w-4" />
               </div>
             )}
@@ -71,7 +71,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           {diffPreview && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs theme-text-secondary font-mono">
-                <span>Target Document: <strong className="text-teal-600 dark:text-teal-400">{diffPreview.filePath}</strong></span>
+                <span>Target Document: <strong className="text-[#FF7057]">{diffPreview.filePath}</strong></span>
                 <span className="rounded-full border theme-border theme-bg-surface-2 px-2.5 py-0.5 text-[10px]">
                   Side-by-Side CRDT Diff Verification
                 </span>
@@ -105,17 +105,17 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg border theme-border theme-bg-surface-1 px-4 py-1.5 text-xs font-medium theme-text-primary hover:theme-bg-surface-2 transition cursor-pointer shadow-xs"
+            className="rounded-lg border theme-border theme-bg-surface-1 px-4 py-1.5 text-xs font-medium theme-text-primary hover:theme-bg-surface-2 transition cursor-pointer neu-button"
           >
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-white transition cursor-pointer shadow-xs ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-white transition cursor-pointer neu-button ${
               variant === 'danger'
                 ? 'bg-rose-600 hover:bg-rose-500'
-                : 'bg-teal-600 hover:bg-teal-500'
+                : 'bg-[#FF7057] hover:bg-[#F26049]'
             }`}
           >
             <Check className="h-3.5 w-3.5" />

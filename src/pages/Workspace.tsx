@@ -668,8 +668,8 @@ clearFileDraft(room.id, fileId);
 
             <div
               onMouseDown={sidebarResize.startResize}
-              className={`w-1 cursor-col-resize theme-bg-surface-2 hover:bg-teal-500 transition-colors ${
-                sidebarResize.isDragging ? 'bg-teal-500' : ''
+              className={`w-1 cursor-col-resize theme-bg-surface-2 hover:bg-[#FF7057] transition-colors ${
+                sidebarResize.isDragging ? 'bg-[#FF7057]' : ''
               }`}
               title="Drag to resize sidebar"
             />
@@ -702,8 +702,8 @@ clearFileDraft(room.id, fileId);
           {isBottomDrawerOpen && (
             <div
               onMouseDown={bottomDrawerResize.startResize}
-              className={`h-1 cursor-row-resize theme-bg-surface-2 hover:bg-teal-500 transition-colors ${
-                bottomDrawerResize.isDragging ? 'bg-teal-500' : ''
+              className={`h-1 cursor-row-resize theme-bg-surface-2 hover:bg-[#FF7057] transition-colors ${
+                bottomDrawerResize.isDragging ? 'bg-[#FF7057]' : ''
               }`}
               title="Drag to resize bottom panel"
             />
@@ -720,7 +720,7 @@ clearFileDraft(room.id, fileId);
                 }}
                 className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
                   isBottomDrawerOpen && activeBottomTab === 'output'
-? 'border theme-border theme-bg-surface-2 text-teal-600 dark:text-teal-400 font-semibold'
+                    ? 'border border-[#FF7057] theme-bg-surface-2 text-[#FF7057] font-semibold'
                     : 'theme-text-secondary hover:theme-text-primary'
                 }`}
               >
@@ -736,11 +736,11 @@ clearFileDraft(room.id, fileId);
                 }}
                 className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
                   isBottomDrawerOpen && activeBottomTab === 'terminal'
-? 'border theme-border theme-bg-surface-2 text-teal-600 dark:text-teal-400 font-semibold'
+                    ? 'border border-[#FF7057] theme-bg-surface-2 text-[#FF7057] font-semibold'
                     : 'theme-text-secondary hover:theme-text-primary'
                 }`}
               >
-                <Terminal className="h-3 w-3 text-teal-600 dark:text-teal-400" />
+                <Terminal className="h-3 w-3 text-[#FF7057]" />
                 <span>Cloud Terminal</span>
               </button>
 
@@ -752,11 +752,11 @@ clearFileDraft(room.id, fileId);
                 }}
                 className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
                   isBottomDrawerOpen && activeBottomTab === 'ai-debugger'
-? 'border theme-border theme-bg-surface-2 text-purple-400 font-semibold'
+                    ? 'border border-[#FF7057] theme-bg-surface-2 text-[#FF7057] font-semibold'
                     : 'theme-text-secondary hover:theme-text-primary'
                 }`}
               >
-                <Sparkles className="h-3 w-3 text-purple-400" />
+                <Sparkles className="h-3 w-3 text-[#FF7057]" />
                 <span>AI Debugger & Diff</span>
               </button>
             </div>

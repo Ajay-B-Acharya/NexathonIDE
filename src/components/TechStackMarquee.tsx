@@ -26,11 +26,11 @@ export const TechStackMarquee: React.FC = () => {
         {[...TECH_ITEMS, ...TECH_ITEMS].map((item, idx) => (
           <div
             key={idx}
-            className="flex items-center gap-2 rounded-xl border theme-border theme-bg-surface-2 px-3.5 py-1.5 text-xs font-mono theme-text-primary shadow-xs transition-colors hover:border-indigo-500/40"
+            className="flex items-center gap-2 rounded-xl border theme-border theme-bg-surface-2 px-3.5 py-1.5 text-xs font-mono theme-text-primary neu-card transition-colors hover:border-[#FF7057]/40"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#FF7057]" />
             <span className="font-semibold">{item.name}</span>
-            <span className="rounded bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.2 text-[10px] text-indigo-500 dark:text-indigo-400">
+            <span className="rounded bg-[#FF7057]/10 border border-[#FF7057]/20 px-1.5 py-0.2 text-[10px] text-[#FF7057]">
               {item.badge}
             </span>
           </div>
