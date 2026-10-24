@@ -132,4 +132,87 @@ export interface FollowState {
   lastLineNumber?: number;
 }
 
+// ============================================================================
+// Personal Autonomous AI Coding Agent Types
+// ============================================================================
+
+export type AIProviderType = 'groq' | 'openai' | 'anthropic';
+
+export interface UserAICredential {
+  provider: AIProviderType;
+  selectedModel: string;
+  hasKey: boolean;
+  updatedAt?: string;
+}
+
+export interface AIConversation {
+  id: string;
+  userId: string;
+  roomId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProposedPatch {
+  filePath: string;
+  explanation: string;
+  originalContentHash: string;
+  originalContent: string;
+  patchedContent: string;
+  diffSummary?: {
+    additions: number;
+    deletions: number;
+    modifications: number;
+  };
+  status: 'pending' | 'applied' | 'rejected' | 'stale';
+}
+
+export interface ProposedCommand {
+  id: string;
+  command: string;
+  workingDir: string;
+  reason: string;
+  status: 'pending' | 'running' | 'completed' | 'rejected' | 'failed';
+  output?: string;
+  exitCode?: number;
+}
+
+export type AIAgentActivityStatus =
+  | 'idle'
+  | 'thinking'
+  | 'reading_files'
+  | 'investigating_error'
+  | 'preparing_patch'
+  | 'waiting_approval'
+  | 'running_command'
+  | 'completed'
+  | 'error';
+
+export interface AIMessage {
+  id: string;
+  conversationId: string;
+  userId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  status?: 'sending' | 'streaming' | 'complete' | 'error';
+  proposedPatches?: ProposedPatch[];
+  proposedCommands?: ProposedCommand[];
+  activityStatus?: AIAgentActivityStatus;
+  activityLogs?: string[];
+  createdAt: string;
+}
+
+export interface AIAgentContextPayload {
+  roomId: string;
+  currentFilePath?: string;
+  currentFileContent?: string;
+  selectedCode?: string;
+  selectedRange?: { startLine: number; endLine: number };
+  recentError?: string;
+  terminalSnippet?: string;
+  openFilesList?: string[];
+  fileTree?: Array<{ path: string; language: string; size?: number }>;
+}
+
 

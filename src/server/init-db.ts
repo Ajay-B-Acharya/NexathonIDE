@@ -48,6 +48,41 @@ async function initDatabase() {
         joined_at TIMESTAMP DEFAULT NOW(),
         PRIMARY KEY (user_id, room_id)
       );
+
+      CREATE TABLE IF NOT EXISTS user_ai_credentials (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id TEXT NOT NULL UNIQUE,
+        provider VARCHAR(50) NOT NULL DEFAULT 'groq',
+        encrypted_api_key TEXT NOT NULL,
+        iv TEXT NOT NULL,
+        tag TEXT NOT NULL,
+        selected_model VARCHAR(100) DEFAULT 'llama-3.3-70b-versatile',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS ai_conversations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id TEXT NOT NULL,
+        room_id TEXT NOT NULL,
+        title VARCHAR(255) NOT NULL DEFAULT 'New Conversation',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ai_conversations_user_room ON ai_conversations(user_id, room_id);
+
+      CREATE TABLE IF NOT EXISTS ai_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        conversation_id UUID NOT NULL REFERENCES ai_conversations(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL,
+        role VARCHAR(20) NOT NULL,
+        content TEXT NOT NULL,
+        metadata JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ai_messages_conversation_id ON ai_messages(conversation_id);
     `);
     
     console.log('Database initialized successfully!');

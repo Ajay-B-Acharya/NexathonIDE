@@ -13,6 +13,7 @@ import type { AIDebugRequest, AIDebugResponse } from './types.js';
 import { createTerminalRouter, setupTerminalServer } from './terminal/terminalServer.js';
 import { sessionManager } from './terminal/sessionManager.js';
 import { startServer as startYjsServer, wss as yjsWss } from './yjs-server.js';
+import { createAIAgentRouter } from './ai-agent-routes.js';
 
 try {
   process.loadEnvFile();
@@ -29,6 +30,8 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 app.use(cors());
 app.use(express.json());
 app.use('/api/terminal', createTerminalRouter());
+app.use('/api/ai/agent', createAIAgentRouter());
+app.use('/ai/agent', createAIAgentRouter());
 
 // AI Provider Setup: Groq (ultra-fast inference via OpenAI-compatible endpoint)
 const groqApiKey = process.env.GROQ_API_KEY;

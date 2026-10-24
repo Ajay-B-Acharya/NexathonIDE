@@ -17,6 +17,7 @@ import {
   Share2,
   AlertCircle,
   X,
+  Bot,
 } from 'lucide-react';
 import { CollaboratorPresence, ConnectionStatus, FollowState, UserProfile } from '../types';
 import { Collaborators } from './Collaborators';
@@ -47,6 +48,8 @@ interface TopBarProps {
   onRunCode: () => void;
   onSaveFile: () => void;
   onOpenAIDebugger: () => void;
+  isAgentSidebarOpen?: boolean;
+  onToggleAgentSidebar?: () => void;
   onSwitchWorkspace: () => void;
   onLogout: () => void;
   onOpenDiagnostics?: () => void;
@@ -77,6 +80,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onRunCode,
   onSaveFile,
   onOpenAIDebugger,
+  isAgentSidebarOpen = false,
+  onToggleAgentSidebar,
   onSwitchWorkspace,
   onLogout,
   onOpenDiagnostics,
@@ -288,6 +293,23 @@ export const TopBar: React.FC<TopBarProps> = ({
           <Sparkles className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">AI Debugger</span>
         </button>
+
+        {/* Personal AI Agent Button */}
+        {onToggleAgentSidebar && (
+          <button
+            type="button"
+            onClick={onToggleAgentSidebar}
+            title="Toggle Personal AI Coding Agent"
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 sm:px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer shadow-xs ${
+              isAgentSidebarOpen
+                ? 'border-[#FF7057] bg-[#FF7057] text-white shadow-sm'
+                : 'theme-border theme-bg-surface-2 hover:border-[#FF7057] text-[var(--accent-primary)]'
+            }`}
+          >
+            <Bot className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">AI Agent</span>
+          </button>
+        )}
 
         {/* 1-Click Share & Invite Button */}
         <button

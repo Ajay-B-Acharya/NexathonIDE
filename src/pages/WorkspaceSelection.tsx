@@ -312,11 +312,6 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
 
           {/* Right: Telemetry Badge + Theme Toggle + User Avatar */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 font-mono text-[11px] text-emerald-500 shadow-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              CRDT_MESH: 11ms
-            </span>
-
             {onToggleTheme && <ThemeToggle theme={theme} onToggle={onToggleTheme} />}
 
             <div className="h-5 w-px theme-border" />
