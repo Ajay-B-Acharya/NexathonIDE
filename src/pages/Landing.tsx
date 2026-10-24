@@ -9,7 +9,6 @@ import {
   GitBranch,
   Database,
   Layers,
-  Play,
   CheckCircle2,
   Users,
   Command,
@@ -17,19 +16,14 @@ import {
   Menu,
   Loader2,
   Activity,
-  RotateCcw,
   Clock,
   Bug,
   Check,
   AlertTriangle,
   Lock,
-  FileCode,
-  ChevronLeft,
-  ChevronRight,
   ChevronUp,
 } from 'lucide-react';
-import { executionClient } from '../services/executionClient';
-import { SupportedLanguage, UserProfile } from '../types';
+import { UserProfile } from '../types';
 import { AmbientCollaborationCanvas } from '../components/AmbientCollaborationCanvas';
 import { AdaptiveBackground } from '../components/AdaptiveBackground';
 import { ThemeMode, ThemeToggle } from '../components/ThemeToggle';
@@ -55,101 +49,6 @@ interface LandingProps {
   onNavigateToLogin: () => void;
 }
 
-interface SandboxPreset {
-  id: string;
-  filename: string;
-  label: string;
-  language: SupportedLanguage;
-  runtimeLabel: string;
-  code: string;
-  proposedAiFix?: {
-    explanation: string;
-    fixedCode: string;
-  };
-}
-
-const SANDBOX_PRESETS: SandboxPreset[] = [
-  {
-    id: 'crdt-merge',
-    filename: 'src/crdt_state_vector.ts',
-    label: 'CRDT State Vector Merge (QuickJS Worker)',
-    language: 'typescript',
-    runtimeLabel: 'Isolated Web Worker Sandbox',
-    code: `// Live CRDT Lamport Clock & State Vector Convergence Benchmark
-const localVector = { client_8f: 14, client_a2: 9, client_c4: 3 };
-const remoteUpdate = { client_8f: 12, client_a2: 15, client_d9: 7 };
-
-function mergeStateVectors(local, remote) {
-  const merged = { ...local };
-  let deltaOps = 0;
-  for (const [client, clock] of Object.entries(remote)) {
-    const current = merged[client] || 0;
-    if (clock > current) {
-      deltaOps += (clock - current);
-      merged[client] = clock;
-    }
-  }
-  return { merged, deltaOps };
-}
-
-const { merged, deltaOps } = mergeStateVectors(localVector, remoteUpdate);
-console.log("Converged Y.Doc Vector:", JSON.stringify(merged));
-console.log("Applied CRDT Delta Operations:", deltaOps);`,
-  },
-  {
-    id: 'python-wasm',
-    filename: 'src/tensor_norm.py',
-    label: 'Numerical L2 Normalization (Pyodide WASM)',
-    language: 'python',
-    runtimeLabel: 'Pyodide 0.26 WebAssembly',
-    code: `# Live In-Browser Python Execution via Pyodide WASM
-import math
-
-def l2_normalize(vector, epsilon=1e-8):
-    norm_sq = sum(x * x for x in vector)
-    norm = math.sqrt(norm_sq) + epsilon
-    return [round(x / norm, 5) for x in vector]
-
-weights = [4.2, -8.1, 3.5, 6.0]
-normalized = l2_normalize(weights)
-print(f"Input Tensor  : {weights}")
-print(f"L2 Normalized : {normalized}")
-print(f"Unit Magnitude: {round(sum(x*x for x in normalized), 6)}")`,
-  },
-  {
-    id: 'fault-injection',
-    filename: 'src/shard_router.js',
-    label: 'Fault Injection + AI Diff Guard Demo',
-    language: 'javascript',
-    runtimeLabel: 'Isolated Web Worker + AI Diff Guard',
-    code: `// Click "Run WASM" to trigger a runtime fault,
-// then test the autonomous AST CRDT diff guard!
-function allocateShardLoad(totalRequests, activeNodes) {
-  if (activeNodes.length === 0) {
-    throw new RangeError("ZeroActiveShardsFault: Division by zero in consistent hash ring (activeNodes = 0)");
-  }
-  return Math.ceil(totalRequests / activeNodes.length);
-}
-
-console.log("Routing 12,400 req/s across cluster...");
-const perNode = allocateShardLoad(12400, []);
-console.log("Allocated per node:", perNode);`,
-    proposedAiFix: {
-      explanation:
-        'Detected unhandled empty shard pool (`activeNodes = []`). Added fallback standby replica guard to prevent consistent-hash ring collapse.',
-      fixedCode: `// AI Diff Guard Patch Applied: Fallback Standby Replica Guard
-function allocateShardLoad(totalRequests, activeNodes) {
-  const safeNodeCount = Math.max(activeNodes.length, 1);
-  return Math.ceil(totalRequests / safeNodeCount);
-}
-
-console.log("Routing 12,400 req/s across cluster (with standby guard)...");
-const perNode = allocateShardLoad(12400, []);
-console.log("Allocated per node (safe fallback):", perNode);`,
-    },
-  },
-];
-
 const CURSOR_COLORS = [
   { hex: '#FF7057', name: 'Coral' },
   { hex: '#10b981', name: 'Emerald' },
@@ -169,30 +68,6 @@ export const Landing: React.FC<LandingProps> = ({
   onNavigateToLogin,
 }) => {
   const isDark = theme === 'dark';
-
-  // Live Hero Sandbox State
-  const [selectedPresetId, setSelectedPresetId] = useState<string>(SANDBOX_PRESETS[0].id);
-  const activePreset =
-    SANDBOX_PRESETS.find((p) => p.id === selectedPresetId) || SANDBOX_PRESETS[0];
-
-  const [sandboxCode, setSandboxCode] = useState<string>(SANDBOX_PRESETS[0].code);
-  const [heroActiveSlide, setHeroActiveSlide] = useState<'multiplayer' | 'sandbox'>('multiplayer');
-  const [isExecutingSandbox, setIsExecutingSandbox] = useState<boolean>(false);
-  const [sandboxOutput, setSandboxOutput] = useState<{
-    stdout: string;
-    stderr: string;
-    exitCode: number;
-    durationMs: number;
-    heapKb: number;
-  }>({
-    stdout:
-      'Converged Y.Doc Vector: {"client_8f":14,"client_a2":15,"client_c4":3,"client_d9":7}\nApplied CRDT Delta Operations: 13',
-    stderr: '',
-    exitCode: 0,
-    durationMs: 4.2,
-    heapKb: 18,
-  });
-  const [showAiDiffDrawer, setShowAiDiffDrawer] = useState<boolean>(false);
 
   // Onboarding Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -219,59 +94,9 @@ export const Landing: React.FC<LandingProps> = ({
     containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Execute code inside the live Hero Sandbox
-  const handleRunSandbox = useCallback(
-    async (codeToExecute: string, language: SupportedLanguage) => {
-      setIsExecutingSandbox(true);
-      setShowAiDiffDrawer(false);
-      const t0 = performance.now();
-
-      try {
-        const result = await executionClient.executeCode(codeToExecute, language);
-        const preciseDuration = Number(
-          Math.max(1.2, performance.now() - t0).toFixed(1)
-        );
-        setSandboxOutput({
-          stdout: result.stdout,
-          stderr: result.stderr,
-          exitCode: result.exitCode,
-          durationMs: preciseDuration,
-          heapKb: Math.max(12, Math.round(codeToExecute.length * 0.06)),
-        });
-      } finally {
-        setIsExecutingSandbox(false);
-      }
-    },
-    []
-  );
-
-  const handleSelectPreset = useCallback((preset: SandboxPreset) => {
-    setSelectedPresetId(preset.id);
-    setSandboxCode(preset.code);
-    setShowAiDiffDrawer(false);
-    void handleRunSandbox(preset.code, preset.language);
-  }, [handleRunSandbox]);
-
-  // Global Landing Keyboard Shortcuts (Cmd+K / Ctrl+Enter / 1, 2, 3)
+  // Global Landing Keyboard Shortcuts (Cmd+K / Escape)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const activeEl = document.activeElement;
-      const isInputActive =
-        activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
-
-      if (!isInputActive) {
-        if (e.key === '1') {
-          e.preventDefault();
-          handleSelectPreset(SANDBOX_PRESETS[0]);
-        } else if (e.key === '2') {
-          e.preventDefault();
-          handleSelectPreset(SANDBOX_PRESETS[1]);
-        } else if (e.key === '3') {
-          e.preventDefault();
-          handleSelectPreset(SANDBOX_PRESETS[2]);
-        }
-      }
-
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         if (existingUser) {
@@ -281,26 +106,13 @@ export const Landing: React.FC<LandingProps> = ({
         }
       }
 
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault();
-        void handleRunSandbox(sandboxCode, activePreset.language);
-      }
-
       if (e.key === 'Escape') {
         setIsModalOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    existingUser,
-    onResumeSession,
-    onNavigateToLogin,
-    handleRunSandbox,
-    handleSelectPreset,
-    sandboxCode,
-    activePreset.language,
-  ]);
+  }, [existingUser, onResumeSession, onNavigateToLogin]);
 
   const handlePrimaryCTA = () => {
     if (existingUser) {
@@ -335,7 +147,6 @@ export const Landing: React.FC<LandingProps> = ({
 
   const previewHandle = handleName.trim() || 'John';
   const previewInitials = previewHandle.slice(0, 2).toUpperCase();
-  const codeLineCount = sandboxCode.split('\n').length;
 
   return (
     <div
@@ -500,9 +311,9 @@ export const Landing: React.FC<LandingProps> = ({
             isDark ? 'bg-[#080808]' : 'bg-[#FFF9F0] neu-card'
           }`}
         >
-          {/* Top Chrome / Window Controls & Carousel Tabs */}
+          {/* Top Chrome / Window Controls & Header Info */}
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-b theme-border theme-bg-surface-2/60">
-            {/* Left: macOS Dots + Carousel Mode Tabs */}
+            {/* Left: macOS Dots + Mode Badge */}
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 mr-1">
                 <span className="w-3 h-3 rounded-full bg-rose-500/80" />
@@ -510,245 +321,64 @@ export const Landing: React.FC<LandingProps> = ({
                 <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
               </div>
 
-              {/* Carousel Slide Segmented Control */}
-              <div className="flex items-center rounded-lg border theme-border theme-bg-surface-1 p-0.5 text-xs font-mono">
-                <button
-                  type="button"
-                  onClick={() => setHeroActiveSlide('multiplayer')}
-                  className={`inline-flex items-center gap-1.5 rounded-md px-2.5 sm:px-3 py-1 transition cursor-pointer text-[11px] sm:text-xs ${
-                    heroActiveSlide === 'multiplayer'
-                      ? 'bg-[#FF7057] text-white neu-button font-semibold'
-                      : 'theme-text-secondary hover:theme-text-primary'
-                  }`}
-                >
-                  <Users className="h-3 w-3 shrink-0" />
-                  <span><span className="hidden sm:inline">1. </span>CRDT Mesh</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHeroActiveSlide('sandbox')}
-                  className={`inline-flex items-center gap-1.5 rounded-md px-2.5 sm:px-3 py-1 transition cursor-pointer text-[11px] sm:text-xs ${
-                    heroActiveSlide === 'sandbox'
-                      ? 'bg-[#FF7057] text-white neu-button font-semibold'
-                      : 'theme-text-secondary hover:theme-text-primary'
-                  }`}
-                >
-                  <Play className="h-3 w-3 fill-current shrink-0" />
-                  <span><span className="hidden sm:inline">2. </span>WASM Sandbox</span>
-                </button>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#FF7057]/10 border border-[#FF7057]/20 text-[#FF7057] font-mono text-[11px] font-medium">
+                <Users className="h-3 w-3 shrink-0" />
+                <span>CRDT Mesh Live Sync</span>
               </div>
             </div>
 
-            {/* Right: Slide-Specific Controls & Next/Prev Slide Arrows */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              {heroActiveSlide === 'multiplayer' ? (
-                <div className="flex items-center gap-2">
-                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FF7057]/10 border border-[#FF7057]/20 text-[#FF7057] font-mono text-[11px]">
-                    <Users className="w-3.5 h-3.5 text-[#FF7057]" />
-                    <span>2 Active Peers</span>
-                  </div>
-                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[11px]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Pyodide WASM Active
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  {/* Preset Pills */}
-                  <div className="hidden sm:flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                    {SANDBOX_PRESETS.map((preset, idx) => {
-                      const isSelected = preset.id === activePreset.id;
-                      return (
-                        <button
-                          key={preset.id}
-                          type="button"
-                          onClick={() => handleSelectPreset(preset)}
-                          className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-mono transition cursor-pointer ${
-                            isSelected
-                              ? 'border-[#FF7057] bg-[#FF7057] text-white neu-button'
-                              : 'theme-border theme-bg-surface-1 theme-text-secondary hover:border-[#FF7057]/40'
-                          }`}
-                        >
-                          <span>{idx + 1}. {preset.filename}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSandboxCode(activePreset.code);
-                      setShowAiDiffDrawer(false);
-                    }}
-                    title="Reset snippet"
-                    className="inline-flex items-center gap-1 rounded-md border theme-border theme-bg-surface-1 px-2 py-0.5 text-[11px] theme-text-secondary hover:theme-text-primary transition cursor-pointer neu-button"
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void handleRunSandbox(sandboxCode, activePreset.language)}
-                    disabled={isExecutingSandbox}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white neu-button hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer"
-                  >
-                    {isExecutingSandbox ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Play className="h-3.5 w-3.5 fill-current" />
-                    )}
-                    <span>{isExecutingSandbox ? 'Running...' : 'Run WASM'}</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Carousel Prev/Next Arrows */}
-              <div className="flex items-center border-l theme-border pl-2 ml-1 gap-1">
-                <button
-                  type="button"
-                  onClick={() => setHeroActiveSlide((prev: 'multiplayer' | 'sandbox') => prev === 'multiplayer' ? 'sandbox' : 'multiplayer')}
-                  title="Previous Slide"
-                  className="p-1 rounded-md hover:theme-bg-surface-1 theme-text-secondary hover:theme-text-primary transition cursor-pointer"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHeroActiveSlide((prev: 'multiplayer' | 'sandbox') => prev === 'multiplayer' ? 'sandbox' : 'multiplayer')}
-                  title="Next Slide"
-                  className="p-1 rounded-md hover:theme-bg-surface-1 theme-text-secondary hover:theme-text-primary transition cursor-pointer"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
+            {/* Right: Active Peers & Engine Badges */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FF7057]/10 border border-[#FF7057]/20 text-[#FF7057] font-mono text-[11px]">
+                <Users className="w-3.5 h-3.5 text-[#FF7057]" />
+                <span>2 Active Peers</span>
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[11px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Pyodide WASM Active
               </div>
             </div>
           </div>
 
-          {/* Carousel Slide 1: Multiplayer CRDT Mesh */}
-          {heroActiveSlide === 'multiplayer' && (
-            <div className="grid grid-cols-1 md:grid-cols-12 min-h-[360px] font-mono text-xs animate-in fade-in duration-200">
-              {/* Code Editor */}
-              <div className="md:col-span-7 p-5 bg-black/5 dark:bg-black/25 space-y-2.5 theme-text-primary">
-                <p className="theme-text-muted"># Instant local execution via WebAssembly</p>
-                <p>
-                  <span className="text-[#FF7057]">import</span> <span className="text-amber-500">numpy</span> <span className="text-[#FF7057]">as</span> np
-                </p>
-                <p>
-                  dataset = np.random.randn(1000)
-                </p>
-                <p>
-                  result = &#123;<span className="text-emerald-500">&quot;mean&quot;</span>: float(dataset.mean())&#125;
-                </p>
-                <p className="flex items-center">
-                  <span>print(f<span className="text-emerald-500">&quot;Calculated local variance: &#123;dataset.var():.4f&#125;&quot;</span>)</span>
-                  <span className="inline-block w-1.5 h-3.5 ml-1 bg-[#FF7057] animate-pulse" />
-                </p>
-                <p className="theme-text-muted pt-2"># AI Diff Guard &amp; CRDT peer mesh synched</p>
-              </div>
+          {/* Multiplayer CRDT Mesh Showcase */}
+          <div className="grid grid-cols-1 md:grid-cols-12 min-h-[360px] font-mono text-xs">
+            {/* Code Editor */}
+            <div className="md:col-span-7 p-5 bg-black/5 dark:bg-black/25 space-y-2.5 theme-text-primary">
+              <p className="theme-text-muted"># Instant local execution via WebAssembly</p>
+              <p>
+                <span className="text-[#FF7057]">import</span> <span className="text-amber-500">numpy</span> <span className="text-[#FF7057]">as</span> np
+              </p>
+              <p>
+                dataset = np.random.randn(1000)
+              </p>
+              <p>
+                result = &#123;<span className="text-emerald-500">&quot;mean&quot;</span>: float(dataset.mean())&#125;
+              </p>
+              <p className="flex items-center">
+                <span>print(f<span className="text-emerald-500">&quot;Calculated local variance: &#123;dataset.var():.4f&#125;&quot;</span>)</span>
+                <span className="inline-block w-1.5 h-3.5 ml-1 bg-[#FF7057] animate-pulse" />
+              </p>
+              <p className="theme-text-muted pt-2"># AI Diff Guard &amp; CRDT peer mesh synched</p>
+            </div>
 
-              {/* Live Terminal & Node-PTY Output */}
-              <div className="md:col-span-5 p-5 bg-black/10 dark:bg-black/50 border-t md:border-t-0 md:border-l theme-border flex flex-col justify-between">
-                <div className="space-y-1.5 font-mono">
-                  <p className="theme-text-muted">[yjs] Peer mesh synched (room: nexathon-prod)</p>
-                  <p className="text-emerald-500">&gt;&gt;&gt; Running in browser WebWorker thread...</p>
-                  <p className="text-[#FF7057]">&#123;&quot;mean&quot;: 0.0314, &quot;status&quot;: &quot;executed_wasm&quot;&#125;</p>
-                  <p className="theme-text-primary">Calculated local variance: 0.9982</p>
-                  <p className="text-emerald-500 flex items-center gap-1.5 pt-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>AST state vector converged (0 conflicts)</span>
-                  </p>
-                </div>
-                <div className="pt-4 border-t theme-border flex items-center justify-between text-[11px] theme-text-muted">
-                  <span>Latency: &lt;1ms (Local Silicon)</span>
-                  <span className="text-emerald-500 font-semibold">$0 server cost</span>
-                </div>
+            {/* Live Terminal & Node-PTY Output */}
+            <div className="md:col-span-5 p-5 bg-black/10 dark:bg-black/50 border-t md:border-t-0 md:border-l theme-border flex flex-col justify-between">
+              <div className="space-y-1.5 font-mono">
+                <p className="theme-text-muted">[yjs] Peer mesh synched (room: nexathon-prod)</p>
+                <p className="text-emerald-500">&gt;&gt;&gt; Running in browser WebWorker thread...</p>
+                <p className="text-[#FF7057]">&#123;&quot;mean&quot;: 0.0314, &quot;status&quot;: &quot;executed_wasm&quot;&#125;</p>
+                <p className="theme-text-primary">Calculated local variance: 0.9982</p>
+                <p className="text-emerald-500 flex items-center gap-1.5 pt-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>AST state vector converged (0 conflicts)</span>
+                </p>
+              </div>
+              <div className="pt-4 border-t theme-border flex items-center justify-between text-[11px] theme-text-muted">
+                <span>Latency: &lt;1ms (Local Silicon)</span>
+                <span className="text-emerald-500 font-semibold">$0 server cost</span>
               </div>
             </div>
-          )}
-
-          {/* Carousel Slide 2: Live In-Page Executable WASM Sandbox */}
-          {heroActiveSlide === 'sandbox' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[360px] animate-in fade-in duration-200">
-              {/* Left 7 Columns: Editable Code Buffer with Line Numbers */}
-              <div
-                className={`lg:col-span-7 flex flex-col border-b lg:border-b-0 lg:border-r theme-border ${
-                  isDark ? 'bg-[#000000] text-white' : 'bg-[#FFFCF6] text-[#24231F]'
-                }`}
-              >
-                <div
-                  className={`flex items-center justify-between border-b px-4 py-1.5 text-[11px] font-mono theme-border theme-bg-surface-2`}
-                >
-                  <div className="flex items-center gap-2">
-                    <FileCode className="h-3.5 w-3.5 text-[#FF7057]" />
-                    <span className="font-semibold">{activePreset.filename}</span>
-                    <span className="rounded bg-[#FF7057]/15 px-1.5 py-0.2 text-[10px] text-[#FF7057]">
-                      {activePreset.language}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 theme-text-muted">
-                    <span>{codeLineCount} lines</span>
-                    <span>{activePreset.runtimeLabel}</span>
-                  </div>
-                </div>
-
-                <div className="relative flex-1 p-3 font-mono text-xs overflow-x-auto">
-                  <textarea
-                    value={sandboxCode}
-                    onChange={(e) => setSandboxCode(e.target.value)}
-                    spellCheck={false}
-                    className="w-full h-full min-h-[260px] bg-transparent resize-none font-mono text-xs leading-relaxed focus:outline-none theme-text-primary"
-                  />
-                </div>
-              </div>
-
-              {/* Right 5 Columns: Realtime Terminal Output & Execution Telemetry */}
-              <div className="lg:col-span-5 flex flex-col theme-bg-surface-2 p-4 justify-between font-mono text-xs">
-                <div>
-                  <div className="flex items-center justify-between border-b theme-border pb-2 mb-3">
-                    <span className="font-bold text-xs theme-text-primary flex items-center gap-1.5">
-                      <Terminal className="h-3.5 w-3.5 text-emerald-500" />
-                      Runtime Console Output
-                    </span>
-                    <span className="text-[10px] text-emerald-500 font-semibold">
-                      {sandboxOutput.durationMs}ms WASM
-                    </span>
-                  </div>
-
-                  <div className="rounded-xl border theme-border theme-bg-surface-1 p-3 min-h-[160px] max-h-[220px] overflow-y-auto space-y-1.5">
-                    {sandboxOutput.stdout && (
-                      <pre className="text-emerald-500 whitespace-pre-wrap font-mono text-[11px]">
-                        {sandboxOutput.stdout}
-                      </pre>
-                    )}
-                    {sandboxOutput.stderr && (
-                      <pre className="text-rose-400 whitespace-pre-wrap font-mono text-[11px]">
-                        {sandboxOutput.stderr}
-                      </pre>
-                    )}
-                    {!sandboxOutput.stdout && !sandboxOutput.stderr && (
-                      <span className="theme-text-muted text-[11px]">
-                        Waiting for snippet execution...
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {activePreset.proposedAiFix && (
-                  <div className="mt-3 pt-3 border-t theme-border flex items-center justify-between">
-                    <span className="text-[11px] theme-text-secondary">AST Fault Guard ready</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowAiDiffDrawer(!showAiDiffDrawer)}
-                      className="px-2.5 py-1 rounded bg-[#FF7057] text-white text-[11px] font-semibold neu-button cursor-pointer"
-                    >
-                      {showAiDiffDrawer ? 'Hide AI Patch' : 'Inspect AI Patch'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </section>
 
