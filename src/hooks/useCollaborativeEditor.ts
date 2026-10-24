@@ -126,6 +126,7 @@ export function useCollaborativeEditor({
   const lastFollowedLineRef = useRef<number | null>(null);
   const lockedDecorationsRef = useRef<string[]>([]);
   const lockedLinesMapRef = useRef<Map<number, { userId: string; userName: string; userColor: string }>>(new Map());
+  const localEditingStateRef = useRef<{ line: number; timestamp: number } | null>(null);
   const noticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -195,7 +196,7 @@ export function useCollaborativeEditor({
     // Enforce readOnly on Monaco if current cursor or selection overlaps a peer-locked line
     const enforceLineLockReadOnly = (
       targetSelection?: Monaco.Selection | null,
-      targetPosition?: Monaco.Position | null
+      targetPosition?: Monaco.Position | { lineNumber: number; column?: number } | null
     ) => {
       if (!editorInstance) return;
       const sel = targetSelection || editorInstance.getSelection();
@@ -231,12 +232,13 @@ export function useCollaborativeEditor({
       }
     };
 
-    // Attach peer awareness listener & calculate active line locks
+    // Attach peer awareness listener & calculate active line locks with fair priority contention
     const handleAwareness = () => {
       const states = session.provider.awareness.getStates();
       const list: CollaboratorPresence[] = [];
       const newLockedMap = new Map<number, { userId: string; userName: string; userColor: string }>();
       const currentNormActive = (activeFile.path || '').replace(/^\/+/, '');
+      const localClientId = session.provider.awareness.clientID;
 
       states.forEach((state, clientId) => {
         if (state && state.user) {
@@ -257,24 +259,46 @@ export function useCollaborativeEditor({
             lastActive,
           });
 
-          // Check if this collaborator locks a line for the local user:
+          // Only evaluate locks originating from other clients/tabs
           const targetNormFile = (targetActiveFile || '').replace(/^\/+/, '');
-          if (userObj.id !== user.id && targetNormFile === currentNormActive) {
-            const isEditingActive = editingTimestamp > 0 && Date.now() - editingTimestamp < 5000;
-            const isTypingActive = isTyping || (Date.now() - lastActive < 4000);
+          if (clientId !== localClientId && targetNormFile === currentNormActive) {
+            const isEditingActive = editingTimestamp > 0 && Date.now() - editingTimestamp < 4000;
+            const peerActiveLine =
+              editingLine && isEditingActive
+                ? editingLine
+                : isTyping && targetCursor?.lineNumber
+                ? targetCursor.lineNumber
+                : null;
 
-            if (editingLine && isEditingActive) {
-              newLockedMap.set(editingLine, {
-                userId: userObj.id,
-                userName: userObj.name,
-                userColor: userObj.color || '#FF7057',
-              });
-            } else if (targetCursor?.lineNumber && isTypingActive) {
-              newLockedMap.set(targetCursor.lineNumber, {
-                userId: userObj.id,
-                userName: userObj.name,
-                userColor: userObj.color || '#FF7057',
-              });
+            if (peerActiveLine) {
+              const localEditing = localEditingStateRef.current;
+              const isLocalContention =
+                localEditing &&
+                localEditing.line === peerActiveLine &&
+                Date.now() - localEditing.timestamp < 4000;
+
+              if (isLocalContention) {
+                // Priority Contention: Whoever started typing first on this line retains the lock
+                if (
+                  editingTimestamp < localEditing.timestamp ||
+                  (editingTimestamp === localEditing.timestamp && clientId < localClientId)
+                ) {
+                  // Peer was first: peer gets priority, local user yields
+                  newLockedMap.set(peerActiveLine, {
+                    userId: userObj.id,
+                    userName: userObj.name,
+                    userColor: userObj.color || '#FF7057',
+                  });
+                }
+                // Else local user was first: local user keeps priority and is NOT locked
+              } else {
+                // Local user is not currently editing this line: Peer owns the lock
+                newLockedMap.set(peerActiveLine, {
+                  userId: userObj.id,
+                  userName: userObj.name,
+                  userColor: userObj.color || '#FF7057',
+                });
+              }
             }
           }
         }
@@ -295,7 +319,7 @@ export function useCollaborativeEditor({
               className: 'y-locked-line-bg',
               glyphMarginClassName: 'y-locked-line-glyph',
               glyphMarginHoverMessage: {
-                value: `🔒 **Line ${lineNum} locked by ${info.userName}**\n\n${info.userName} is actively typing here. Simultaneous edits on this line are restricted.`,
+                value: `🔒 **Line ${lineNum} locked by ${info.userName}**\n\n${info.userName} is actively typing here. Simultaneous edits on this line are restricted. Press Enter at end of line to create a new line.`,
               },
               hoverMessage: {
                 value: `🔒 **Line ${lineNum} locked by ${info.userName}**\n\nEditing on this line is disabled while ${info.userName} is typing.`,
@@ -378,6 +402,9 @@ export function useCollaborativeEditor({
 
         const pos = editorInstance.getPosition();
         if (pos) {
+          if (!localEditingStateRef.current || localEditingStateRef.current.line !== pos.lineNumber) {
+            localEditingStateRef.current = { line: pos.lineNumber, timestamp: Date.now() };
+          }
           collaborationClient.updateLocalAwareness(
             session.provider,
             user,
@@ -391,6 +418,7 @@ export function useCollaborativeEditor({
 
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = setTimeout(() => {
+          localEditingStateRef.current = null;
           const cur = editorInstance.getPosition();
           collaborationClient.updateLocalAwareness(
             session.provider,
@@ -429,6 +457,27 @@ export function useCollaborativeEditor({
 
       if (lockedBy) {
         const KeyCode = monacoInstance.KeyCode;
+
+        // Allow creating a new line below the locked line (crucial when last line is locked)
+        if (e.keyCode === KeyCode.Enter) {
+          e.preventDefault();
+          e.stopPropagation();
+          const model = editorInstance.getModel();
+          if (model && position) {
+            const targetLine = position.lineNumber;
+            const maxCol = model.getLineMaxColumn(targetLine);
+            editorInstance.updateOptions({ readOnly: false });
+            editorInstance.executeEdits('new-line', [{
+              range: new monacoInstance.Range(targetLine, maxCol, targetLine, maxCol),
+              text: '\n',
+              forceMoveMarkers: true,
+            }]);
+            editorInstance.setPosition({ lineNumber: targetLine + 1, column: 1 });
+            enforceLineLockReadOnly(null, { lineNumber: targetLine + 1, column: 1 });
+          }
+          return;
+        }
+
         const isNavigation =
           e.keyCode === KeyCode.UpArrow ||
           e.keyCode === KeyCode.DownArrow ||

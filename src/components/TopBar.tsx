@@ -4,43 +4,28 @@ import {
   Save,
   Sparkles,
   PanelLeft,
-  WifiOff,
   Loader2,
   FolderGit2,
   LogOut,
   ChevronRight,
   ArrowLeft,
-  RotateCw,
   Check,
-  Eye,
   Share2,
-  AlertCircle,
-  X,
   Bot,
-  GitBranch,
 } from 'lucide-react';
-import { CollaboratorPresence, ConnectionStatus, FollowState, UserProfile } from '../types';
+import { CollaboratorPresence, UserProfile } from '../types';
 import { Collaborators } from './Collaborators';
-import { ThemeToggle, ThemeMode } from './ThemeToggle';
 
 interface TopBarProps {
   roomName: string;
   roomId: string;
   user: UserProfile;
-  theme?: ThemeMode;
-  onToggleTheme?: (theme: ThemeMode) => void;
-  connectionStatus: ConnectionStatus;
-  isDocumentSynced?: boolean;
   collaborators: CollaboratorPresence[];
   isRunning: boolean;
   isSaving: boolean;
   saveStatus?: 'saved' | 'saving' | 'dirty' | 'error';
   hasUnsavedChanges: boolean;
   isExplorerOpen: boolean;
-  isRefreshing?: boolean;
-  refreshStatus?: 'idle' | 'success' | 'error';
-  followState?: FollowState | null;
-  onRefreshWorkspace?: () => void;
   onFollowCollaborator?: (userId: string, name: string, color: string, activeFile?: string) => void;
   onStopFollowing?: () => void;
   onToggleExplorer: () => void;
@@ -50,31 +35,19 @@ interface TopBarProps {
   isAgentSidebarOpen?: boolean;
   onToggleAgentSidebar?: () => void;
   onSwitchWorkspace: () => void;
-  branch?: string;
-  repositoryUrl?: string;
-  primaryLanguage?: string;
   onLogout: () => void;
-  onOpenDiagnostics?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
   roomName,
   roomId,
   user,
-  theme,
-  onToggleTheme,
-  connectionStatus,
-  isDocumentSynced = false,
   collaborators,
   isRunning,
   isSaving,
   saveStatus = 'saved',
   hasUnsavedChanges,
   isExplorerOpen,
-  isRefreshing = false,
-  refreshStatus = 'idle',
-  followState,
-  onRefreshWorkspace,
   onFollowCollaborator,
   onStopFollowing,
   onToggleExplorer,
@@ -84,11 +57,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   isAgentSidebarOpen = false,
   onToggleAgentSidebar,
   onSwitchWorkspace,
-  branch,
-  repositoryUrl,
-  primaryLanguage,
   onLogout,
-  onOpenDiagnostics,
 }) => {
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -99,66 +68,15 @@ export const TopBar: React.FC<TopBarProps> = ({
     setTimeout(() => setCopiedLink(false), 2200);
   };
 
-  const renderConnectionStatus = () => {
-    if (connectionStatus === 'connected' && isDocumentSynced) {
-      return (
-        <div
-          className="inline-flex h-8.5 items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 text-xs font-semibold text-emerald-600 dark:text-emerald-400 shrink-0"
-          title="Yjs Document Synchronized & Live"
-        >
-          <span className="relative flex h-2 w-2">
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          </span>
-          <span className="tracking-wide">Live Sync</span>
-        </div>
-      );
-    }
-
-    if (connectionStatus === 'connected' && !isDocumentSynced) {
-      return (
-        <div
-          className="inline-flex h-8.5 items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-semibold text-amber-500 shrink-0"
-          title="Connected to WebSocket, syncing CRDT document state..."
-        >
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-500" />
-          <span>Syncing Doc...</span>
-        </div>
-      );
-    }
-
-    if (connectionStatus === 'connecting') {
-      return (
-        <div
-          className="inline-flex h-8.5 items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-semibold text-amber-500 shrink-0"
-          title="Connecting to collaboration server..."
-        >
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-500" />
-          <span>Connecting...</span>
-        </div>
-      );
-    }
-
-    return (
-      <div
-        className="inline-flex h-8.5 items-center gap-2 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 text-xs font-semibold text-rose-500 shrink-0"
-        title="Disconnected from collaboration server"
-      >
-        <WifiOff className="h-3.5 w-3.5 text-rose-500" />
-        <span>Offline</span>
-      </div>
-    );
-  };
-
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b theme-border theme-bg-glass px-3 sm:px-4 lg:px-5 backdrop-blur-md select-none z-20 transition-colors gap-2 sm:gap-3 overflow-hidden">
-      {/* Left: Back/Exit, Explorer Toggle, Workspace Name, Branch, Language & Sync Status */}
-      <div className="flex items-center gap-2.5 shrink min-w-0">
-        {/* Prominent Back / Exit to Dashboard Button */}
+    <header className="flex h-13 shrink-0 items-center justify-between border-b theme-border theme-bg-glass px-3 sm:px-4 backdrop-blur-md select-none z-20 transition-colors gap-3 overflow-hidden">
+      {/* Left: Back/Exit, Explorer Toggle, Workspace Name */}
+      <div className="flex items-center gap-2 shrink min-w-0">
         <button
           type="button"
           onClick={onSwitchWorkspace}
           title="Exit Workspace & Return to Dashboard"
-          className="inline-flex h-8.5 items-center gap-2 rounded-lg border theme-border theme-bg-surface-2 px-3 text-xs font-semibold theme-text-primary hover:border-[#FF7057]/50 hover:bg-[#FF7057]/10 hover:text-[#FF7057] transition cursor-pointer shrink-0 neu-button group shadow-2xs"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg border theme-border theme-bg-surface-2 px-2.5 text-xs font-semibold theme-text-primary hover:border-[#FF7057]/50 hover:bg-[#FF7057]/10 hover:text-[#FF7057] transition cursor-pointer shrink-0 neu-button group shadow-2xs"
         >
           <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
           <span>Exit</span>
@@ -168,7 +86,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           type="button"
           onClick={onToggleExplorer}
           title={`${isExplorerOpen ? 'Hide' : 'Show'} File Explorer (Ctrl+B)`}
-          className={`flex h-8.5 w-8.5 items-center justify-center rounded-lg transition cursor-pointer shrink-0 shadow-2xs ${
+          className={`flex h-8 w-8 items-center justify-center rounded-lg transition cursor-pointer shrink-0 shadow-2xs ${
             isExplorerOpen
               ? 'theme-bg-surface-2 text-[#FF7057] border theme-border font-bold'
               : 'theme-border border theme-bg-surface-2 theme-text-secondary hover:theme-text-primary hover:border-[#FF7057]/30'
@@ -182,76 +100,25 @@ export const TopBar: React.FC<TopBarProps> = ({
           type="button"
           onClick={onSwitchWorkspace}
           title="Switch Workspace Room"
-          className="group flex h-8.5 items-center gap-2 rounded-lg border theme-border theme-bg-surface-2 px-3 hover:border-[#FF7057]/50 hover:theme-bg-elevated transition cursor-pointer min-w-0 shadow-2xs"
+          className="group flex h-8 items-center gap-2 rounded-lg border theme-border theme-bg-surface-2 px-2.5 hover:border-[#FF7057]/50 hover:theme-bg-elevated transition cursor-pointer min-w-0 shadow-2xs"
         >
-          <FolderGit2 className="h-4 w-4 shrink-0 text-[#FF7057]" />
-          <span className="text-xs font-bold theme-text-primary group-hover:text-[#FF7057] transition max-w-[120px] sm:max-w-[180px] md:max-w-[220px] truncate">
+          <FolderGit2 className="h-3.5 w-3.5 shrink-0 text-[#FF7057]" />
+          <span className="text-xs font-bold theme-text-primary group-hover:text-[#FF7057] transition max-w-[140px] sm:max-w-[180px] md:max-w-[220px] truncate">
             {roomName}
           </span>
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 theme-text-secondary opacity-60" />
-          <span className="hidden sm:inline-block shrink-0 rounded border theme-border theme-bg-surface-1 px-1.5 py-0.5 text-[11px] font-mono theme-text-secondary">
-            #{roomId.slice(0, 6)}
-          </span>
+          <ChevronRight className="h-3 w-3 shrink-0 theme-text-secondary opacity-60" />
         </button>
-
-        {branch && (
-          <div
-            className="hidden xl:inline-flex h-8.5 items-center gap-1.5 px-2.5 rounded-lg border theme-border theme-bg-surface-2 font-mono text-xs theme-text-secondary shadow-2xs shrink-0"
-            title={repositoryUrl ? `Imported from ${repositoryUrl}` : `Active Branch: ${branch}`}
-          >
-            <GitBranch className="h-3.5 w-3.5 text-[#FF7057]" />
-            <span className="truncate max-w-[90px] font-medium">{branch}</span>
-          </div>
-        )}
-
-        {primaryLanguage && (
-          <div
-            className="hidden 2xl:inline-flex h-8.5 items-center gap-1.5 px-2.5 rounded-lg border border-[#FF7057]/30 bg-[#FF7057]/10 font-mono text-xs text-[#FF7057] font-semibold shadow-2xs shrink-0"
-            title={`Primary Project Language: ${primaryLanguage}`}
-          >
-            <span>{primaryLanguage}</span>
-          </div>
-        )}
-
-        <div className="hidden sm:block">
-          {renderConnectionStatus()}
-        </div>
-
-        {onRefreshWorkspace && (
-          <button
-            type="button"
-            onClick={onRefreshWorkspace}
-            disabled={isRefreshing}
-            title="Sync & Refresh Workspace State (F5 / Ctrl+R)"
-            className="hidden xl:inline-flex h-8.5 items-center gap-1.5 rounded-lg border theme-border theme-bg-surface-2 px-2.5 text-xs font-semibold theme-text-secondary hover:theme-text-primary hover:theme-bg-elevated disabled:opacity-50 transition cursor-pointer shadow-2xs shrink-0"
-          >
-            <RotateCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-[#FF7057]' : ''}`} />
-            <span>{refreshStatus === 'success' ? 'Synced' : 'Sync'}</span>
-          </button>
-        )}
-
-        {onOpenDiagnostics && connectionStatus !== 'connected' && (
-          <button
-            type="button"
-            onClick={onOpenDiagnostics}
-            title="Open Connection Diagnostics"
-            className="inline-flex h-8.5 items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 text-xs font-semibold text-rose-500 dark:text-rose-400 hover:bg-rose-500/20 transition cursor-pointer animate-pulse shrink-0"
-          >
-            <AlertCircle className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Diagnose</span>
-          </button>
-        )}
       </div>
 
-      {/* Middle: Save, Run, AI Debugger, AI Agent & Share Action Group */}
-      <div className="flex items-center gap-2 sm:gap-2.5 shrink min-w-0 justify-center">
+      {/* Middle: Save, Run, AI Debugger, AI Agent */}
+      <div className="flex items-center gap-2 shrink-0 justify-center">
         {/* Save Active File Button */}
         <button
           type="button"
           onClick={onSaveFile}
           disabled={isSaving}
           title="Save Active File to Storage (Ctrl+S)"
-          className={`inline-flex h-8.5 items-center gap-2 rounded-lg border px-3 sm:px-3.5 text-xs font-semibold transition cursor-pointer neu-button shadow-2xs shrink-0 ${
+          className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition cursor-pointer neu-button shadow-2xs shrink-0 ${
             saveStatus === 'error'
               ? 'border-rose-500/40 bg-rose-500/10 text-rose-500 dark:text-rose-400'
               : saveStatus === 'saving' || isSaving
@@ -268,7 +135,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           ) : (
             <Save className="h-3.5 w-3.5" />
           )}
-          <span className="hidden sm:inline">
+          <span>
             {isSaving || saveStatus === 'saving'
               ? 'Saving...'
               : saveStatus === 'error'
@@ -288,7 +155,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           onClick={onRunCode}
           disabled={isRunning}
           title="Run Code in Sandbox (Ctrl+Enter)"
-          className="inline-flex h-8.5 items-center gap-2 rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] active:bg-[var(--accent-pressed)] px-3.5 sm:px-4 text-xs font-bold text-white disabled:opacity-50 transition cursor-pointer shadow-xs shrink-0"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] active:bg-[var(--accent-pressed)] px-3.5 text-xs font-bold text-white disabled:opacity-50 transition cursor-pointer shadow-xs shrink-0"
         >
           {isRunning ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -303,10 +170,10 @@ export const TopBar: React.FC<TopBarProps> = ({
           type="button"
           onClick={onOpenAIDebugger}
           title="Open AI Debugger & AST Assistant"
-          className="inline-flex h-8.5 items-center gap-2 rounded-lg border theme-border theme-bg-surface-2 hover:border-[#FF7057] px-3 sm:px-3.5 text-xs font-semibold text-[var(--accent-primary)] transition cursor-pointer shadow-2xs shrink-0"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg border theme-border theme-bg-surface-2 hover:border-[#FF7057] px-3 text-xs font-semibold text-[var(--accent-primary)] transition cursor-pointer shadow-2xs shrink-0"
         >
           <Sparkles className="h-3.5 w-3.5" />
-          <span className="hidden xl:inline">AI Debugger</span>
+          <span>AI Debugger</span>
         </button>
 
         {/* Personal AI Agent Button */}
@@ -315,23 +182,25 @@ export const TopBar: React.FC<TopBarProps> = ({
             type="button"
             onClick={onToggleAgentSidebar}
             title="Toggle Personal AI Coding Agent"
-            className={`inline-flex h-8.5 items-center gap-2 rounded-lg border px-3 sm:px-3.5 text-xs font-bold transition cursor-pointer shadow-2xs shrink-0 ${
+            className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition cursor-pointer shadow-2xs shrink-0 ${
               isAgentSidebarOpen
                 ? 'border-[#FF7057] bg-[#FF7057] text-white shadow-xs'
                 : 'theme-border theme-bg-surface-2 hover:border-[#FF7057] text-[var(--accent-primary)]'
             }`}
           >
             <Bot className="h-3.5 w-3.5" />
-            <span className="hidden xl:inline">AI Agent</span>
+            <span>AI Agent</span>
           </button>
         )}
+      </div>
 
-        {/* 1-Click Share & Invite Button */}
+      {/* Right: Share Button, Collaborator Avatars, Logout */}
+      <div className="flex items-center gap-2.5 shrink-0">
         <button
           type="button"
           onClick={handleCopyShareLink}
           title="Copy Live Collaboration URL to Clipboard"
-          className={`inline-flex h-8.5 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition cursor-pointer shadow-2xs shrink-0 ${
+          className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition cursor-pointer shadow-2xs shrink-0 ${
             copiedLink
               ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
               : 'theme-border theme-bg-surface-2 theme-text-secondary hover:theme-text-primary hover:border-[#FF7057] hover:theme-bg-elevated'
@@ -342,53 +211,23 @@ export const TopBar: React.FC<TopBarProps> = ({
           ) : (
             <Share2 className="h-3.5 w-3.5" />
           )}
-          <span className="hidden 2xl:inline">{copiedLink ? 'Link Copied!' : 'Share'}</span>
+          <span className="hidden sm:inline">{copiedLink ? 'Link Copied!' : 'Share'}</span>
         </button>
-      </div>
 
-      {/* Right: Live Collaborator Avatars, Follow Status, Theme Toggle & Logout */}
-      <div className="flex items-center gap-3 shrink-0">
         <Collaborators
           collaborators={collaborators}
           currentUserId={user.id}
-          followState={followState}
           onFollowCollaborator={onFollowCollaborator}
           onStopFollowing={onStopFollowing}
         />
 
-        {followState && (
-          <div
-            className="inline-flex h-8.5 items-center gap-2 rounded-full border border-[#FF7057]/40 bg-[#FF7057]/10 px-3 text-xs text-[#FF7057] animate-pulse shrink-0"
-            title={`Following ${followState.targetUserName}`}
-          >
-            <Eye className="h-3.5 w-3.5 text-[#FF7057]" />
-            <span className="max-w-[90px] truncate text-xs font-semibold">
-              @{followState.targetUserName}
-            </span>
-            <button
-              type="button"
-              onClick={onStopFollowing}
-              className="ml-0.5 rounded-full p-0.5 text-[#FF7057] hover:text-white hover:bg-[#FF7057] transition cursor-pointer"
-              title="Stop Following"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        )}
-
-        {theme && onToggleTheme && (
-          <div className="shrink-0">
-            <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-          </div>
-        )}
-
-        <div className="h-6 w-px bg-[var(--border)] opacity-60 shrink-0" />
+        <div className="h-5 w-px bg-[var(--border)] opacity-60 shrink-0" />
 
         <button
           type="button"
           onClick={onLogout}
           title={`Signed in as ${user.name} — Click to Sign Out`}
-          className="inline-flex h-8.5 w-8.5 items-center justify-center rounded-lg border theme-border theme-bg-surface-2 text-xs theme-text-secondary hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-500 transition cursor-pointer shadow-2xs shrink-0"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border theme-border theme-bg-surface-2 text-xs theme-text-secondary hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-500 transition cursor-pointer shadow-2xs shrink-0"
         >
           <LogOut className="h-3.5 w-3.5" />
         </button>
