@@ -150,7 +150,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   };
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b theme-border theme-bg-glass px-4 sm:px-5 backdrop-blur-md select-none z-20 transition-colors gap-3">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b theme-border theme-bg-glass px-3 sm:px-4 lg:px-5 backdrop-blur-md select-none z-20 transition-colors gap-2 sm:gap-3 overflow-hidden">
       {/* Left: Back/Exit, Explorer Toggle, Workspace Name, Branch, Language & Sync Status */}
       <div className="flex items-center gap-2.5 shrink min-w-0">
         {/* Prominent Back / Exit to Dashboard Button */}
@@ -196,7 +196,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         {branch && (
           <div
-            className="hidden md:inline-flex h-8.5 items-center gap-1.5 px-2.5 rounded-lg border theme-border theme-bg-surface-2 font-mono text-xs theme-text-secondary shadow-2xs shrink-0"
+            className="hidden xl:inline-flex h-8.5 items-center gap-1.5 px-2.5 rounded-lg border theme-border theme-bg-surface-2 font-mono text-xs theme-text-secondary shadow-2xs shrink-0"
             title={repositoryUrl ? `Imported from ${repositoryUrl}` : `Active Branch: ${branch}`}
           >
             <GitBranch className="h-3.5 w-3.5 text-[#FF7057]" />
@@ -206,7 +206,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         {primaryLanguage && (
           <div
-            className="hidden lg:inline-flex h-8.5 items-center gap-1.5 px-2.5 rounded-lg border border-[#FF7057]/30 bg-[#FF7057]/10 font-mono text-xs text-[#FF7057] font-semibold shadow-2xs shrink-0"
+            className="hidden 2xl:inline-flex h-8.5 items-center gap-1.5 px-2.5 rounded-lg border border-[#FF7057]/30 bg-[#FF7057]/10 font-mono text-xs text-[#FF7057] font-semibold shadow-2xs shrink-0"
             title={`Primary Project Language: ${primaryLanguage}`}
           >
             <span>{primaryLanguage}</span>
@@ -244,14 +244,14 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       {/* Middle: Save, Run, AI Debugger, AI Agent & Share Action Group */}
-      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+      <div className="flex items-center gap-2 sm:gap-2.5 shrink min-w-0 justify-center">
         {/* Save Active File Button */}
         <button
           type="button"
           onClick={onSaveFile}
           disabled={isSaving}
           title="Save Active File to Storage (Ctrl+S)"
-          className={`inline-flex h-8.5 items-center gap-2 rounded-lg border px-3 sm:px-3.5 text-xs font-semibold transition cursor-pointer neu-button shadow-2xs ${
+          className={`inline-flex h-8.5 items-center gap-2 rounded-lg border px-3 sm:px-3.5 text-xs font-semibold transition cursor-pointer neu-button shadow-2xs shrink-0 ${
             saveStatus === 'error'
               ? 'border-rose-500/40 bg-rose-500/10 text-rose-500 dark:text-rose-400'
               : saveStatus === 'saving' || isSaving
@@ -288,7 +288,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           onClick={onRunCode}
           disabled={isRunning}
           title="Run Code in Sandbox (Ctrl+Enter)"
-          className="inline-flex h-8.5 items-center gap-2 rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] active:bg-[var(--accent-pressed)] px-3.5 sm:px-4 text-xs font-bold text-white disabled:opacity-50 transition cursor-pointer shadow-xs"
+          className="inline-flex h-8.5 items-center gap-2 rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] active:bg-[var(--accent-pressed)] px-3.5 sm:px-4 text-xs font-bold text-white disabled:opacity-50 transition cursor-pointer shadow-xs shrink-0"
         >
           {isRunning ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -303,10 +303,10 @@ export const TopBar: React.FC<TopBarProps> = ({
           type="button"
           onClick={onOpenAIDebugger}
           title="Open AI Debugger & AST Assistant"
-          className="inline-flex h-8.5 items-center gap-2 rounded-lg border theme-border theme-bg-surface-2 hover:border-[#FF7057] px-3 sm:px-3.5 text-xs font-semibold text-[var(--accent-primary)] transition cursor-pointer shadow-2xs"
+          className="inline-flex h-8.5 items-center gap-2 rounded-lg border theme-border theme-bg-surface-2 hover:border-[#FF7057] px-3 sm:px-3.5 text-xs font-semibold text-[var(--accent-primary)] transition cursor-pointer shadow-2xs shrink-0"
         >
           <Sparkles className="h-3.5 w-3.5" />
-          <span className="hidden md:inline">AI Debugger</span>
+          <span className="hidden xl:inline">AI Debugger</span>
         </button>
 
         {/* Personal AI Agent Button */}
@@ -315,14 +315,14 @@ export const TopBar: React.FC<TopBarProps> = ({
             type="button"
             onClick={onToggleAgentSidebar}
             title="Toggle Personal AI Coding Agent"
-            className={`inline-flex h-8.5 items-center gap-2 rounded-lg border px-3 sm:px-3.5 text-xs font-bold transition cursor-pointer shadow-2xs ${
+            className={`inline-flex h-8.5 items-center gap-2 rounded-lg border px-3 sm:px-3.5 text-xs font-bold transition cursor-pointer shadow-2xs shrink-0 ${
               isAgentSidebarOpen
                 ? 'border-[#FF7057] bg-[#FF7057] text-white shadow-xs'
                 : 'theme-border theme-bg-surface-2 hover:border-[#FF7057] text-[var(--accent-primary)]'
             }`}
           >
             <Bot className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">AI Agent</span>
+            <span className="hidden xl:inline">AI Agent</span>
           </button>
         )}
 
@@ -331,7 +331,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           type="button"
           onClick={handleCopyShareLink}
           title="Copy Live Collaboration URL to Clipboard"
-          className={`inline-flex h-8.5 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition cursor-pointer shadow-2xs ${
+          className={`inline-flex h-8.5 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition cursor-pointer shadow-2xs shrink-0 ${
             copiedLink
               ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
               : 'theme-border theme-bg-surface-2 theme-text-secondary hover:theme-text-primary hover:border-[#FF7057] hover:theme-bg-elevated'
@@ -342,7 +342,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           ) : (
             <Share2 className="h-3.5 w-3.5" />
           )}
-          <span className="hidden lg:inline">{copiedLink ? 'Link Copied!' : 'Share'}</span>
+          <span className="hidden 2xl:inline">{copiedLink ? 'Link Copied!' : 'Share'}</span>
         </button>
       </div>
 

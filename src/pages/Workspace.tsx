@@ -375,6 +375,7 @@ clearFileDraft(room.id, fileId);
     isDocumentSynced,
     collaborators,
     followState,
+    lineLockNotice,
     startFollowing,
     stopFollowing,
     reconcileSession,
@@ -986,6 +987,7 @@ clearFileDraft(room.id, fileId);
             activeFile={activeFile}
             dirtyFileIds={dirtyFileIds}
             followState={followState}
+            lineLockNotice={lineLockNotice}
             currentUserId={user.id}
             theme={theme}
             onSelectTab={(file) => handleSelectFile(file)}

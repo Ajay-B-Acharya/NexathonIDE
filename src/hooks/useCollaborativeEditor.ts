@@ -6,6 +6,7 @@ import {
   CollaboratorPresence,
   ConnectionStatus,
   FollowState,
+  LineLockNotice,
   UserProfile,
   WorkspaceFile,
 } from '../types';
@@ -25,6 +26,7 @@ export interface UseCollaborativeEditorReturn {
   isDocumentSynced: boolean;
   collaborators: CollaboratorPresence[];
   followState: FollowState | null;
+  lineLockNotice: LineLockNotice | null;
   startFollowing: (targetUserId: string, targetUserName: string, targetUserColor: string, targetFile?: string) => void;
   stopFollowing: () => void;
   reconcileSession: () => void;
@@ -33,7 +35,7 @@ export interface UseCollaborativeEditorReturn {
 
 /**
  * Dynamically injects per-client cursor CSS styles so y-monaco awareness
- * cursors and selection highlights display each user's unique color & username pill.
+ * cursors, selection highlights, and locked line indicators display cleanly.
  */
 function syncCollaboratorCursorStyles(collaborators: CollaboratorPresence[]) {
   const styleId = 'nexathon-yjs-cursor-styles';
@@ -44,7 +46,7 @@ function syncCollaboratorCursorStyles(collaborators: CollaboratorPresence[]) {
     document.head.appendChild(styleEl);
   }
 
-  const rules = collaborators
+  const cursorRules = collaborators
     .map(({ clientId, user }) => {
       const safeName = user.name.replace(/"/g, '\\"');
       const color = user.color || '#3b82f6';
@@ -81,7 +83,26 @@ function syncCollaboratorCursorStyles(collaborators: CollaboratorPresence[]) {
     })
     .join('\n');
 
-  styleEl.textContent = rules;
+  const lineLockRules = `
+    .y-locked-line-bg {
+      background-color: rgba(255, 112, 87, 0.08) !important;
+      border-left: 3px solid #FF7057 !important;
+    }
+    .y-locked-line-glyph {
+      position: relative;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%23FF7057" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>');
+      background-repeat: no-repeat;
+      background-position: center center;
+      cursor: not-allowed;
+    }
+  `;
+
+  styleEl.textContent = `${cursorRules}\n${lineLockRules}`;
 }
 
 export function useCollaborativeEditor({
@@ -97,11 +118,16 @@ export function useCollaborativeEditor({
   const [isDocumentSynced, setIsDocumentSynced] = useState<boolean>(false);
   const [collaborators, setCollaborators] = useState<CollaboratorPresence[]>([]);
   const [followState, setFollowState] = useState<FollowState | null>(null);
+  const [lineLockNotice, setLineLockNotice] = useState<LineLockNotice | null>(null);
 
   const bindingRef = useRef<MonacoBinding | null>(null);
   const sessionRef = useRef<FileCollaborationSession | null>(null);
   const modelsMapRef = useRef<Map<string, Monaco.editor.ITextModel>>(new Map());
   const lastFollowedLineRef = useRef<number | null>(null);
+  const lockedDecorationsRef = useRef<string[]>([]);
+  const lockedLinesMapRef = useRef<Map<number, { userId: string; userName: string; userColor: string }>>(new Map());
+  const noticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onContentChangeRef = useRef(onContentChange);
   onContentChangeRef.current = onContentChange;
@@ -166,24 +192,75 @@ export function useCollaborativeEditor({
     session.provider.on('sync', handleSync);
     setIsDocumentSynced(session.provider.synced);
 
-    // Attach peer awareness listener
+    // Attach peer awareness listener & calculate active line locks
     const handleAwareness = () => {
       const states = session.provider.awareness.getStates();
       const list: CollaboratorPresence[] = [];
+      const newLockedMap = new Map<number, { userId: string; userName: string; userColor: string }>();
+
       states.forEach((state, clientId) => {
         if (state && state.user) {
+          const userObj = state.user as UserProfile;
+          const targetActiveFile = state.activeFile as string | undefined;
+          const targetCursor = state.cursor as { lineNumber: number; column: number } | null | undefined;
+          const isTyping = Boolean(state.isTyping);
+          const lastActive = (state.lastActive as number) || Date.now();
+
           list.push({
             clientId,
-            user: state.user as UserProfile,
-            activeFile: state.activeFile as string | undefined,
-            cursor: state.cursor as { lineNumber: number; column: number } | null | undefined,
-            isTyping: Boolean(state.isTyping),
-            lastActive: (state.lastActive as number) || Date.now(),
+            user: userObj,
+            activeFile: targetActiveFile,
+            cursor: targetCursor,
+            isTyping,
+            lastActive,
           });
+
+          // Check if this collaborator locks a line for the local user:
+          if (
+            userObj.id !== user.id &&
+            targetActiveFile === activeFile.path &&
+            targetCursor?.lineNumber
+          ) {
+            const isRecent = Date.now() - lastActive < 8000;
+            if (isTyping || isRecent) {
+              newLockedMap.set(targetCursor.lineNumber, {
+                userId: userObj.id,
+                userName: userObj.name,
+                userColor: userObj.color || '#FF7057',
+              });
+            }
+          }
         }
       });
+
       setCollaborators(list);
       syncCollaboratorCursorStyles(list);
+      lockedLinesMapRef.current = newLockedMap;
+
+      // Update line lock decorations in Monaco
+      if (editorInstance && monacoInstance) {
+        const decorations: Monaco.editor.IModelDeltaDecoration[] = [];
+        newLockedMap.forEach((info, lineNum) => {
+          decorations.push({
+            range: new monacoInstance.Range(lineNum, 1, lineNum, 1),
+            options: {
+              isWholeLine: true,
+              className: 'y-locked-line-bg',
+              glyphMarginClassName: 'y-locked-line-glyph',
+              glyphMarginHoverMessage: {
+                value: `🔒 **Line ${lineNum} locked by ${info.userName}**\n\n${info.userName} is actively typing here. Simultaneous edits on this line are restricted.`,
+              },
+              hoverMessage: {
+                value: `🔒 **Line ${lineNum} locked by ${info.userName}**\n\nEditing on this line is disabled while ${info.userName} is typing.`,
+              },
+            },
+          });
+        });
+        lockedDecorationsRef.current = editorInstance.deltaDecorations(
+          lockedDecorationsRef.current,
+          decorations
+        );
+      }
     };
     session.provider.awareness.on('change', handleAwareness);
     handleAwareness();
@@ -218,12 +295,112 @@ export function useCollaborativeEditor({
       });
     });
 
+    // Broadcast typing awareness when local user edits
+    const contentDisposable = editorInstance.onDidChangeModelContent((e) => {
+      if (!e.isFlush && editorInstance.hasTextFocus()) {
+        const pos = editorInstance.getPosition();
+        collaborationClient.updateLocalAwareness(
+          session.provider,
+          user,
+          activeFile.path,
+          pos ? { lineNumber: pos.lineNumber, column: pos.column } : null,
+          false,
+          true
+        );
+
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+          const cur = editorInstance.getPosition();
+          collaborationClient.updateLocalAwareness(
+            session.provider,
+            user,
+            activeFile.path,
+            cur ? { lineNumber: cur.lineNumber, column: cur.column } : null,
+            false,
+            false
+          );
+        }, 1500);
+      }
+    });
+
+    // Enforce line-level editing lock: block modifying key events on peer-locked lines
+    const keydownDisposable = editorInstance.onKeyDown((e) => {
+      const selection = editorInstance.getSelection();
+      const position = editorInstance.getPosition();
+      if (!selection && !position) return;
+
+      const startLine = selection
+        ? Math.min(selection.startLineNumber, selection.endLineNumber)
+        : position!.lineNumber;
+      const endLine = selection
+        ? Math.max(selection.startLineNumber, selection.endLineNumber)
+        : position!.lineNumber;
+
+      let lockedBy: { line: number; userName: string; userColor: string } | null = null;
+      for (let l = startLine; l <= endLine; l++) {
+        const lock = lockedLinesMapRef.current.get(l);
+        if (lock) {
+          lockedBy = { line: l, userName: lock.userName, userColor: lock.userColor };
+          break;
+        }
+      }
+
+      if (lockedBy) {
+        const KeyCode = monacoInstance.KeyCode;
+        const isNavigation =
+          e.keyCode === KeyCode.UpArrow ||
+          e.keyCode === KeyCode.DownArrow ||
+          e.keyCode === KeyCode.LeftArrow ||
+          e.keyCode === KeyCode.RightArrow ||
+          e.keyCode === KeyCode.Home ||
+          e.keyCode === KeyCode.End ||
+          e.keyCode === KeyCode.PageUp ||
+          e.keyCode === KeyCode.PageDown ||
+          e.keyCode === KeyCode.Escape;
+
+        const isCopyOrSelect =
+          (e.ctrlKey || e.metaKey) &&
+          (e.keyCode === KeyCode.KeyC || e.keyCode === KeyCode.KeyA);
+
+        const isModifierOnly =
+          e.keyCode === KeyCode.Ctrl ||
+          e.keyCode === KeyCode.Shift ||
+          e.keyCode === KeyCode.Alt ||
+          e.keyCode === KeyCode.Meta;
+
+        if (!isNavigation && !isCopyOrSelect && !isModifierOnly) {
+          // Block edit on the locked line
+          e.preventDefault();
+          e.stopPropagation();
+
+          setLineLockNotice({
+            line: lockedBy.line,
+            userName: lockedBy.userName,
+            userColor: lockedBy.userColor,
+          });
+
+          if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current);
+          noticeTimeoutRef.current = setTimeout(() => {
+            setLineLockNotice(null);
+          }, 2500);
+        }
+      }
+    });
+
     return () => {
       session.provider.off('status', handleStatus);
       session.provider.off('sync', handleSync);
       session.provider.awareness.off('change', handleAwareness);
       cursorDisposable.dispose();
+      contentDisposable.dispose();
+      keydownDisposable.dispose();
       session.ytext.unobserve(handleYTextObserver);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current);
+      if (editorInstance && lockedDecorationsRef.current.length > 0) {
+        editorInstance.deltaDecorations(lockedDecorationsRef.current, []);
+        lockedDecorationsRef.current = [];
+      }
       if (bindingRef.current) {
         bindingRef.current.destroy();
         bindingRef.current = null;
@@ -327,6 +504,7 @@ export function useCollaborativeEditor({
     isDocumentSynced,
     collaborators,
     followState,
+    lineLockNotice,
     startFollowing,
     stopFollowing,
     reconcileSession,
