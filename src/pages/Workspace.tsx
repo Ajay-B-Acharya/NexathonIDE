@@ -10,9 +10,10 @@ import { TerminalPanel } from '../components/TerminalPanel';
 import { AIDebuggerPanel } from '../components/AIDebuggerPanel';
 import { AIAgentSidebar } from '../components/AIAgentSidebar';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { WasmBootHud } from '../components/WasmBootHud';
+import { FileConflictModal } from '../components/FileConflictModal';
 import { ConnectionDiagnosticsModal } from '../components/ConnectionDiagnosticsModal';
-import { workspaceApi, detectLanguageFromPath } from '../services/workspaceApi';
+import { workspaceApi, detectLanguageFromPath, FileConflictError } from '../services/workspaceApi';
+import { extractParentAndName, generateAlternativeName } from '../utils/fileConflictUtils';
 import { executionClient } from '../services/executionClient';
 import { useCollaborativeEditor } from '../hooks/useCollaborativeEditor';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -76,6 +77,19 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [emptyFolders, setEmptyFolders] = useState<Set<string>>(new Set());
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const [projectProfile, setProjectProfile] = useState<ProjectProfile | null>(null);
+
+  // Smart conflict resolution dialog state for concurrent creations
+  const [conflictModalState, setConflictModalState] = useState<{
+    isOpen: boolean;
+    type: 'file' | 'folder';
+    fullPath: string;
+    parentPath: string;
+    fileName: string;
+    draftContent: string;
+    suggestedCopyName: string;
+    errorMessage: string | null;
+    isSubmitting: boolean;
+  } | null>(null);
 
   const [editorInstance, setEditorInstance] =
     useState<Monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -514,29 +528,106 @@ clearFileDraft(room.id, fileId);
     [activeFile, files, room.id, applyContentToSharedDoc]
   );
 
-  const handleCreateFile = async (path: string) => {
-    const language = detectLanguageFromPath(path);
-    const created = await workspaceApi.createFile(room.id, {
-      path,
-      content: '',
-      language,
-    });
-    setFiles((prev) => [...prev, created]);
-    latestContentRef.current[created.id] = created.content;
-    setDbContentSnapshot((prev) => ({ ...prev, [created.id]: created.content }));
-    setOpenFileIds((prev) => [...prev, created.id]);
-    setActiveFileId(created.id);
+  const handleCreateFile = async (path: string, initialContent: string = '') => {
+    const cleanPath = path.trim().replace(/^\/+/, '').replace(/\/+$/, '');
+    const language = detectLanguageFromPath(cleanPath);
+    const idempotencyKey = `create_file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    try {
+      const created = await workspaceApi.createFile(room.id, {
+        path: cleanPath,
+        content: initialContent,
+        language,
+        idempotencyKey,
+      });
+
+      setFiles((prev) => {
+        const withoutOld = prev.filter(
+          (f) => f.id !== created.id && f.path.toLowerCase() !== created.path.toLowerCase()
+        );
+        return [...withoutOld, created];
+      });
+
+      latestContentRef.current[created.id] = created.content;
+      setDbContentSnapshot((prev) => ({ ...prev, [created.id]: created.content }));
+      setOpenFileIds((prev) => (prev.includes(created.id) ? prev : [...prev, created.id]));
+      setActiveFileId(created.id);
+    } catch (err: any) {
+      if (err instanceof FileConflictError || err?.status === 409 || err?.message?.includes('CONFLICT')) {
+        // Concurrently created by a peer!
+        // 1. Immediately reconcile file list from backend so the peer's file appears
+        try {
+          const latest = await workspaceApi.listFiles(room.id);
+          setFiles((_current) => {
+            const currentContentMap = latestContentRef.current;
+            return latest.map((lf) => ({
+              ...lf,
+              content: currentContentMap[lf.id] ?? lf.content,
+            }));
+          });
+        } catch {}
+
+        // 2. Compute non-conflicting alternative suggestion in the parent folder
+        const { parentPath, fileName } = extractParentAndName(cleanPath);
+        const existingInParent = files
+          .filter((f) => extractParentAndName(f.path).parentPath === parentPath)
+          .map((f) => extractParentAndName(f.path).fileName);
+
+        const suggestedCopyName = generateAlternativeName(fileName, existingInParent);
+
+        // 3. Open Smart Conflict Resolution dialog
+        setConflictModalState({
+          isOpen: true,
+          type: 'file',
+          fullPath: cleanPath,
+          parentPath,
+          fileName,
+          draftContent: initialContent,
+          suggestedCopyName,
+          errorMessage: null,
+          isSubmitting: false,
+        });
+
+        throw err;
+      }
+      throw err;
+    }
   };
 
   const handleRenameFile = async (file: WorkspaceFile, newPath: string) => {
-    const newName = newPath.split('/').pop() || newPath;
-    const newLanguage = detectLanguageFromPath(newPath);
-    const updated = await workspaceApi.updateFile(room.id, file.id, {
-      path: newPath,
-      name: newName,
-      language: newLanguage,
-    });
-    setFiles((prev) => prev.map((f) => (f.id === file.id ? updated : f)));
+    const cleanNewPath = newPath.trim().replace(/^\/+/, '').replace(/\/+$/, '');
+    if (!cleanNewPath || cleanNewPath === file.path) return;
+    const newName = cleanNewPath.split('/').pop() || cleanNewPath;
+    const newLanguage = detectLanguageFromPath(cleanNewPath);
+
+    try {
+      const updated = await workspaceApi.updateFile(room.id, file.id, {
+        path: cleanNewPath,
+        name: newName,
+        language: newLanguage,
+      });
+      setFiles((prev) => prev.map((f) => (f.id === file.id ? updated : f)));
+    } catch (err: any) {
+      if (err?.status === 409 || err?.message?.includes('CONFLICT')) {
+        const { parentPath, fileName } = extractParentAndName(cleanNewPath);
+        const existingInParent = files
+          .filter((f) => extractParentAndName(f.path).parentPath === parentPath)
+          .map((f) => extractParentAndName(f.path).fileName);
+        const suggested = generateAlternativeName(fileName, existingInParent);
+        setConflictModalState({
+          isOpen: true,
+          type: 'file',
+          fullPath: cleanNewPath,
+          parentPath,
+          fileName,
+          draftContent: latestContentRef.current[file.id] || file.content,
+          suggestedCopyName: suggested,
+          errorMessage: `Cannot rename to "${fileName}" because an item already exists with that name.`,
+          isSubmitting: false,
+        });
+      }
+      throw err;
+    }
   };
 
   const handleConfirmDeleteFile = async () => {
@@ -556,23 +647,169 @@ clearFileDraft(room.id, fileId);
   };
 
   const handleCreateFolder = async (folderPath: string) => {
-    const clean = folderPath.replace(/^\/+/, '').replace(/\/+$/, '');
+    const clean = folderPath.trim().replace(/^\/+/, '').replace(/\/+$/, '');
     if (!clean) return;
-    setEmptyFolders((prev) => new Set(prev).add(clean));
     const keepPath = `${clean}/.gitkeep`;
+    const idempotencyKey = `create_folder_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
     try {
       const created = await workspaceApi.createFile(room.id, {
         path: keepPath,
         content: '',
         language: detectLanguageFromPath(keepPath),
+        idempotencyKey,
       });
-      setFiles((prev) => [...prev, created]);
+
+      setEmptyFolders((prev) => new Set(prev).add(clean));
+      setFiles((prev) => {
+        const withoutOld = prev.filter(
+          (f) => f.id !== created.id && f.path.toLowerCase() !== created.path.toLowerCase()
+        );
+        return [...withoutOld, created];
+      });
       latestContentRef.current[created.id] = created.content;
       setDbContentSnapshot((prev) => ({ ...prev, [created.id]: created.content }));
-    } catch (err) {
-      console.warn('Backend folder placeholder notice:', err);
+    } catch (err: any) {
+      if (err instanceof FileConflictError || err?.status === 409 || err?.message?.includes('CONFLICT')) {
+        try {
+          const latest = await workspaceApi.listFiles(room.id);
+          setFiles(latest);
+        } catch {}
+
+        const { parentPath, fileName } = extractParentAndName(clean);
+        const existingFoldersInParent = Array.from(emptyFolders)
+          .map((f) => extractParentAndName(f))
+          .filter((f) => f.parentPath === parentPath)
+          .map((f) => f.fileName);
+
+        const suggestedCopyName = generateAlternativeName(fileName, existingFoldersInParent);
+
+        setConflictModalState({
+          isOpen: true,
+          type: 'folder',
+          fullPath: clean,
+          parentPath,
+          fileName,
+          draftContent: '',
+          suggestedCopyName,
+          errorMessage: null,
+          isSubmitting: false,
+        });
+        throw err;
+      } else {
+        console.warn('Backend folder placeholder notice:', err);
+      }
     }
   };
+
+  // Conflict Action Handlers
+  const handleOpenExistingAfterConflict = useCallback(() => {
+    if (!conflictModalState) return;
+    const { fullPath, draftContent, type } = conflictModalState;
+
+    if (draftContent && draftContent.trim().length > 0) {
+      saveFileDraft(room.id, `conflict_backup_${fullPath}`, draftContent);
+    }
+
+    if (type === 'file') {
+      const existing = files.find(
+        (f) => f.path.toLowerCase() === fullPath.toLowerCase()
+      );
+      if (existing) {
+        setOpenFileIds((prev) => (prev.includes(existing.id) ? prev : [...prev, existing.id]));
+        setActiveFileId(existing.id);
+      }
+    } else {
+      setEmptyFolders((prev) => new Set(prev).add(fullPath));
+    }
+
+    setConflictModalState(null);
+  }, [conflictModalState, files, room.id]);
+
+  const handleResolveCreateCopy = useCallback(
+    async (copyName: string) => {
+      if (!conflictModalState) return;
+      const { parentPath, draftContent, type } = conflictModalState;
+      const targetPath = parentPath ? `${parentPath}/${copyName}` : copyName;
+
+      setConflictModalState((prev) =>
+        prev ? { ...prev, isSubmitting: true, errorMessage: null } : null
+      );
+
+      try {
+        if (type === 'file') {
+          await handleCreateFile(targetPath, draftContent);
+        } else {
+          await handleCreateFolder(targetPath);
+        }
+        setConflictModalState(null);
+      } catch (_err: any) {
+        const existingInParent = files
+          .filter((f) => extractParentAndName(f.path).parentPath === parentPath)
+          .map((f) => extractParentAndName(f.path).fileName);
+        existingInParent.push(copyName);
+        const nextSuggestion = generateAlternativeName(copyName, existingInParent);
+
+        setConflictModalState((prev) =>
+          prev
+            ? {
+                ...prev,
+                isSubmitting: false,
+                suggestedCopyName: nextSuggestion,
+                errorMessage: `"${copyName}" was also just taken. Suggested: "${nextSuggestion}"`,
+              }
+            : null
+        );
+      }
+    },
+    [conflictModalState, files]
+  );
+
+  const handleResolveChooseName = useCallback(
+    async (customName: string) => {
+      if (!conflictModalState) return;
+      const { parentPath, draftContent, type } = conflictModalState;
+      const targetPath = parentPath ? `${parentPath}/${customName}` : customName;
+
+      setConflictModalState((prev) =>
+        prev ? { ...prev, isSubmitting: true, errorMessage: null } : null
+      );
+
+      try {
+        if (type === 'file') {
+          await handleCreateFile(targetPath, draftContent);
+        } else {
+          await handleCreateFolder(targetPath);
+        }
+        setConflictModalState(null);
+      } catch (err: any) {
+        setConflictModalState((prev) =>
+          prev
+            ? {
+                ...prev,
+                isSubmitting: false,
+                errorMessage:
+                  err instanceof Error
+                    ? err.message
+                    : `Failed to create "${customName}". It may already exist.`,
+              }
+            : null
+        );
+      }
+    },
+    [conflictModalState]
+  );
+
+  const handleCancelConflict = useCallback(() => {
+    if (conflictModalState && conflictModalState.draftContent) {
+      saveFileDraft(
+        room.id,
+        `conflict_backup_${conflictModalState.fullPath}`,
+        conflictModalState.draftContent
+      );
+    }
+    setConflictModalState(null);
+  }, [conflictModalState, room.id]);
 
   const handleRenameFolder = async (oldFolderPath: string, newFolderPath: string) => {
     const cleanOld = oldFolderPath.replace(/^\/+/, '').replace(/\/+$/, '');
@@ -971,6 +1208,30 @@ clearFileDraft(room.id, fileId);
         currentUser={user}
         onForceReconnect={reconcileSession}
       />
+
+      {conflictModalState && (
+        <FileConflictModal
+          isOpen={conflictModalState.isOpen}
+          type={conflictModalState.type}
+          itemName={conflictModalState.fileName}
+          parentPath={conflictModalState.parentPath}
+          suggestedCopyName={conflictModalState.suggestedCopyName}
+          hasUnsavedDraft={Boolean(
+            conflictModalState.draftContent && conflictModalState.draftContent.trim().length > 0
+          )}
+          draftSnippet={
+            conflictModalState.draftContent
+              ? conflictModalState.draftContent.slice(0, 150)
+              : undefined
+          }
+          errorMessage={conflictModalState.errorMessage}
+          isSubmitting={conflictModalState.isSubmitting}
+          onOpenExisting={handleOpenExistingAfterConflict}
+          onCreateCopy={handleResolveCreateCopy}
+          onChooseName={handleResolveChooseName}
+          onCancel={handleCancelConflict}
+        />
+      )}
     </div>
   );
 };

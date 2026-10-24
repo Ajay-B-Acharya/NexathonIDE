@@ -23,6 +23,7 @@ import {
   Code2,
 } from 'lucide-react';
 import { FileTreeNode, WorkspaceFile } from '../types';
+import { FileConflictError } from '../services/workspaceApi';
 
 interface FileExplorerProps {
   files: WorkspaceFile[];
@@ -30,8 +31,8 @@ interface FileExplorerProps {
   activeFileId: string | null;
   dirtyFileIds: Set<string>;
   onSelectFile: (file: WorkspaceFile) => void;
-  onCreateFile: (path: string) => Promise<void>;
-  onCreateFolder?: (path: string) => Promise<void>;
+  onCreateFile: (path: string) => Promise<any>;
+  onCreateFolder?: (path: string) => Promise<any>;
   onRenameFile: (file: WorkspaceFile, newPath: string) => Promise<void>;
   onRenameFolder?: (oldPath: string, newPath: string) => Promise<void>;
   onRequestDeleteFile: (file: WorkspaceFile) => void;
@@ -284,8 +285,15 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
 
       setCreationState(null);
       setCreationName('');
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : `Failed to create ${creationState.type}`);
+    } catch (err: any) {
+      if (err instanceof FileConflictError || err?.status === 409 || err?.message?.includes('CONFLICT')) {
+        // Clear creation state and errorMsg because the conflict resolution modal dialog handles it
+        setCreationState(null);
+        setCreationName('');
+        setErrorMsg(null);
+      } else {
+        setErrorMsg(err instanceof Error ? err.message : `Failed to create ${creationState.type}`);
+      }
     }
   };
 

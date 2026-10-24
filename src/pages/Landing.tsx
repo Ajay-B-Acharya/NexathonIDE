@@ -203,13 +203,20 @@ export const Landing: React.FC<LandingProps> = ({
       </header>
 
       {/* 2. HERO SECTION */}
-      <section className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 pt-16 sm:pt-24 pb-12 sm:pb-16 text-center flex flex-col items-center justify-center">
-        {/* Master Headline */}
-        <h1 className="mx-auto max-w-4xl text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight theme-text-primary leading-[1.14] sm:leading-[1.08] font-heading">
-          Distributed Real-Time Coding.{' '}
-          <span className="block mt-2 text-[#FF7057]">
-            <span className="font-serif italic font-normal">Zero Cold Starts.</span> Pure In-Browser WASM.
+      <section className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 py-12 sm:py-16 text-center flex flex-col items-center justify-center min-h-[calc(100vh-4.25rem)] shrink-0">
+        {/* Prominent Hero Brand Lockup: Logo Mark + Wordmark */}
+        <div className="inline-flex items-center gap-3 sm:gap-3.5 mb-5 sm:mb-6 select-none">
+          <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-[#FF7057] text-white shadow-xs neu-button">
+            <Code2 className="h-6 w-6 sm:h-6.5 sm:w-6.5" />
+          </div>
+          <span className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight theme-text-primary font-heading">
+            Nexathon<span className="text-[#FF7057]">IDE</span>
           </span>
+        </div>
+
+        {/* Primary Descriptive Heading */}
+        <h1 className="mx-auto max-w-4xl text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight theme-text-primary leading-tight font-heading">
+          Distributed Real-Time Coding.
         </h1>
 
         {/* Clean, Persuasive Subheadline */}
@@ -243,7 +250,7 @@ export const Landing: React.FC<LandingProps> = ({
       </section>
 
       {/* 3. ABOUT US SECTION */}
-      <section id="about" className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 py-10 sm:py-16 w-full">
+      <section id="about" className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 py-12 sm:py-20 w-full shrink-0">
         <div className="rounded-2xl border theme-border theme-bg-surface-1 p-6 sm:p-10 md:p-12 neu-card backdrop-blur-md">
           {/* Header Block */}
           <div className="max-w-3xl">
