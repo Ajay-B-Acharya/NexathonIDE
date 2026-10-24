@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Code2,
-  Sparkles,
   ArrowRight,
   Zap,
   Terminal,
@@ -45,7 +44,6 @@ import { SpeedBenchmarkWidget } from '../components/SpeedBenchmarkWidget';
 import { TechStackMarquee } from '../components/TechStackMarquee';
 import { TrueFocus } from '../components/react-bits/text/TrueFocus';
 import { FolderOpen } from 'lucide-react';
-import { getYjsWsUrl } from '../config/endpoints';
 
 interface LandingProps {
   existingUser: UserProfile | null;
@@ -196,15 +194,6 @@ export const Landing: React.FC<LandingProps> = ({
   });
   const [showAiDiffDrawer, setShowAiDiffDrawer] = useState<boolean>(false);
 
-  // Live Cluster Ping Telemetry State
-  const [pingHistory, setPingHistory] = useState<number[]>([
-    14, 12, 15, 11, 13, 12, 10, 14, 11, 12, 13, 11,
-  ]);
-  const [clusterStatus, setClusterStatus] = useState<'online' | 'loopback' | 'probing'>(
-    'loopback'
-  );
-  const [lastRttMs, setLastRttMs] = useState<number>(11.4);
-
   // Onboarding Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -262,49 +251,6 @@ export const Landing: React.FC<LandingProps> = ({
     setShowAiDiffDrawer(false);
     void handleRunSandbox(preset.code, preset.language);
   }, [handleRunSandbox]);
-
-  // Real WebSocket / Loopback RTT Probe
-  const runClusterLatencyProbe = useCallback(() => {
-    setClusterStatus('probing');
-    const wsUrl = getYjsWsUrl();
-    const start = performance.now();
-
-    try {
-      const ws = new WebSocket(`${wsUrl}/__health_ping__`);
-      const timeout = window.setTimeout(() => {
-        ws.close();
-        const fallbackRtt = Number((8 + Math.random() * 5).toFixed(1));
-        setLastRttMs(fallbackRtt);
-        setClusterStatus('loopback');
-        setPingHistory((prev) => [...prev.slice(1), Math.round(fallbackRtt)]);
-      }, 650);
-
-      ws.onopen = () => {
-        window.clearTimeout(timeout);
-        const rtt = Number((performance.now() - start).toFixed(1));
-        setLastRttMs(rtt);
-        setClusterStatus('online');
-        setPingHistory((prev) => [...prev.slice(1), Math.max(2, Math.round(rtt))]);
-        ws.close();
-      };
-
-      ws.onerror = () => {
-        window.clearTimeout(timeout);
-        const simulatedLoopback = Number((9 + Math.random() * 4).toFixed(1));
-        setLastRttMs(simulatedLoopback);
-        setClusterStatus('loopback');
-        setPingHistory((prev) => [...prev.slice(1), Math.round(simulatedLoopback)]);
-      };
-    } catch {
-      const fallback = 10.8;
-      setLastRttMs(fallback);
-      setClusterStatus('loopback');
-    }
-  }, []);
-
-  useEffect(() => {
-    runClusterLatencyProbe();
-  }, [runClusterLatencyProbe]);
 
   // Global Landing Keyboard Shortcuts (Cmd+K / Ctrl+Enter / 1, 2, 3)
   useEffect(() => {
@@ -435,12 +381,6 @@ export const Landing: React.FC<LandingProps> = ({
                   <span className="text-base font-extrabold tracking-tight theme-text-primary font-heading">
                     Nexathon<span className="text-[#FF7057]">IDE</span>
                   </span>
-                  <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-[#FF7057]/20 bg-[#FF7057]/10 px-2 py-0.5 font-mono text-[10px] font-medium text-[#FF7057]">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    </span>
-                    v2.4 CRDT
-                  </span>
                 </div>
               </div>
             </a>
@@ -462,26 +402,8 @@ export const Landing: React.FC<LandingProps> = ({
             </a>
           </nav>
 
-          {/* Right: Latency Meter + Theme Toggle + Auth / Action CTAs */}
+          {/* Right: Theme Toggle + Auth / Action CTAs */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Interactive Cluster Latency Probe Pill */}
-            <button
-              type="button"
-              onClick={runClusterLatencyProbe}
-              title="Click to test Yjs WebSocket cluster round-trip latency"
-              className={`hidden sm:inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-mono transition-all cursor-pointer whitespace-nowrap shrink-0 hover:scale-[1.02] active:scale-[0.98] ${
-                isDark
-                  ? 'border-emerald-500/30 bg-[#080808] text-emerald-300 hover:border-emerald-500/50'
-                  : 'border-[#E5DED2] bg-[#FFFCF6] text-emerald-800 hover:bg-[#EFE8DC] neu-button'
-              }`}
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              </span>
-              <span>{lastRttMs}ms CRDT</span>
-            </button>
-
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
 
             <button
@@ -526,15 +448,7 @@ export const Landing: React.FC<LandingProps> = ({
                 Core Architecture
               </a>
             </nav>
-            <div className="pt-2 border-t theme-border flex items-center justify-between">
-              <button
-                type="button"
-                onClick={runClusterLatencyProbe}
-                className="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400"
-              >
-                <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                {lastRttMs}ms CRDT Ping
-              </button>
+            <div className="pt-2 border-t theme-border flex items-center justify-end">
               <button
                 type="button"
                 onClick={() => {
@@ -552,17 +466,6 @@ export const Landing: React.FC<LandingProps> = ({
 
       {/* 2. RECONSTRUCTED CLEAN & RESPONSIVE HERO SECTION */}
       <section className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 pt-10 sm:pt-16 pb-6 text-center">
-        {/* Eyebrow Announcement Pill */}
-        <div className="inline-flex items-center gap-2 rounded-full border theme-border theme-bg-surface-2 px-4 py-1.5 text-xs font-medium theme-text-secondary mb-6 cursor-default">
-          <span className="relative flex h-2 w-2">
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-          </span>
-          <span className="font-semibold text-emerald-500">Nexathon 2.0 Engine</span>
-          <span className="opacity-40">•</span>
-          <span>Sub-15ms CRDT Synchronization & Pyodide WASM</span>
-          <Sparkles className="h-3.5 w-3.5 text-[#FF7057] ml-0.5" />
-        </div>
-
         {/* Master Headline */}
         <h1 className="mx-auto max-w-4xl text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight theme-text-primary leading-[1.14] sm:leading-[1.08] font-heading">
           Distributed Real-Time Coding.{' '}
@@ -577,7 +480,7 @@ export const Landing: React.FC<LandingProps> = ({
         </p>
 
         {/* Reconstructed Responsive Action CTAs */}
-        <div className="mt-8 sm:mt-9 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full max-w-md sm:max-w-none mx-auto px-4">
+        <div className="mt-8 sm:mt-9 flex items-center justify-center gap-3 w-full max-w-md sm:max-w-none mx-auto px-4">
           <button
             type="button"
             onClick={handlePrimaryCTA}
@@ -588,77 +491,12 @@ export const Landing: React.FC<LandingProps> = ({
             </span>
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </button>
-
-          <button
-            type="button"
-            onClick={() => void handleGuestDemoClick()}
-            disabled={isLaunchingDemo}
-            className={`w-full sm:w-auto group inline-flex items-center justify-center gap-2 rounded-xl border px-6 py-3.5 text-sm font-semibold transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] min-h-[44px] ${
-              isDark
-                ? 'border-[#262626] bg-[#080808] text-white hover:bg-[#111111]'
-                : 'border-[#E5DED2] bg-[#FFFCF6] text-[#24231F] hover:bg-[#EFE8DC] neu-button'
-            }`}
-          >
-            {isLaunchingDemo ? (
-              <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
-            ) : (
-              <Zap className="h-4 w-4 text-[#FF7057] fill-current group-hover:scale-110 transition-transform" />
-            )}
-            <span>
-              {isLaunchingDemo
-                ? 'Provisioning Ephemeral Room...'
-                : 'Instant 1-Click Guest Sandbox'}
-            </span>
-          </button>
-        </div>
-
-        {/* Real-Time Benchmark Metrics Strip */}
-        <div className="mt-9 flex flex-wrap items-center justify-center gap-3 text-xs font-mono">
-          <div
-            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all ${
-              isDark
-                ? 'border-[#262626] bg-[#080808] text-[#B3B3B3]'
-                : 'border-[#E5DED2] bg-[#FFFCF6] text-[#24231F] neu-card'
-            }`}
-          >
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className={isDark ? 'text-[#808080]' : 'text-[#6F6A61]'}>
-              WASM Cold Start:
-            </span>
-            <span className="font-semibold text-emerald-400">4.2ms</span>
-          </div>
-          <div
-            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all ${
-              isDark
-                ? 'border-[#262626] bg-[#080808] text-[#B3B3B3]'
-                : 'border-[#E5DED2] bg-[#FFFCF6] text-[#24231F] neu-card'
-            }`}
-          >
-            <span className="flex h-2 w-2 rounded-full bg-[#FF7057]" />
-            <span className={isDark ? 'text-[#808080]' : 'text-[#6F6A61]'}>
-              CRDT Convergence:
-            </span>
-            <span className="font-semibold text-[#FF7057]">Sub-15ms p99</span>
-          </div>
-          <div
-            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all ${
-              isDark
-                ? 'border-[#262626] bg-[#080808] text-[#B3B3B3]'
-                : 'border-[#E5DED2] bg-[#FFFCF6] text-[#24231F] neu-card'
-            }`}
-          >
-            <span className="flex h-2 w-2 rounded-full bg-cyan-400" />
-            <span className={isDark ? 'text-[#808080]' : 'text-[#6F6A61]'}>
-              Cloud Invoices:
-            </span>
-            <span className="font-semibold text-cyan-400">$0 / Month</span>
-          </div>
         </div>
 
         {/* Unified Interactive Showcase IDE Container with Carousel Effect */}
         <div
           id="live-sandbox"
-          className={`relative mx-auto mt-10 w-full max-w-5xl rounded-2xl border theme-border overflow-hidden transition-all duration-300 text-left ${
+          className={`relative mx-auto mt-10 sm:mt-12 w-full max-w-5xl rounded-2xl border theme-border overflow-hidden transition-all duration-300 text-left ${
             isDark ? 'bg-[#080808]' : 'bg-[#FFF9F0] neu-card'
           }`}
         >
