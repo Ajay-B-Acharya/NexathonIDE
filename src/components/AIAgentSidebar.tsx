@@ -85,6 +85,25 @@ export const AIAgentSidebar: React.FC<AIAgentSidebarProps> = ({
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [copiedCodeIndex, setCopiedCodeIndex] = useState<string | null>(null);
+  const [activeSettings, setActiveSettings] = useState<{ provider: string; selectedModel: string } | null>(null);
+
+  const loadSettings = useCallback(async () => {
+    try {
+      const s = await aiAgentApi.getSettings(user.id);
+      if (s) {
+        setActiveSettings({
+          provider: s.provider,
+          selectedModel: s.selectedModel,
+        });
+      }
+    } catch {}
+  }, [user.id]);
+
+  useEffect(() => {
+    if (isOpen) {
+      void loadSettings();
+    }
+  }, [isOpen, loadSettings]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -424,9 +443,14 @@ export const AIAgentSidebar: React.FC<AIAgentSidebarProps> = ({
               <span className="relative flex h-2 w-2">
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
+              {activeSettings?.provider && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#FF7057]/10 text-[#FF7057] border border-[#FF7057]/20 uppercase">
+                  {activeSettings.provider}
+                </span>
+              )}
             </div>
             <span className="font-mono text-[10px] theme-text-muted leading-none">
-              Private to @{user.name}
+              Private to @{user.name} {activeSettings?.selectedModel ? `· ${activeSettings.selectedModel}` : ''}
             </span>
           </div>
         </div>
@@ -869,6 +893,7 @@ export const AIAgentSidebar: React.FC<AIAgentSidebarProps> = ({
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         userId={user.id}
+        onSettingsSaved={loadSettings}
       />
     </aside>
   );

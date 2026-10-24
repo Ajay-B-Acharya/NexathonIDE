@@ -1,17 +1,14 @@
 import crypto from 'crypto';
-import Groq from 'groq-sdk';
-import OpenAI from 'openai';
 import { supabaseAdmin } from '../supabase.js';
+import { AIProviderService } from './aiProviders/providerService.js';
+import { getProviderMetadata } from './aiProviders/providerMetadata.js';
+import type {
+  AIProviderType,
+  AIProviderProtocol,
+  UserAICredentialRecord,
+} from './aiProviders/types.js';
 
-export interface UserAICredentialRecord {
-  userId: string;
-  provider: 'groq' | 'openai' | 'anthropic';
-  selectedModel: string;
-  hasKey: boolean;
-  updatedAt?: string;
-  // Raw API key is ONLY returned internally on the server when needed for inference
-  rawApiKey?: string;
-}
+export type { UserAICredentialRecord };
 
 // Derive a 32-byte AES key from server secret
 const SERVER_SECRET =
@@ -54,8 +51,11 @@ export function decryptApiKey(ciphertext: string, ivHex: string, tagHex: string)
 // Resilient in-memory fallback for credentials if Supabase is offline or not configured
 const memoryCredentials = new Map<string, {
   userId: string;
-  provider: 'groq' | 'openai' | 'anthropic';
+  provider: AIProviderType;
   selectedModel: string;
+  apiEndpoint?: string;
+  customProviderName?: string;
+  customProtocol?: AIProviderProtocol;
   encrypted: string;
   iv: string;
   tag: string;
@@ -90,11 +90,20 @@ export class AICredentialService {
           }
         }
 
+        let model = data.selected_model || getProviderMetadata(data.provider || 'groq').defaultModel;
+        // Auto-migrate decommissioned Groq model
+        if (model === 'llama-3.1-70b-versatile') {
+          model = 'llama-3.3-70b-versatile';
+        }
+
         return {
           userId: data.user_id,
-          provider: data.provider || 'groq',
-          selectedModel: data.selected_model || 'llama-3.3-70b-versatile',
+          provider: (data.provider as AIProviderType) || 'groq',
+          selectedModel: model,
           hasKey: Boolean(data.encrypted_api_key),
+          apiEndpoint: data.api_endpoint || undefined,
+          customProviderName: data.custom_provider_name || undefined,
+          customProtocol: data.custom_protocol || undefined,
           updatedAt: data.updated_at,
           rawApiKey: rawKey,
         };
@@ -111,11 +120,20 @@ export class AICredentialService {
           rawKey = decryptApiKey(mem.encrypted, mem.iv, mem.tag);
         } catch {}
       }
+
+      let model = mem.selectedModel || getProviderMetadata(mem.provider).defaultModel;
+      if (model === 'llama-3.1-70b-versatile') {
+        model = 'llama-3.3-70b-versatile';
+      }
+
       return {
         userId: mem.userId,
         provider: mem.provider,
-        selectedModel: mem.selectedModel,
+        selectedModel: model,
         hasKey: true,
+        apiEndpoint: mem.apiEndpoint,
+        customProviderName: mem.customProviderName,
+        customProtocol: mem.customProtocol,
         updatedAt: mem.updatedAt,
         rawApiKey: rawKey,
       };
@@ -129,17 +147,28 @@ export class AICredentialService {
    */
   public static async saveCredential(
     userId: string,
-    provider: 'groq' | 'openai' | 'anthropic',
+    provider: AIProviderType,
     apiKey: string,
-    selectedModel?: string
+    selectedModel?: string,
+    extra?: {
+      apiEndpoint?: string;
+      customProviderName?: string;
+      customProtocol?: AIProviderProtocol;
+    }
   ): Promise<void> {
-    const trimmedKey = apiKey.trim();
-    if (!trimmedKey) {
+    const trimmedKey = apiKey ? apiKey.trim() : '';
+    // Custom providers might not require an API key if local
+    if (!trimmedKey && provider !== 'custom') {
       throw new Error('API key cannot be empty');
     }
 
-    const model = selectedModel || (provider === 'openai' ? 'gpt-4o-mini' : 'llama-3.3-70b-versatile');
-    const { ciphertext, iv, tag } = encryptApiKey(trimmedKey);
+    const meta = getProviderMetadata(provider);
+    let model = selectedModel?.trim() || meta.defaultModel;
+    if (model === 'llama-3.1-70b-versatile') {
+      model = 'llama-3.3-70b-versatile';
+    }
+
+    const { ciphertext, iv, tag } = encryptApiKey(trimmedKey || 'NO_KEY_SPECIFIED');
     const now = new Date().toISOString();
 
     // Store in-memory
@@ -147,6 +176,9 @@ export class AICredentialService {
       userId,
       provider,
       selectedModel: model,
+      apiEndpoint: extra?.apiEndpoint,
+      customProviderName: extra?.customProviderName,
+      customProtocol: extra?.customProtocol,
       encrypted: ciphertext,
       iv,
       tag,
@@ -162,6 +194,9 @@ export class AICredentialService {
           iv,
           tag,
           selected_model: model,
+          api_endpoint: extra?.apiEndpoint || null,
+          custom_provider_name: extra?.customProviderName || null,
+          custom_protocol: extra?.customProtocol || 'openai',
           updated_at: now,
         },
         { onConflict: 'user_id' }
@@ -185,67 +220,20 @@ export class AICredentialService {
    * Test connection with a provided key or user's stored key.
    */
   public static async testConnection(
-    provider: 'groq' | 'openai' | 'anthropic',
+    provider: AIProviderType,
     apiKey: string,
-    model?: string
-  ): Promise<{ success: boolean; latencyMs: number; error?: string }> {
-    const start = performance.now();
-    const testModel = model || (provider === 'openai' ? 'gpt-4o-mini' : 'llama-3.1-8b-instant');
-
-    try {
-      if (provider === 'groq') {
-        const client = new Groq({ apiKey });
-        await client.chat.completions.create({
-          model: testModel,
-          messages: [{ role: 'user', content: 'Ping' }],
-          max_tokens: 5,
-        });
-        const latency = Math.round(performance.now() - start);
-        return { success: true, latencyMs: latency };
-      }
-
-      if (provider === 'openai') {
-        const client = new OpenAI({ apiKey });
-        await client.chat.completions.create({
-          model: testModel,
-          messages: [{ role: 'user', content: 'Ping' }],
-          max_tokens: 5,
-        });
-        const latency = Math.round(performance.now() - start);
-        return { success: true, latencyMs: latency };
-      }
-
-      if (provider === 'anthropic') {
-        // Direct ping endpoint validation for Anthropic
-        const resp = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: model || 'claude-3-5-haiku-20241022',
-            max_tokens: 5,
-            messages: [{ role: 'user', content: 'Ping' }],
-          }),
-        });
-
-        if (!resp.ok) {
-          const errData: any = await resp.json().catch(() => ({}));
-          throw new Error(errData?.error?.message || `Anthropic HTTP ${resp.status}`);
-        }
-        const latency = Math.round(performance.now() - start);
-        return { success: true, latencyMs: latency };
-      }
-
-      throw new Error(`Unsupported AI provider: ${provider}`);
-    } catch (err: any) {
-      return {
-        success: false,
-        latencyMs: Math.round(performance.now() - start),
-        error: err?.message || 'Connection test failed',
-      };
+    model?: string,
+    extra?: {
+      apiEndpoint?: string;
+      customProtocol?: AIProviderProtocol;
     }
+  ): Promise<{ success: boolean; latencyMs: number; error?: string; modelUsed?: string }> {
+    return AIProviderService.testConnection({
+      provider,
+      apiKey,
+      model,
+      apiEndpoint: extra?.apiEndpoint,
+      customProtocol: extra?.customProtocol,
+    });
   }
 }

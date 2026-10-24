@@ -2,6 +2,12 @@ import { Router, type Request, type Response } from 'express';
 import { AICredentialService } from './services/aiCredentialService.js';
 import { AIAgentOrchestrator } from './services/aiAgentOrchestrator.js';
 import { supabaseAdmin } from './supabase.js';
+import {
+  getAllProvidersMetadata,
+  getProviderMetadata,
+} from './services/aiProviders/providerMetadata.js';
+import { AIProviderService } from './services/aiProviders/providerService.js';
+import type { AIProviderType, AIProviderProtocol } from './services/aiProviders/types.js';
 
 interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -44,7 +50,54 @@ export function createAIAgentRouter(): Router {
   const router = Router();
   router.use(authenticateUser as any);
 
-  // 1. GET User Personal AI Settings
+  // 1. GET Supported AI Providers Metadata
+  router.get('/providers', async (_req: AuthenticatedRequest, res: Response) => {
+    try {
+      const providers = getAllProvidersMetadata();
+      res.json(providers);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to list AI providers' });
+    }
+  });
+
+  // 2. GET Available Models for a Provider (Live discovery or Curated)
+  router.get('/models', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const provider = (req.query.provider as AIProviderType) || 'groq';
+      const apiEndpoint = req.query.endpoint as string | undefined;
+      const customProtocol = req.query.protocol as AIProviderProtocol | undefined;
+
+      // Check if user has an encrypted key stored or passed
+      let apiKey = req.query.apiKey as string | undefined;
+      if (!apiKey) {
+        const stored = await AICredentialService.getCredential(req.userId!, true);
+        if (stored?.provider === provider && stored?.rawApiKey) {
+          apiKey = stored.rawApiKey;
+        } else if (provider === 'groq') {
+          apiKey = process.env.GROQ_API_KEY;
+        }
+      }
+
+      if (!apiKey) {
+        // Return curated models when no key is present
+        const meta = getProviderMetadata(provider);
+        return res.json(meta.popularModels);
+      }
+
+      const models = await AIProviderService.listModels({
+        provider,
+        apiKey,
+        apiEndpoint,
+        customProtocol,
+      });
+
+      res.json(models);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to fetch model list' });
+    }
+  });
+
+  // 3. GET User Personal AI Settings
   router.get('/settings', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const cred = await AICredentialService.getCredential(req.userId!, false);
@@ -57,6 +110,9 @@ export function createAIAgentRouter(): Router {
         userId: req.userId,
         provider: cred?.provider || (serverHasGroq ? 'groq' : 'none'),
         selectedModel: cred?.selectedModel || 'llama-3.3-70b-versatile',
+        apiEndpoint: cred?.apiEndpoint,
+        customProviderName: cred?.customProviderName,
+        customProtocol: cred?.customProtocol || 'openai',
         hasCustomKey: Boolean(cred?.hasKey),
         isServerKeyAvailable: serverHasGroq,
         updatedAt: cred?.updatedAt,
@@ -66,19 +122,43 @@ export function createAIAgentRouter(): Router {
     }
   });
 
-  // 2. POST Save User Personal AI Provider Credentials (Encrypted at rest)
+  // 4. POST Save User Personal AI Provider Credentials (Encrypted at rest)
   router.post('/settings', async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { provider, apiKey, selectedModel } = req.body;
-      if (!provider || !apiKey) {
-        return res.status(400).json({ error: 'Provider and API key are required' });
+      const {
+        provider,
+        apiKey,
+        selectedModel,
+        apiEndpoint,
+        customProviderName,
+        customProtocol,
+      } = req.body;
+
+      if (!provider) {
+        return res.status(400).json({ error: 'Provider is required' });
+      }
+
+      // If user is editing model or endpoint without re-typing their existing stored key:
+      let keyToSave = apiKey;
+      if (!keyToSave || !keyToSave.trim()) {
+        const stored = await AICredentialService.getCredential(req.userId!, true);
+        if (stored?.hasKey && stored?.rawApiKey) {
+          keyToSave = stored.rawApiKey;
+        } else if (provider !== 'custom') {
+          return res.status(400).json({ error: 'API key is required' });
+        }
       }
 
       await AICredentialService.saveCredential(
         req.userId!,
         provider,
-        apiKey,
-        selectedModel
+        keyToSave || '',
+        selectedModel,
+        {
+          apiEndpoint,
+          customProviderName,
+          customProtocol,
+        }
       );
 
       res.json({
@@ -90,7 +170,7 @@ export function createAIAgentRouter(): Router {
     }
   });
 
-  // 3. DELETE User AI Credentials
+  // 5. DELETE User AI Credentials
   router.delete('/settings', async (req: AuthenticatedRequest, res: Response) => {
     try {
       await AICredentialService.deleteCredential(req.userId!);
@@ -100,26 +180,30 @@ export function createAIAgentRouter(): Router {
     }
   });
 
-  // 4. POST Test AI Connection
+  // 6. POST Test AI Connection
   router.post('/test-connection', async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { provider, apiKey, model } = req.body;
+      const { provider, apiKey, model, apiEndpoint, customProtocol } = req.body;
       let keyToTest = apiKey;
 
       // If no key passed in body, try using user's stored key
       if (!keyToTest) {
         const stored = await AICredentialService.getCredential(req.userId!, true);
-        keyToTest = stored?.rawApiKey || process.env.GROQ_API_KEY;
+        keyToTest = stored?.rawApiKey || (provider === 'groq' ? process.env.GROQ_API_KEY : undefined);
       }
 
-      if (!keyToTest) {
+      if (!keyToTest && provider !== 'custom') {
         return res.status(400).json({ success: false, error: 'No API key provided to test' });
       }
 
       const result = await AICredentialService.testConnection(
         provider || 'groq',
-        keyToTest,
-        model
+        keyToTest || '',
+        model,
+        {
+          apiEndpoint,
+          customProtocol,
+        }
       );
 
       res.json(result);

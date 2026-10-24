@@ -136,13 +136,49 @@ export interface FollowState {
 // Personal Autonomous AI Coding Agent Types
 // ============================================================================
 
-export type AIProviderType = 'groq' | 'openai' | 'anthropic';
+export type AIProviderType =
+  | 'groq'
+  | 'openai'
+  | 'anthropic'
+  | 'gemini'
+  | 'openrouter'
+  | 'deepseek'
+  | 'mistral'
+  | 'xai'
+  | 'together'
+  | 'custom';
+
+export type AIProviderProtocol = 'openai' | 'anthropic';
+
+export interface ProviderModelInfo {
+  id: string;
+  name: string;
+  tag?: string;
+  contextLimit?: number;
+  isDecommissioned?: boolean;
+}
+
+export interface ProviderMetadata {
+  id: AIProviderType;
+  name: string;
+  description: string;
+  defaultEndpoint: string;
+  defaultModel: string;
+  defaultProtocol: AIProviderProtocol;
+  docsUrl: string;
+  keyManagementUrl: string;
+  supportsModelListing: boolean;
+  popularModels: ProviderModelInfo[];
+}
 
 export interface UserAICredential {
   provider: AIProviderType;
   selectedModel: string;
   hasKey: boolean;
   updatedAt?: string;
+  apiEndpoint?: string;
+  customProviderName?: string;
+  customProtocol?: AIProviderProtocol;
 }
 
 export interface AIConversation {

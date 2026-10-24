@@ -878,12 +878,18 @@ ${code}
 Error / Issue Context:
 ${error || 'Check code for syntax errors, bugs, or logic flaws.'}`;
 
-    const candidateModels = [
+    const rawCandidates = [
       process.env.GROQ_MODEL,
       'openai/gpt-oss-120b',
       'openai/gpt-oss-20b',
       'qwen/qwen3.8-27b',
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'mixtral-8x7b-32768',
     ].filter(Boolean) as string[];
+
+    // Filter out decommissioned llama-3.1-70b-versatile
+    const candidateModels = rawCandidates.filter((m) => m !== 'llama-3.1-70b-versatile');
 
     let completion = null;
     let lastError: any = null;
