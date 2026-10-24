@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Terminal,
   ArrowRight,
-  ShieldCheck,
   Lock,
   Mail,
   User as UserIcon,
@@ -497,14 +496,6 @@ export const Login: React.FC<LoginProps> = ({
               </button>
             </div>
           )}
-
-          {/* Security Footer */}
-          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between font-mono text-[10px] text-slate-600 dark:text-slate-400">
-            <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold">
-              <ShieldCheck className="w-3.5 h-3.5" /> End-to-End Encrypted
-            </span>
-            <span className="font-semibold">TLS 1.3 / Supabase Auth</span>
-          </div>
         </SpotlightCard>
       </div>
     </div>
