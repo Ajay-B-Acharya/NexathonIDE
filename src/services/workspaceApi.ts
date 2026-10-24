@@ -1,6 +1,30 @@
 import { SupportedLanguage, WorkspaceFile, WorkspaceRoom } from '../types';
 import { getApiBaseUrl } from '../config/endpoints';
 
+export interface ConflictDetails {
+  type: 'file' | 'folder';
+  path: string;
+  name: string;
+  existingItem?: {
+    id?: string;
+    path?: string;
+    name?: string;
+    updatedAt?: string;
+  };
+}
+
+export class FileConflictError extends Error {
+  public status = 409;
+  public code = 'CONFLICT_EXISTS';
+  public conflict: ConflictDetails;
+
+  constructor(message: string, conflict: ConflictDetails) {
+    super(message);
+    this.name = 'FileConflictError';
+    this.conflict = conflict;
+  }
+}
+
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -15,9 +39,26 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   if (!response.ok) {
     let errorMessage = `HTTP error ${response.status}`;
     try {
-      const errJson = (await response.json()) as { message?: string; error?: string };
+      const errJson = (await response.json()) as {
+        message?: string;
+        error?: string;
+        code?: string;
+        conflict?: ConflictDetails;
+      };
       errorMessage = errJson.message || errJson.error || errorMessage;
-    } catch {
+
+      if (response.status === 409) {
+        const conflictInfo: ConflictDetails = errJson.conflict || {
+          type: 'file',
+          path: '',
+          name: '',
+        };
+        throw new FileConflictError(errorMessage, conflictInfo);
+      }
+    } catch (parseErr) {
+      if (parseErr instanceof FileConflictError) {
+        throw parseErr;
+      }
       // Fallback to status text
       errorMessage = response.statusText || errorMessage;
     }
@@ -83,19 +124,31 @@ export const workspaceApi = {
 
   async createFile(
     roomId: string,
-    payload: { path: string; content?: string; language?: SupportedLanguage }
+    payload: {
+      path: string;
+      content?: string;
+      language?: SupportedLanguage;
+      idempotencyKey?: string;
+    }
   ): Promise<WorkspaceFile> {
     const cleanPath = payload.path.replace(/^\/+/, '');
     const name = cleanPath.split('/').pop() || cleanPath;
     const language = payload.language || detectLanguageFromPath(cleanPath);
 
+    const headers: Record<string, string> = {};
+    if (payload.idempotencyKey) {
+      headers['Idempotency-Key'] = payload.idempotencyKey;
+    }
+
     return request<WorkspaceFile>(`/rooms/${encodeURIComponent(roomId)}/files`, {
       method: 'POST',
+      headers,
       body: JSON.stringify({
         name,
         path: cleanPath,
         content: payload.content ?? '',
         language,
+        idempotencyKey: payload.idempotencyKey,
       }),
     });
   },

@@ -7,6 +7,14 @@ export interface CreateWorkspaceDTO {
   userId?: string;
 }
 
+export interface CreateFileDTO {
+  roomId: string;
+  path: string;
+  content?: string;
+  language?: string;
+  userToken?: string;
+}
+
 export interface SaveFileDTO {
   roomId: string;
   path: string;
@@ -246,6 +254,70 @@ export class WorkspaceService {
 
     const { data, error } = await query.maybeSingle();
     if (error || !data) return null;
+    return formatFile(data);
+  }
+
+  /**
+   * Atomically create a new file or folder placeholder.
+   * Enforces uniqueness and fails with CONFLICT if the path already exists or conflicts with a directory.
+   */
+  static async createFile({ roomId, path, content = '', language, userToken }: CreateFileDTO) {
+    if (!isValidUUID(roomId)) {
+      throw new Error(`Cannot save file to database: roomId "${roomId}" is not a valid UUID`);
+    }
+
+    const client = createScopedClient(userToken);
+    const cleanPath = path.trim().replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+    if (!cleanPath) {
+      throw new Error('Path cannot be empty');
+    }
+    if (cleanPath.includes('..')) {
+      throw new Error('Path cannot contain ".." directory traversal segments.');
+    }
+
+    const fileLanguage = language || getLanguageFromPath(cleanPath);
+
+    // Folder vs File collision check
+    const { data: existingCollisions, error: checkErr } = await client
+      .from('workspace_files')
+      .select('id, path')
+      .eq('room_id', roomId)
+      .or(`path.eq.${cleanPath},path.like.${cleanPath}/%`);
+
+    if (!checkErr && existingCollisions && existingCollisions.length > 0) {
+      const isExact = existingCollisions.some(
+        (f: any) => f.path.toLowerCase() === cleanPath.toLowerCase()
+      );
+      if (isExact) {
+        throw new Error(`CONFLICT: A file or folder with path "${cleanPath}" already exists.`);
+      }
+      throw new Error(`CONFLICT: Cannot create file "${cleanPath}" because a folder with that name already exists.`);
+    }
+
+    // Atomic INSERT without upsert to leverage database unique constraint
+    const { data, error } = await client
+      .from('workspace_files')
+      .insert({
+        room_id: roomId,
+        path: cleanPath,
+        content,
+        language: fileLanguage,
+        updated_at: new Date().toISOString(),
+      })
+      .select('*')
+      .single();
+
+    if (error) {
+      if (
+        (error as any).code === '23505' ||
+        error.message?.includes('duplicate key') ||
+        error.message?.includes('violates unique constraint')
+      ) {
+        throw new Error(`CONFLICT: A file or folder with path "${cleanPath}" already exists.`);
+      }
+      throw new Error(`Failed to create file: ${error.message}`);
+    }
+
     return formatFile(data);
   }
 

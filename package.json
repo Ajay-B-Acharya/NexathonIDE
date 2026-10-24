@@ -17,6 +17,7 @@
     "stop:all": "powershell -Command \"Get-Process node,tsx -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue\"",
     "test:collab": "tsx collaboration-backend/test/collaboration.test.ts",
     "test:cross-device": "tsx collaboration-backend/test/cross-device.test.ts",
+    "test:conflict": "tsx test/file-conflict.test.ts",
     "start": "tsx src/server/api-server.ts",
     "server:all": "tsx src/server/api-server.ts"
   },
