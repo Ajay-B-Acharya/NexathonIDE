@@ -402,10 +402,11 @@ const handleCreateFile = async (req: Request, res: Response) => {
   try {
     const token = getBearerToken(req);
     const roomId = String(req.params.roomId);
-    const rawPath = req.body.path || req.body.filePath || req.body.name;
-    const content = req.body.content || '';
-    const language = req.body.language;
-    const idempotencyKey = String(req.headers['idempotency-key'] || req.body.idempotencyKey || '').trim();
+    const body = req.body || {};
+    const rawPath = body.path || body.filePath || body.name;
+    const content = body.content || '';
+    const language = body.language;
+    const idempotencyKey = String(req.headers['idempotency-key'] || body.idempotencyKey || '').trim();
 
     if (!rawPath) {
       return res.status(400).json({ error: 'Path is required' });
@@ -617,7 +618,8 @@ const handleUpdateFile = async (req: Request, res: Response) => {
     const token = getBearerToken(req);
     const roomId = String(req.params.roomId);
     const fileIdentifier = String(req.params.filePath);
-    const { content, path, language } = req.body;
+    const body = req.body || {};
+    const { content, path, language } = body;
 
     if (supabaseConnected && isValidUUID(roomId)) {
       try {
