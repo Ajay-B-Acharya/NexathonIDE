@@ -6,30 +6,30 @@ export type ThemeMode = 'dark' | 'light';
 interface ThemeToggleProps {
   theme: ThemeMode;
   onToggle: (nextTheme: ThemeMode) => void;
+  className?: string;
 }
 
-export const ThemeToggle: React.FC<ThemeToggleProps> = ({ theme, onToggle }) => {
+export const ThemeToggle: React.FC<ThemeToggleProps> = ({ theme, onToggle, className = '' }) => {
   const isDark = theme === 'dark';
 
   return (
     <button
       type="button"
       onClick={() => onToggle(isDark ? 'light' : 'dark')}
-      title={`Switch to ${isDark ? 'Titanium Light' : 'Obsidian Dark'} Theme`}
-      aria-label={`Switch to ${isDark ? 'Titanium Light' : 'Obsidian Dark'} Theme`}
-      className="group relative inline-flex items-center gap-2 rounded-full border theme-border theme-bg-surface-2 px-3 py-1 text-xs font-medium theme-text-secondary hover:border-teal-500/40 hover:theme-text-primary transition cursor-pointer shadow-xs"
+      title={`Switch to ${isDark ? 'Warm Cream' : 'Pure Black'} Theme`}
+      aria-label={`Switch to ${isDark ? 'Warm Cream' : 'Pure Black'} Theme`}
+      className={`group relative inline-flex items-center gap-2 rounded-full border theme-border theme-bg-surface-2 px-3 py-1 text-xs font-medium theme-text-secondary hover:border-[#FF7057] hover:theme-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7057] transition-all cursor-pointer shadow-xs ${className}`}
     >
       <span className="relative flex h-4 w-4 items-center justify-center">
         {isDark ? (
-          <Moon className="h-3.5 w-3.5 text-teal-400 transition-transform duration-200 group-hover:-rotate-12" />
+          <Moon className="h-3.5 w-3.5 text-[#FF7057] transition-transform duration-200 group-hover:-rotate-12" />
         ) : (
-          <Sun className="h-3.5 w-3.5 text-amber-500 transition-transform duration-200 group-hover:rotate-45" />
+          <Sun className="h-3.5 w-3.5 text-[#FF7057] transition-transform duration-200 group-hover:rotate-45" />
         )}
       </span>
       <span className="hidden sm:inline font-mono text-[11px]">
-        {isDark ? 'Obsidian' : 'Titanium'}
+        {isDark ? 'Pure Black' : 'Warm Cream'}
       </span>
     </button>
   );
 };
-

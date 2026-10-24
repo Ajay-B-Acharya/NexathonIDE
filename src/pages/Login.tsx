@@ -181,8 +181,8 @@ export const Login: React.FC<LoginProps> = ({
 
   return (
     <div
-      className={`min-h-screen w-full flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-y-auto font-sans select-none transition-colors duration-300 relative ${
-        isDark ? 'dark bg-[#06080e] text-slate-100' : 'light bg-[#f8fafc] text-slate-900'
+      className={`min-h-screen w-full flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-y-auto font-sans select-none transition-colors duration-200 relative theme-bg-root theme-text-primary ${
+        isDark ? 'dark' : 'light'
       }`}
       data-theme={theme}
     >
@@ -192,9 +192,9 @@ export const Login: React.FC<LoginProps> = ({
       {/* Main Centered Sign In / Sign Up Card */}
       <div className="relative z-10 w-full max-w-md my-auto">
         <SpotlightCard
-          spotlightColor="rgba(99, 102, 241, 0.15)"
-          className={`w-full p-6 sm:p-8 rounded-2xl border theme-border theme-shadow backdrop-blur-2xl transition-all duration-300 ${
-            isDark ? 'bg-[#0c1018]/90' : 'bg-white/95'
+          spotlightColor={isDark ? 'rgba(255, 112, 87, 0.12)' : 'rgba(255, 112, 87, 0.18)'}
+          className={`w-full p-6 sm:p-8 rounded-2xl border theme-border transition-all duration-300 ${
+            isDark ? 'bg-[#080808]' : 'bg-[#FFF9F0] neu-card'
           }`}
         >
           {/* Card Top Strip: Brand / Back Button + Theme Toggle */}
@@ -204,18 +204,18 @@ export const Login: React.FC<LoginProps> = ({
                 <button
                   type="button"
                   onClick={onBackToLanding}
-                  className="flex items-center justify-center h-8 w-8 rounded-lg border theme-border theme-bg-surface-2 hover:border-indigo-500/50 transition cursor-pointer"
+                  className="flex items-center justify-center h-8 w-8 rounded-lg border theme-border theme-bg-surface-2 hover:border-[#FF7057] transition cursor-pointer neu-button"
                   title="Return to Landing Page"
                 >
                   <ArrowLeft className="h-4 w-4 theme-text-secondary" />
                 </button>
               )}
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-[0_0_16px_rgba(99,102,241,0.4)]">
+                <div className="w-8 h-8 rounded-lg bg-[#FF7057] flex items-center justify-center text-white neu-button">
                   <Terminal className="w-4 h-4" />
                 </div>
-                <span className="font-mono font-bold tracking-tight text-slate-900 dark:text-slate-100 text-sm">
-                  NEXATHON<span className="text-indigo-600 dark:text-indigo-400">.IDE</span>
+                <span className="font-mono font-bold tracking-tight theme-text-primary text-sm">
+                  NEXATHON<span className="text-[#FF7057]">.IDE</span>
                 </span>
               </div>
             </div>
@@ -227,7 +227,7 @@ export const Login: React.FC<LoginProps> = ({
 
           {/* Headline */}
           <div className="mb-6">
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 font-mono">
+            <h1 className="text-2xl font-extrabold tracking-tight theme-text-primary font-heading font-mono">
               <DecryptedText
                 text={
                   authMode === 'signup'
@@ -243,7 +243,7 @@ export const Login: React.FC<LoginProps> = ({
                 maxIterations={10}
               />
             </h1>
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 font-medium">
+            <p className="text-xs theme-text-secondary mt-1.5 font-medium">
               {authMode === 'signup'
                 ? 'Join your team and start building collaboratively in real-time.'
                 : authMode === 'forgot'
@@ -256,7 +256,7 @@ export const Login: React.FC<LoginProps> = ({
 
           {/* Mode Switcher Tabs (Sign In vs Sign Up) */}
           {authMode !== 'forgot' && authMode !== 'reset' && (
-            <div className="flex rounded-xl p-1 border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/5 mb-6">
+            <div className="flex rounded-xl p-1 border theme-border theme-bg-surface-2 mb-6">
               <button
                 type="button"
                 onClick={() => {
@@ -266,8 +266,8 @@ export const Login: React.FC<LoginProps> = ({
                 }}
                 className={`flex-1 py-2 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
                   authMode === 'signin'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-[#FF7057] text-white neu-button'
+                    : 'theme-text-secondary hover:theme-text-primary'
                 }`}
               >
                 Sign In
@@ -281,8 +281,8 @@ export const Login: React.FC<LoginProps> = ({
                 }}
                 className={`flex-1 py-2 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
                   authMode === 'signup'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-[#FF7057] text-white neu-button'
+                    : 'theme-text-secondary hover:theme-text-primary'
                 }`}
               >
                 Sign Up
@@ -313,7 +313,7 @@ export const Login: React.FC<LoginProps> = ({
                   <label className="block font-mono text-[11px] uppercase theme-text-secondary mb-1.5 font-medium">
                     Display Name / Handle
                   </label>
-                  <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-indigo-500 px-3.5 py-2 text-xs">
+                  <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-[#FF7057] px-3.5 py-2 text-xs">
                     <UserIcon className="w-4 h-4 theme-text-muted mr-2 shrink-0" />
                     <input
                       type="text"
@@ -330,7 +330,7 @@ export const Login: React.FC<LoginProps> = ({
                 <label className="block font-mono text-[11px] uppercase theme-text-secondary mb-1.5 font-medium">
                   Email Address
                 </label>
-                <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-indigo-500 px-3.5 py-2 text-xs">
+                <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-[#FF7057] px-3.5 py-2 text-xs">
                   <Mail className="w-4 h-4 theme-text-muted mr-2 shrink-0" />
                   <input
                     type="email"
@@ -356,13 +356,13 @@ export const Login: React.FC<LoginProps> = ({
                         setErrorMsg(null);
                         setInfoMsg(null);
                       }}
-                      className="text-[10px] font-mono text-indigo-500 hover:underline cursor-pointer"
+                      className="text-[10px] font-mono text-[#FF7057] hover:underline cursor-pointer"
                     >
                       Forgot Password?
                     </button>
                   )}
                 </div>
-                <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-indigo-500 px-3.5 py-2 text-xs">
+                <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-[#FF7057] px-3.5 py-2 text-xs">
                   <Lock className="w-4 h-4 theme-text-muted mr-2 shrink-0" />
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -385,7 +385,7 @@ export const Login: React.FC<LoginProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60 mt-2"
+                className="w-full py-2.5 rounded-xl bg-[#FF7057] hover:bg-[#F26049] text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md neu-button disabled:opacity-60 mt-2"
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -406,7 +406,7 @@ export const Login: React.FC<LoginProps> = ({
                 <label className="block font-mono text-[11px] uppercase theme-text-secondary mb-1.5">
                   Account Email
                 </label>
-                <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-indigo-500 px-3.5 py-2 text-xs">
+                <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-[#FF7057] px-3.5 py-2 text-xs">
                   <Mail className="w-4 h-4 theme-text-muted mr-2 shrink-0" />
                   <input
                     type="email"
@@ -421,7 +421,7 @@ export const Login: React.FC<LoginProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
+                className="w-full py-2.5 rounded-xl bg-[#FF7057] hover:bg-[#F26049] text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md neu-button disabled:opacity-60"
               >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'SEND RECOVERY LINK'}
               </button>
@@ -432,7 +432,7 @@ export const Login: React.FC<LoginProps> = ({
                   setErrorMsg(null);
                   setInfoMsg(null);
                 }}
-                className="w-full text-center text-xs font-mono text-indigo-500 hover:underline cursor-pointer"
+                className="w-full text-center text-xs font-mono text-[#FF7057] hover:underline cursor-pointer"
               >
                 Back to Sign In
               </button>
@@ -446,7 +446,7 @@ export const Login: React.FC<LoginProps> = ({
                 <label className="block font-mono text-[11px] uppercase theme-text-secondary mb-1.5">
                   New Password
                 </label>
-                <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-indigo-500 px-3.5 py-2 text-xs">
+                <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-[#FF7057] px-3.5 py-2 text-xs">
                   <Lock className="w-4 h-4 theme-text-muted mr-2 shrink-0" />
                   <input
                     type="password"
@@ -462,7 +462,7 @@ export const Login: React.FC<LoginProps> = ({
                 <label className="block font-mono text-[11px] uppercase theme-text-secondary mb-1.5">
                   Confirm New Password
                 </label>
-                <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-indigo-500 px-3.5 py-2 text-xs">
+                <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-[#FF7057] px-3.5 py-2 text-xs">
                   <Lock className="w-4 h-4 theme-text-muted mr-2 shrink-0" />
                   <input
                     type="password"
@@ -477,7 +477,7 @@ export const Login: React.FC<LoginProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
+                className="w-full py-2.5 rounded-xl bg-[#FF7057] hover:bg-[#F26049] text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md neu-button disabled:opacity-60"
               >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'UPDATE PASSWORD & LAUNCH'}
               </button>
@@ -486,21 +486,21 @@ export const Login: React.FC<LoginProps> = ({
 
           {/* Optional Guest Demo Alternative */}
           {onGuestDemo && (authMode === 'signin' || authMode === 'signup') && (
-            <div className="mt-5 pt-4 border-t border-slate-200 dark:border-white/10">
+            <div className="mt-5 pt-4 border-t theme-border">
               <button
                 type="button"
                 onClick={onGuestDemo}
-                className="w-full py-2 px-3 rounded-xl border border-dashed theme-border hover:border-indigo-500/50 font-mono text-xs font-medium flex items-center justify-center gap-2 transition-all cursor-pointer theme-text-secondary hover:theme-text-primary"
+                className="w-full py-2 px-3 rounded-xl border border-dashed theme-border hover:border-[#FF7057] font-mono text-xs font-medium flex items-center justify-center gap-2 transition-all cursor-pointer theme-text-secondary hover:theme-text-primary neu-button"
               >
-                <Zap className="w-3.5 h-3.5 text-amber-500" />
+                <Zap className="w-3.5 h-3.5 text-[#FF7057] fill-current" />
                 <span>Continue as Guest Demo</span>
               </button>
             </div>
           )}
 
           {/* Security Footer */}
-          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between font-mono text-[10px] text-slate-600 dark:text-slate-400">
-            <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold">
+          <div className="mt-6 pt-4 border-t theme-border flex items-center justify-between font-mono text-[10px] theme-text-muted">
+            <span className="flex items-center gap-1.5 text-emerald-500 font-bold">
               <ShieldCheck className="w-3.5 h-3.5" /> End-to-End Encrypted
             </span>
             <span className="font-semibold">TLS 1.3 / Supabase Auth</span>

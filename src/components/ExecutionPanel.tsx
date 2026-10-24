@@ -199,12 +199,12 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
   const canExecute = file.language === 'python' || file.language === 'javascript' || file.language === 'typescript';
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#181818', height: '100%' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-root)', height: '100%' }}>
       {/* Top Action Bar */}
       <div style={{
         padding: '8px 14px',
-        borderBottom: '1px solid #2e2e32',
-        background: '#1f1f23',
+        borderBottom: '1px solid var(--border-hairline)',
+        background: 'var(--bg-surface-1)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -215,10 +215,10 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
             disabled={running || !canExecute}
             style={{
               padding: '5px 12px',
-              background: running ? '#27272a' : '#0284c7',
+              background: running ? 'var(--bg-surface-2)' : 'var(--accent-primary)',
               color: '#fff',
               border: 'none',
-              borderRadius: 4,
+              borderRadius: 6,
               cursor: running || !canExecute ? 'not-allowed' : 'pointer',
               fontSize: 12,
               fontWeight: 600,
@@ -241,7 +241,7 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
                 background: '#dc2626',
                 color: '#fff',
                 border: 'none',
-                borderRadius: 4,
+                borderRadius: 6,
                 cursor: 'pointer',
                 fontSize: 12,
                 display: 'flex',
@@ -253,7 +253,7 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
             </button>
           )}
 
-          <span style={{ fontSize: 11, color: '#a1a1aa' }}>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
             {getLanguageLabel()}
           </span>
         </div>
@@ -261,20 +261,20 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
         {/* Right Status / Telemetry */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {executionTime > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#a1a1aa' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-secondary)' }}>
               <Clock size={12} />
               <span>{executionTime.toFixed(1)} ms</span>
             </div>
           )}
 
           {error && (
-            <span style={{ color: '#f87171', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 500 }}>
+            <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 500 }}>
               <AlertCircle size={13} /> Runtime Error
             </span>
           )}
 
           {!error && output && (
-            <span style={{ color: '#4ade80', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 500 }}>
+            <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 500 }}>
               <CheckCircle2 size={13} /> Completed
             </span>
           )}
@@ -287,7 +287,7 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#a1a1aa',
+                  color: 'var(--text-secondary)',
                   cursor: 'pointer',
                   padding: '4px',
                   borderRadius: 4,
@@ -295,7 +295,7 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
                   alignItems: 'center',
                 }}
               >
-                {copied ? <Check size={13} style={{ color: '#4ade80' }} /> : <Copy size={13} />}
+                {copied ? <Check size={13} style={{ color: '#10b981' }} /> : <Copy size={13} />}
               </button>
 
               <button
@@ -304,7 +304,7 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#a1a1aa',
+                  color: 'var(--text-secondary)',
                   cursor: 'pointer',
                   padding: '4px',
                   borderRadius: 4,
@@ -327,10 +327,10 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
         fontFamily: '"Cascadia Code", "Fira Code", Consolas, monospace',
         fontSize: 12.5,
         lineHeight: 1.6,
-        background: '#141414',
+        background: 'var(--bg-root)',
       }}>
         {output && (
-          <pre style={{ margin: 0, color: '#f4f4f5', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          <pre style={{ margin: 0, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
             {output}
           </pre>
         )}
@@ -342,7 +342,7 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
             background: 'rgba(239, 68, 68, 0.1)',
             borderLeft: '3px solid #ef4444',
             borderRadius: 3,
-            color: '#fca5a5',
+            color: '#ef4444',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
           }}>
@@ -351,7 +351,7 @@ export function ExecutionPanel({ file, onExecutionComplete }: ExecutionPanelProp
         )}
 
         {!output && !error && !running && (
-          <div style={{ color: '#52525b', textAlign: 'center', padding: '48px 20px' }}>
+          <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '48px 20px' }}>
             <Terminal size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
             <p style={{ margin: 0 }}>Click <strong>Run Code</strong> to execute {file.path} in the browser kernel</p>
           </div>

@@ -239,13 +239,13 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
       inherit: true,
       rules: [],
       colors: {
-        'editor.background': '#11151B',
-        'editor.lineHighlightBackground': '#171D25',
-        'editorLineNumber.foreground': '#788797',
-        'editorLineNumber.activeForeground': '#35B8A6',
-        'editorGutter.background': '#11151B',
-        'editor.selectionBackground': '#203832',
-        'editor.inactiveSelectionBackground': '#20383280',
+        'editor.background': '#000000',
+        'editor.lineHighlightBackground': '#0A0A0A',
+        'editorLineNumber.foreground': '#808080',
+        'editorLineNumber.activeForeground': '#FF7057',
+        'editorGutter.background': '#000000',
+        'editor.selectionBackground': '#171717',
+        'editor.inactiveSelectionBackground': '#17171780',
       },
     });
 
@@ -254,13 +254,13 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
       inherit: true,
       rules: [],
       colors: {
-        'editor.background': '#ffffff',
-        'editor.lineHighlightBackground': '#F8FAFC',
-        'editorLineNumber.foreground': '#748292',
-        'editorLineNumber.activeForeground': '#168C7D',
-        'editorGutter.background': '#ffffff',
-        'editor.selectionBackground': '#E1F3EF',
-        'editor.inactiveSelectionBackground': '#E1F3EF80',
+        'editor.background': '#FFF9F0',
+        'editor.lineHighlightBackground': '#F1E8DA',
+        'editorLineNumber.foreground': '#8A7D6D',
+        'editorLineNumber.activeForeground': '#FF7057',
+        'editorGutter.background': '#FFF9F0',
+        'editor.selectionBackground': '#EFE3D2',
+        'editor.inactiveSelectionBackground': '#EFE3D280',
       },
     });
 
@@ -361,9 +361,9 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   if (!activeFile) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center theme-bg-root bg-grid-pattern p-6 select-none transition-colors">
-        <div className="w-full max-w-md rounded-2xl border theme-border theme-bg-surface-1 p-6 theme-shadow backdrop-blur-md">
+        <div className="w-full max-w-md rounded-2xl border theme-border theme-bg-surface-1 p-6 neu-card backdrop-blur-md">
           <div className="flex items-center gap-3 mb-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 ring-1 ring-teal-500/30">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FF7057]/15 text-[#FF7057] ring-1 ring-[#FF7057]/30 neu-button">
               <Command className="h-5 w-5" />
             </div>
             <div>
@@ -379,7 +379,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
           <div className="space-y-2.5 text-xs">
             <div className="flex items-center justify-between rounded-lg border theme-border theme-bg-surface-2 px-3 py-2">
               <span className="theme-text-primary">Save File to PostgreSQL</span>
-              <kbd className="rounded border theme-border theme-bg-surface-1 px-2 py-0.5 font-mono text-[11px] text-teal-600 dark:text-teal-300">
+              <kbd className="rounded border theme-border theme-bg-surface-1 px-2 py-0.5 font-mono text-[11px] text-[#FF7057]">
                 Ctrl + S
               </kbd>
             </div>
@@ -404,20 +404,20 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
               <button
                 type="button"
                 onClick={onSwitchWorkspace}
-                className="w-full flex items-center justify-between rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 hover:border-indigo-500/40 hover:theme-bg-elevated transition cursor-pointer text-left"
+                className="w-full flex items-center justify-between rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 hover:border-[#FF7057]/40 hover:theme-bg-elevated transition cursor-pointer text-left neu-button"
               >
                 <span className="flex items-center gap-2 theme-text-primary font-medium">
-                  <ArrowLeft className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" />
+                  <ArrowLeft className="h-3.5 w-3.5 text-[#FF7057]" />
                   Exit to Workspaces Dashboard
                 </span>
-                <kbd className="rounded border theme-border theme-bg-surface-1 px-2 py-0.5 font-mono text-[11px] text-indigo-500 dark:text-indigo-300">
+                <kbd className="rounded border theme-border theme-bg-surface-1 px-2 py-0.5 font-mono text-[11px] text-[#FF7057]">
                   Exit
                 </kbd>
               </button>
             )}
           </div>
 
-          <div className="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-teal-600 dark:text-teal-300">
+          <div className="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-[#FF7057]">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Every file has an isolated Yjs CRDT buffer & live cursor presence</span>
           </div>
@@ -479,9 +479,9 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
               type="button"
               onClick={() => onReleaseReservation?.(myReservation.id)}
               title="Click to release your edit reservation on this section"
-              className="inline-flex items-center gap-1.5 rounded-md border border-teal-500/40 bg-teal-950/50 px-2 py-0.5 text-[11px] font-medium text-teal-200 hover:bg-teal-900/60 transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-md border border-[#FF7057]/40 bg-[#FF7057]/15 px-2 py-0.5 text-[11px] font-medium text-[#FF7057] hover:bg-[#FF7057]/25 transition cursor-pointer"
             >
-              <Unlock className="h-3 w-3 text-teal-400" />
+              <Unlock className="h-3 w-3 text-[#FF7057]" />
               <span>Release Lines {myReservation.startLine}–{myReservation.endLine}</span>
             </button>
           ) : selectedRange && selectedRange.endLine >= selectedRange.startLine ? (
@@ -489,9 +489,9 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
               type="button"
               onClick={() => onReserveSelection?.(selectedRange.startLine, selectedRange.endLine)}
               title={`Reserve lines ${selectedRange.startLine}–${selectedRange.endLine} for focused editing`}
-              className="inline-flex items-center gap-1 rounded-md border theme-border theme-bg-surface-2 px-2 py-0.5 text-[11px] font-medium theme-text-secondary hover:border-teal-500/40 hover:text-teal-400 transition cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-md border theme-border theme-bg-surface-2 px-2 py-0.5 text-[11px] font-medium theme-text-secondary hover:border-[#FF7057]/40 hover:text-[#FF7057] transition cursor-pointer"
             >
-              <Shield className="h-3 w-3 text-teal-400" />
+              <Shield className="h-3 w-3 text-[#FF7057]" />
               <span>Reserve Lines {selectedRange.startLine}–{selectedRange.endLine}</span>
             </button>
           ) : null}
@@ -515,7 +515,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
               onLanguageChange(activeFile, e.target.value as SupportedLanguage)
             }
             aria-label="Syntax Highlighting Language"
-            className="rounded-md border theme-border theme-bg-surface-2 px-2.5 py-0.5 text-xs font-medium theme-text-primary focus:border-teal-500 focus:outline-none cursor-pointer"
+            className="rounded-md border theme-border theme-bg-surface-2 px-2.5 py-0.5 text-xs font-medium theme-text-primary focus:border-[#FF7057] focus:outline-none cursor-pointer"
           >
             {LANGUAGES.map((lang) => (
               <option key={lang.value} value={lang.value} className="theme-bg-surface-1 theme-text-primary">
@@ -596,7 +596,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
           <>
             {/* Visual Rail connecting Top & Bottom Handles along right margin */}
             <div
-              className="pointer-events-none absolute z-20 border-r-2 border-teal-500/40 border-dashed"
+              className="pointer-events-none absolute z-20 border-r-2 border-[#FF7057]/40 border-dashed"
               style={{
                 top: `${boxCoords.top}px`,
                 height: `${boxCoords.height}px`,
@@ -607,8 +607,8 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
             {/* Top Draggable Handle: Substantially compact, sleek, positioned on right margin */}
             <div
               onMouseDown={(e) => handleStartDrag('top', e)}
-              className={`group pointer-events-auto absolute z-30 flex items-center justify-center w-6 h-3.5 rounded-full bg-teal-900/90 dark:bg-teal-950/90 border border-teal-400/60 shadow-sm cursor-ns-resize select-none transition-all hover:bg-teal-700 hover:border-teal-300 hover:scale-110 before:absolute before:-inset-2 before:content-[''] ${
-                dragEdge === 'top' ? 'scale-110 ring-2 ring-teal-400 bg-teal-600' : 'opacity-85 hover:opacity-100'
+              className={`group pointer-events-auto absolute z-30 flex items-center justify-center w-6 h-3.5 rounded-full bg-[#FF7057] text-white border border-[#F26049] cursor-ns-resize select-none transition-all hover:scale-110 before:absolute before:-inset-2 before:content-[''] neu-button ${
+                dragEdge === 'top' ? 'scale-110 ring-2 ring-[#FF7057]' : 'opacity-85 hover:opacity-100'
               }`}
               style={{
                 top: `${Math.max(4, boxCoords.top - 7)}px`,
@@ -616,9 +616,9 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
               }}
               title="Click and drag upwards to expand reservation to earlier lines"
             >
-              <ChevronsUp className="h-2.5 w-2.5 text-teal-200" />
+              <ChevronsUp className="h-2.5 w-2.5 text-white" />
               {/* Dynamic Line Indicator visible on hover or drag */}
-              <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-teal-950 border border-teal-500/50 text-[10px] font-mono font-semibold text-teal-200 whitespace-nowrap shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-[#0A0A0A] dark:bg-[#111111] border border-[#242424] text-[10px] font-mono font-semibold text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
                 ▲ Ln {boxCoords.startLine}
               </span>
             </div>
@@ -626,8 +626,8 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
             {/* Bottom Draggable Handle: Substantially compact, sleek, positioned on right margin */}
             <div
               onMouseDown={(e) => handleStartDrag('bottom', e)}
-              className={`group pointer-events-auto absolute z-30 flex items-center justify-center w-6 h-3.5 rounded-full bg-teal-900/90 dark:bg-teal-950/90 border border-teal-400/60 shadow-sm cursor-ns-resize select-none transition-all hover:bg-teal-700 hover:border-teal-300 hover:scale-110 before:absolute before:-inset-2 before:content-[''] ${
-                dragEdge === 'bottom' ? 'scale-110 ring-2 ring-teal-400 bg-teal-600' : 'opacity-85 hover:opacity-100'
+              className={`group pointer-events-auto absolute z-30 flex items-center justify-center w-6 h-3.5 rounded-full bg-[#FF7057] text-white border border-[#F26049] cursor-ns-resize select-none transition-all hover:scale-110 before:absolute before:-inset-2 before:content-[''] neu-button ${
+                dragEdge === 'bottom' ? 'scale-110 ring-2 ring-[#FF7057]' : 'opacity-85 hover:opacity-100'
               }`}
               style={{
                 top: `${boxCoords.top + boxCoords.height - 7}px`,
@@ -635,20 +635,20 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
               }}
               title="Click and drag downwards to expand reservation to more lines"
             >
-              <ChevronsDown className="h-2.5 w-2.5 text-teal-200" />
+              <ChevronsDown className="h-2.5 w-2.5 text-white" />
               {/* Dynamic Line Indicator visible on hover or drag */}
-              <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-teal-950 border border-teal-500/50 text-[10px] font-mono font-semibold text-teal-200 whitespace-nowrap shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-[#0A0A0A] dark:bg-[#111111] border border-[#242424] text-[10px] font-mono font-semibold text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
                 ▼ Ln {boxCoords.endLine}
               </span>
             </div>
 
             {/* Compact Floating Quick-Adjustment Control at top right */}
-            <div className="pointer-events-auto absolute right-16 top-2 z-30 flex items-center gap-1.5 rounded-md border border-teal-500/40 bg-slate-900/90 backdrop-blur-md px-2.5 py-1 text-xs text-teal-200 shadow-lg select-none">
-              <Shield className="h-3 w-3 text-teal-400 shrink-0" />
-              <span className="font-medium text-white text-[11px]">
+            <div className="pointer-events-auto absolute right-16 top-2 z-30 flex items-center gap-1.5 rounded-md border border-[#E9DECE] dark:border-[#242424] bg-[#FFF9F0] dark:bg-[#0A0A0A] backdrop-blur-md px-2.5 py-1 text-xs text-[#302820] dark:text-[#FFFFFF] neu-card select-none">
+              <Shield className="h-3 w-3 text-[#FF7057] shrink-0" />
+              <span className="font-medium text-[#302820] dark:text-[#FFFFFF] text-[11px]">
                 Lines {boxCoords.startLine}–{boxCoords.endLine}
               </span>
-              <div className="h-3 w-px bg-white/20 mx-0.5" />
+              <div className="h-3 w-px bg-theme-border mx-0.5" />
               <button
                 type="button"
                 onClick={() => {
@@ -656,7 +656,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
                   if (onUpdateReservationRange) onUpdateReservationRange(myReservation.id, boxCoords.startLine, newEnd);
                   else if (onReserveSelection) onReserveSelection(boxCoords.startLine, newEnd);
                 }}
-                className="px-1.5 py-0.5 rounded bg-teal-800/80 hover:bg-teal-700 text-[10px] font-semibold text-white transition cursor-pointer"
+                className="px-1.5 py-0.5 rounded bg-[#FF7057] hover:bg-[#F26049] text-[10px] font-semibold text-white transition cursor-pointer neu-button"
                 title="Add 5 lines to reservation"
               >
                 +5
@@ -669,7 +669,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
                     if (onUpdateReservationRange) onUpdateReservationRange(myReservation.id, boxCoords.startLine, newEnd);
                     else if (onReserveSelection) onReserveSelection(boxCoords.startLine, newEnd);
                   }}
-                  className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-semibold text-slate-300 transition cursor-pointer"
+                  className="px-1.5 py-0.5 rounded bg-theme-bg-surface-2 hover:theme-bg-surface-1 text-[10px] font-semibold theme-text-primary transition cursor-pointer"
                   title="Shrink reservation by 5 lines"
                 >
                   -5
@@ -678,7 +678,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
               <button
                 type="button"
                 onClick={() => onReleaseReservation?.(myReservation.id)}
-                className="px-1.5 py-0.5 rounded bg-rose-950/80 border border-rose-500/40 hover:bg-rose-900 text-[10px] font-semibold text-rose-200 transition cursor-pointer ml-0.5"
+                className="px-1.5 py-0.5 rounded bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-[10px] font-semibold text-rose-500 transition cursor-pointer ml-0.5"
                 title="Release reservation"
               >
                 Release
@@ -689,15 +689,15 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
 
         {/* Drag-Selection Quick Reserve Pill */}
         {selectedRange && selectedRange.endLine > selectedRange.startLine && (
-          <div className="pointer-events-auto absolute left-1/2 -translate-x-1/2 top-3 z-30 flex items-center gap-2.5 rounded-lg border border-teal-500/50 bg-teal-950/95 backdrop-blur-md px-3.5 py-1.5 text-xs text-white shadow-2xl animate-fadeIn">
-            <Shield className="h-4 w-4 text-teal-400 animate-pulse shrink-0" />
+          <div className="pointer-events-auto absolute left-1/2 -translate-x-1/2 top-3 z-30 flex items-center gap-2.5 rounded-lg border border-[#E9DECE] dark:border-[#242424] bg-[#FFF9F0] dark:bg-[#0A0A0A] backdrop-blur-md px-3.5 py-1.5 text-xs text-[#302820] dark:text-[#FFFFFF] neu-card animate-fadeIn">
+            <Shield className="h-4 w-4 text-[#FF7057] animate-pulse shrink-0" />
             <span>
               Selected <strong>Lines {selectedRange.startLine}–{selectedRange.endLine}</strong> ({selectedRange.endLine - selectedRange.startLine + 1} lines)
             </span>
             <button
               type="button"
               onClick={() => onReserveSelection?.(selectedRange.startLine, selectedRange.endLine)}
-              className="px-2.5 py-1 rounded bg-teal-600 hover:bg-teal-500 text-xs font-semibold text-white shadow transition cursor-pointer"
+              className="px-2.5 py-1 rounded bg-[#FF7057] hover:bg-[#F26049] text-xs font-semibold text-white transition cursor-pointer neu-button"
             >
               Lock & Reserve Selection
             </button>

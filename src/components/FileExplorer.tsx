@@ -344,7 +344,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       <form
         onSubmit={(e) => void handleCreationSubmit(e)}
         style={{ paddingLeft: `${depth * 14 + 10}px` }}
-        className="flex items-center gap-1.5 py-1 pr-2 theme-bg-surface-2 animate-fadeIn border-l-2 border-teal-500"
+        className="flex items-center gap-1.5 py-1 pr-2 theme-bg-surface-2 animate-fadeIn border-l-2 border-[#FF7057]"
       >
         <span className="shrink-0">
           {isFolder ? (
@@ -375,7 +375,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               void handleCreationSubmit();
             }
           }}
-          className="w-full rounded border border-teal-500 theme-bg-surface-1 px-1.5 py-0.5 text-xs theme-text-primary focus:outline-none"
+          className="w-full rounded border border-[#FF7057] theme-bg-surface-1 px-1.5 py-0.5 text-xs theme-text-primary focus:outline-none"
         />
         <button
           type="submit"
@@ -433,7 +433,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                       if (e.key === 'Escape') setEditingNode(null);
                     }}
                     onBlur={() => void handleRenameSubmit()}
-                    className="w-full rounded border border-teal-500 theme-bg-surface-1 px-1.5 py-0.5 text-xs theme-text-primary focus:outline-none"
+                    className="w-full rounded border border-[#FF7057] theme-bg-surface-1 px-1.5 py-0.5 text-xs theme-text-primary focus:outline-none"
                   />
                   <button
                     type="button"
@@ -489,7 +489,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                         handleStartCreation('file', node.path);
                       }}
                       title={`New File inside ${node.name}`}
-                      className="rounded p-0.5 theme-text-secondary hover:theme-bg-surface-1 hover:text-teal-400 transition"
+                      className="rounded p-0.5 theme-text-secondary hover:theme-bg-surface-1 hover:text-[#FF7057] transition"
                     >
                       <FilePlus className="h-3.5 w-3.5" />
                     </button>
@@ -584,7 +584,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                     if (e.key === 'Escape') setEditingNode(null);
                   }}
                   onBlur={() => void handleRenameSubmit()}
-                  className="w-full rounded border border-teal-500 theme-bg-surface-1 px-1.5 py-0.5 text-xs theme-text-primary focus:outline-none"
+                  className="w-full rounded border border-[#FF7057] theme-bg-surface-1 px-1.5 py-0.5 text-xs theme-text-primary focus:outline-none"
                 />
                 <button
                   type="button"
@@ -621,7 +621,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               }}
               className={`group flex cursor-pointer items-center justify-between py-1 pr-2 text-xs transition select-none ${
                 isActive
-                  ? 'border-l-2 border-teal-500 theme-bg-selected theme-text-primary font-medium'
+                  ? 'border-l-2 border-[#FF7057] theme-bg-selected theme-text-primary font-medium'
                   : 'border-l-2 border-transparent theme-text-secondary hover:theme-bg-surface-2 hover:theme-text-primary'
               }`}
             >
@@ -693,7 +693,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           </span>
           {selectedFolderPath && (
             <span
-              className="text-[10px] font-mono text-teal-600 dark:text-teal-400 truncate max-w-[90px]"
+              className="text-[10px] font-mono text-[#FF7057] truncate max-w-[90px]"
               title={`Selected Folder: ${selectedFolderPath}`}
             >
               /{selectedFolderPath}
@@ -709,7 +709,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             title={selectedFolderPath ? `New File inside /${selectedFolderPath}` : 'New File at Workspace Root'}
             className="rounded p-1 theme-text-secondary hover:theme-text-primary hover:theme-bg-surface-2 transition cursor-pointer"
           >
-            <FilePlus className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+            <FilePlus className="h-3.5 w-3.5 text-[#FF7057]" />
           </button>
           <button
             type="button"
@@ -726,7 +726,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               title="Refresh Explorer"
               className="rounded p-1 theme-text-secondary hover:theme-text-primary hover:theme-bg-surface-2 transition cursor-pointer"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-teal-500' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-[#FF7057]' : ''}`} />
             </button>
           )}
           <button
@@ -757,7 +757,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       <div className="flex-1 overflow-y-auto py-1">
         {tree.length === 0 && !creationState ? (
           <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
-            <div className="mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
+            <div className="mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl bg-[#FF7057]/15 text-[#FF7057] ring-1 ring-[#FF7057]/30 neu-button">
               <FolderTree className="h-5 w-5" />
             </div>
             <p className="text-xs font-semibold theme-text-primary">Workspace is empty</p>
@@ -768,7 +768,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               <button
                 type="button"
                 onClick={() => handleStartCreation('file', '')}
-                className="inline-flex items-center gap-1 rounded-md bg-teal-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-teal-500 transition cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-1 rounded-md bg-[#FF7057] px-2.5 py-1 text-[11px] font-medium text-white hover:bg-[#F26049] transition cursor-pointer neu-button"
               >
                 <FilePlus className="h-3 w-3" />
                 <span>New File</span>

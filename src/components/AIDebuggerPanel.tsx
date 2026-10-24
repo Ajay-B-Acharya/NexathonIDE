@@ -66,7 +66,7 @@ export const AIDebuggerPanel: React.FC<AIDebuggerPanelProps> = ({
       {/* Professional Diagnosis Header */}
       <div className="flex items-center justify-between border-b theme-border theme-bg-surface-1 px-3.5 py-1.5">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+          <Sparkles className="h-3.5 w-3.5 text-[#FF7057]" />
           <span className="text-[11px] font-semibold uppercase tracking-wider theme-text-secondary">
             AI Debugger & Diff Guard
           </span>
@@ -84,12 +84,12 @@ export const AIDebuggerPanel: React.FC<AIDebuggerPanelProps> = ({
             value={errorContext}
             onChange={(e) => setErrorContext(e.target.value)}
             placeholder="Paste stack trace / stderr or describe unexpected behavior..."
-            className="flex-1 rounded-lg border theme-border theme-bg-surface-2 px-3.5 py-1.5 text-xs theme-text-primary placeholder-slate-400 focus:border-teal-500 focus:outline-none font-mono"
+            className="flex-1 rounded-lg border theme-border theme-bg-surface-2 px-3.5 py-1.5 text-xs theme-text-primary placeholder:text-muted focus:border-[#FF7057] focus:outline-none font-mono"
           />
           <button
             type="submit"
             disabled={isLoading}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50 transition shrink-0 cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#FF7057] hover:bg-[#F26049] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50 transition shrink-0 cursor-pointer neu-button"
           >
             {isLoading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -102,9 +102,9 @@ export const AIDebuggerPanel: React.FC<AIDebuggerPanelProps> = ({
 
         {/* Animated Shimmer Loading Bar */}
         {isLoading && (
-          <div className="flex items-center gap-3 rounded-xl border border-teal-500/30 p-3.5 animate-shimmer">
-            <Cpu className="h-4 w-4 text-teal-600 dark:text-teal-400 animate-spin" />
-            <span className="text-xs font-medium text-teal-700 dark:text-teal-300">
+          <div className="flex items-center gap-3 rounded-xl border border-[#FF7057]/30 p-3.5 animate-shimmer">
+            <Cpu className="h-4 w-4 text-[#FF7057] animate-spin" />
+            <span className="text-xs font-medium text-[#FF7057]">
               Analyzing stack trace, syntax tree, and generating minimal diff patch...
             </span>
           </div>
@@ -118,11 +118,11 @@ export const AIDebuggerPanel: React.FC<AIDebuggerPanelProps> = ({
         )}
 
         {diagnosis && (
-          <div className="space-y-3.5 rounded-xl border theme-border theme-bg-surface-1 p-3.5 text-xs shadow-xs">
+          <div className="space-y-3.5 rounded-xl border theme-border theme-bg-surface-1 p-3.5 text-xs neu-card">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Card 1: Technical Diagnosis */}
               <div className="rounded-xl border theme-border theme-bg-surface-2 p-3.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300 mb-1.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[#FF7057] mb-1.5">
                   Diagnosis & Root Cause
                 </div>
                 <p className="theme-text-primary leading-relaxed">{diagnosis.explanation}</p>
@@ -142,7 +142,7 @@ export const AIDebuggerPanel: React.FC<AIDebuggerPanelProps> = ({
               <button
                 type="button"
                 onClick={() => setShowInlineDiff((prev) => !prev)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-[#FF7057] hover:underline cursor-pointer"
               >
                 <Eye className="h-3.5 w-3.5" />
                 <span>{showInlineDiff ? 'Hide Side-by-Side Diff' : 'Show Side-by-Side Diff'}</span>
@@ -151,7 +151,7 @@ export const AIDebuggerPanel: React.FC<AIDebuggerPanelProps> = ({
               <button
                 type="button"
                 onClick={() => setIsConfirmModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 px-3.5 py-1.5 text-xs font-semibold text-white transition cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#FF7057] hover:bg-[#F26049] px-3.5 py-1.5 text-xs font-semibold text-white transition cursor-pointer neu-button"
               >
                 <Check className="h-3.5 w-3.5" />
                 <span>✓ Review & Apply Fix to Shared Document</span>

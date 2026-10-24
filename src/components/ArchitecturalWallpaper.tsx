@@ -10,7 +10,7 @@ export const ArchitecturalWallpaper: React.FC<WallpaperProps> = ({ theme = 'dark
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none transition-opacity duration-700"
+      className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none transition-opacity duration-300"
       aria-hidden="true"
     >
       <svg
@@ -22,53 +22,42 @@ export const ArchitecturalWallpaper: React.FC<WallpaperProps> = ({ theme = 'dark
         }}
       >
         <defs>
-          {/* 48x48 Architectural Grid with Precision Center Crosshairs */}
           <pattern
             id="nexathon-blueprint-grid"
             width="48"
             height="48"
             patternUnits="userSpaceOnUse"
           >
-            {/* Grid line boundary */}
             <path
               d="M 48 0 L 0 0 0 48"
               fill="none"
-              stroke={isDark ? 'rgba(255, 255, 255, 0.045)' : 'rgba(15, 23, 42, 0.055)'}
+              stroke={isDark ? '#242424' : '#E9DECE'}
               strokeWidth="1"
             />
-            {/* Subtle sub-pixel crosshair (+) at each vertex */}
             <path
               d="M 0 5 L 0 -5 M -5 0 L 5 0"
-              stroke={isDark ? 'rgba(99, 102, 241, 0.4)' : 'rgba(79, 70, 229, 0.35)'}
+              stroke={isDark ? '#333333' : 'rgba(255, 112, 87, 0.4)'}
               strokeWidth="1"
             />
           </pattern>
 
-          {/* Central Atmospheric Focus Glow */}
-          <radialGradient id="blueprint-beacon" cx="50%" cy="30%" r="55%">
-            <stop
-              offset="0%"
-              stopColor={isDark ? '#6366f1' : '#4f46e5'}
-              stopOpacity={isDark ? '0.22' : '0.14'}
-            />
-            <stop
-              offset="45%"
-              stopColor={isDark ? '#a855f7' : '#7c3aed'}
-              stopOpacity={isDark ? '0.10' : '0.05'}
-            />
-            <stop offset="100%" stopColor="transparent" stopOpacity="0" />
-          </radialGradient>
+          {!isDark && (
+            <radialGradient id="blueprint-beacon" cx="50%" cy="30%" r="55%">
+              <stop offset="0%" stopColor="#FFF9F0" stopOpacity="0.4" />
+              <stop offset="60%" stopColor="#F7F1E7" stopOpacity="0.1" />
+              <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+            </radialGradient>
+          )}
         </defs>
 
-        {/* Base Grid Layer */}
         <rect width="100%" height="100%" fill="url(#nexathon-blueprint-grid)" />
 
-        {/* Focal Spotlight Glow */}
-        <rect width="100%" height="100%" fill="url(#blueprint-beacon)" />
+        {!isDark && (
+          <rect width="100%" height="100%" fill="url(#blueprint-beacon)" />
+        )}
 
-        {/* Concentric CRDT Topological Orbit Rings Centered behind the Hero */}
         <g
-          stroke={isDark ? 'rgba(99, 102, 241, 0.14)' : 'rgba(79, 70, 229, 0.12)'}
+          stroke={isDark ? 'rgba(36, 36, 36, 0.8)' : 'rgba(233, 222, 206, 0.7)'}
           strokeWidth="1"
           fill="none"
           strokeDasharray="4 8"
@@ -82,4 +71,3 @@ export const ArchitecturalWallpaper: React.FC<WallpaperProps> = ({ theme = 'dark
     </div>
   );
 };
-

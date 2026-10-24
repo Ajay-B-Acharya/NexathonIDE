@@ -41,6 +41,9 @@ export const App: React.FC = () => {
       if (savedTheme === 'light' || savedTheme === 'dark') {
         return savedTheme;
       }
+      if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        return 'light';
+      }
       return 'dark';
     } catch {
       return 'dark';

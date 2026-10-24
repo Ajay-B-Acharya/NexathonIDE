@@ -45,9 +45,9 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
       className={`relative overflow-hidden rounded-2xl border theme-border theme-bg-surface-1 transition-all duration-300 ${className}`}
       {...props}
     >
-      {/* Specular Radial Spotlight Layer */}
+      {/* Specular Radial Spotlight Layer (Hidden in Dark Mode to guarantee flat surfaces without light-source highlights) */}
       <div
-        className="pointer-events-none absolute -inset-px transition-opacity duration-300 ease-out will-change-[opacity]"
+        className="pointer-events-none absolute -inset-px transition-opacity duration-300 ease-out will-change-[opacity] dark:hidden"
         style={{
           opacity,
           background: `radial-gradient(${size}px circle at ${position.x}px ${position.y}px, ${resolvedSpotlight}, transparent 70%)`,

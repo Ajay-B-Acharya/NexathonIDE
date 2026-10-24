@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Code2,
   Sparkles,
@@ -27,6 +27,7 @@ import {
   FileCode,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
 } from 'lucide-react';
 import { executionClient } from '../services/executionClient';
 import { SupportedLanguage, UserProfile } from '../types';
@@ -123,8 +124,8 @@ print(f"Unit Magnitude: {round(sum(x*x for x in normalized), 6)}")`,
     label: 'Fault Injection + AI Diff Guard Demo',
     language: 'javascript',
     runtimeLabel: 'Isolated Web Worker + AI Diff Guard',
-    code: `// Click "Run in Browser WASM" to trigger a runtime fault,
-// then click "Inspect AI Diff Patch" to test the CRDT Diff Guard!
+    code: `// Click "Run WASM" to trigger a runtime fault,
+// then test the autonomous AST CRDT diff guard!
 function allocateShardLoad(totalRequests, activeNodes) {
   if (activeNodes.length === 0) {
     throw new RangeError("ZeroActiveShardsFault: Division by zero in consistent hash ring (activeNodes = 0)");
@@ -152,7 +153,7 @@ console.log("Allocated per node (safe fallback):", perNode);`,
 ];
 
 const CURSOR_COLORS = [
-  { hex: '#168c7d', name: 'Teal' },
+  { hex: '#FF7057', name: 'Coral' },
   { hex: '#10b981', name: 'Emerald' },
   { hex: '#06b6d4', name: 'Cyan' },
   { hex: '#3b82f6', name: 'Blue' },
@@ -210,6 +211,24 @@ export const Landing: React.FC<LandingProps> = ({
   const [handleName, setHandleName] = useState('');
   const [selectedColor, setSelectedColor] = useState(CURSOR_COLORS[0].hex);
   const [isLaunchingDemo, setIsLaunchingDemo] = useState(false);
+
+  // Scroll Progress and Back-to-Top State
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  const handleScroll = useCallback(() => {
+    if (!containerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+    const maxScroll = scrollHeight - clientHeight;
+    const progress = maxScroll > 0 ? (scrollTop / maxScroll) * 100 : 0;
+    setScrollProgress(progress);
+    setShowBackToTop(scrollTop > 400);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   // Execute code inside the live Hero Sandbox
   const handleRunSandbox = useCallback(
@@ -312,7 +331,7 @@ export const Landing: React.FC<LandingProps> = ({
         if (existingUser) {
           onResumeSession();
         } else {
-          setIsModalOpen(true);
+          onNavigateToLogin();
         }
       }
 
@@ -330,6 +349,7 @@ export const Landing: React.FC<LandingProps> = ({
   }, [
     existingUser,
     onResumeSession,
+    onNavigateToLogin,
     handleRunSandbox,
     handleSelectPreset,
     sandboxCode,
@@ -373,11 +393,28 @@ export const Landing: React.FC<LandingProps> = ({
 
   return (
     <div
+      ref={containerRef}
+      onScroll={handleScroll}
       className={`relative h-screen w-screen overflow-y-auto overflow-x-hidden theme-bg-root theme-text-primary select-none scroll-smooth ${
         isDark ? 'dark' : 'light'
       }`}
       data-theme={theme}
     >
+      {/* Real-time Scroll Progress Bar */}
+      <div
+        role="progressbar"
+        aria-valuenow={Math.round(scrollProgress)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Reading progress"
+        className="fixed top-0 left-0 right-0 h-[2.5px] z-50 pointer-events-none bg-transparent"
+      >
+        <div
+          className="h-full bg-[#FF7057] transition-[width] duration-75 ease-out"
+          style={{ width: `${scrollProgress}%` }}
+        />
+      </div>
+
       {/* Theme-Adaptive CAD Grid + Aurora Background */}
       <AdaptiveBackground variant="landing" theme={theme} />
 
@@ -390,15 +427,15 @@ export const Landing: React.FC<LandingProps> = ({
           {/* Left: Brand Identity */}
           <div className="flex items-center gap-3 shrink-0">
             <a href="#" className="group flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-600 text-white shadow-xs transition-transform duration-200 group-hover:scale-105">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FF7057] text-white shadow-xs transition-transform duration-200 group-hover:scale-105 neu-button">
                 <Code2 className="h-5 w-5" />
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="text-base font-extrabold tracking-tight theme-text-primary">
-                    Nexathon<span className="text-teal-600 dark:text-teal-400">IDE</span>
+                  <span className="text-base font-extrabold tracking-tight theme-text-primary font-heading">
+                    Nexathon<span className="text-[#FF7057]">IDE</span>
                   </span>
-                  <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-500/20 bg-teal-500/10 px-2 py-0.5 font-mono text-[10px] font-medium text-teal-600 dark:text-teal-400">
+                  <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-[#FF7057]/20 bg-[#FF7057]/10 px-2 py-0.5 font-mono text-[10px] font-medium text-[#FF7057]">
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
                     </span>
@@ -410,16 +447,16 @@ export const Landing: React.FC<LandingProps> = ({
           </div>
 
           {/* Center: Floating Capsule Navigation Tabs */}
-          <nav className="hidden lg:flex items-center gap-1 rounded-full border border-slate-200/90 dark:border-white/10 bg-slate-100/90 dark:bg-white/[0.04] p-1 backdrop-blur-md shadow-xs">
+          <nav className="hidden lg:flex items-center gap-1 rounded-full border theme-border theme-bg-surface-2 p-1 backdrop-blur-md">
             <a
               href="#live-sandbox"
-              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
+              className="rounded-full px-4 py-1.5 text-xs font-semibold theme-text-secondary hover:theme-text-primary hover:bg-[#FFFCF6] dark:hover:bg-[#171717] transition-all"
             >
               Interactive Sandbox
             </a>
             <a
               href="#bento"
-              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
+              className="rounded-full px-4 py-1.5 text-xs font-semibold theme-text-secondary hover:theme-text-primary hover:bg-[#FFFCF6] dark:hover:bg-[#171717] transition-all"
             >
               Core Architecture
             </a>
@@ -434,8 +471,8 @@ export const Landing: React.FC<LandingProps> = ({
               title="Click to test Yjs WebSocket cluster round-trip latency"
               className={`hidden sm:inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-mono transition-all cursor-pointer whitespace-nowrap shrink-0 hover:scale-[1.02] active:scale-[0.98] ${
                 isDark
-                  ? 'border-emerald-500/30 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/40 hover:border-emerald-500/50 shadow-xs'
-                  : 'border-emerald-600/30 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                  ? 'border-emerald-500/30 bg-[#080808] text-emerald-300 hover:border-emerald-500/50'
+                  : 'border-[#E5DED2] bg-[#FFFCF6] text-emerald-800 hover:bg-[#EFE8DC] neu-button'
               }`}
             >
               <span className="relative flex h-2 w-2">
@@ -450,7 +487,7 @@ export const Landing: React.FC<LandingProps> = ({
             <button
               type="button"
               onClick={handlePrimaryCTA}
-              className="group relative inline-flex items-center gap-2 rounded-xl bg-teal-600 hover:bg-teal-500 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap shrink-0"
+              className="group relative inline-flex items-center gap-2 rounded-xl bg-[#FF7057] hover:bg-[#F26049] px-4 py-2 text-xs font-semibold text-white neu-button hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap shrink-0"
             >
               <span>
                 {existingUser ? `Resume (${existingUser.name})` : 'Sign In / Sign Up'}
@@ -504,7 +541,7 @@ export const Landing: React.FC<LandingProps> = ({
                   setIsMobileMenuOpen(false);
                   handlePrimaryCTA();
                 }}
-                className="text-xs font-semibold theme-text-primary hover:text-teal-400"
+                className="text-xs font-semibold theme-text-primary hover:text-[#FF7057]"
               >
                 {existingUser ? `Resume (${existingUser.name}) →` : 'Sign In / Sign Up →'}
               </button>
@@ -515,11 +552,22 @@ export const Landing: React.FC<LandingProps> = ({
 
       {/* 2. RECONSTRUCTED CLEAN & RESPONSIVE HERO SECTION */}
       <section className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 pt-10 sm:pt-16 pb-6 text-center">
+        {/* Eyebrow Announcement Pill */}
+        <div className="inline-flex items-center gap-2 rounded-full border theme-border theme-bg-surface-2 px-4 py-1.5 text-xs font-medium theme-text-secondary mb-6 cursor-default">
+          <span className="relative flex h-2 w-2">
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+          </span>
+          <span className="font-semibold text-emerald-500">Nexathon 2.0 Engine</span>
+          <span className="opacity-40">•</span>
+          <span>Sub-15ms CRDT Synchronization & Pyodide WASM</span>
+          <Sparkles className="h-3.5 w-3.5 text-[#FF7057] ml-0.5" />
+        </div>
+
         {/* Master Headline */}
-        <h1 className="mx-auto max-w-4xl text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight theme-text-primary leading-[1.14] sm:leading-[1.08]">
+        <h1 className="mx-auto max-w-4xl text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight theme-text-primary leading-[1.14] sm:leading-[1.08] font-heading">
           Distributed Real-Time Coding.{' '}
-          <span className="block mt-2 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-300 bg-clip-text text-transparent">
-            Zero Cold Starts. Pure In-Browser WASM.
+          <span className="block mt-2 text-[#FF7057]">
+            <span className="font-serif italic font-normal">Zero Cold Starts.</span> Pure In-Browser WASM.
           </span>
         </h1>
 
@@ -533,7 +581,7 @@ export const Landing: React.FC<LandingProps> = ({
           <button
             type="button"
             onClick={handlePrimaryCTA}
-            className="w-full sm:w-auto group relative inline-flex items-center justify-center gap-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 hover:shadow-teal-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer min-h-[44px]"
+            className="w-full sm:w-auto group relative inline-flex items-center justify-center gap-2.5 rounded-xl bg-[#FF7057] hover:bg-[#F26049] px-6 py-3.5 text-sm font-semibold text-white neu-button hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer min-h-[44px]"
           >
             <span>
               {existingUser ? `Resume Workspace (${existingUser.name})` : 'Sign In / Sign Up'}
@@ -547,14 +595,14 @@ export const Landing: React.FC<LandingProps> = ({
             disabled={isLaunchingDemo}
             className={`w-full sm:w-auto group inline-flex items-center justify-center gap-2 rounded-xl border px-6 py-3.5 text-sm font-semibold transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] min-h-[44px] ${
               isDark
-                ? 'border-emerald-500/30 bg-emerald-950/25 text-emerald-300 hover:bg-emerald-900/35 hover:border-emerald-400/50'
-                : 'border-emerald-600/30 bg-emerald-50/80 text-emerald-800 hover:bg-emerald-100'
+                ? 'border-[#262626] bg-[#080808] text-white hover:bg-[#111111]'
+                : 'border-[#E5DED2] bg-[#FFFCF6] text-[#24231F] hover:bg-[#EFE8DC] neu-button'
             }`}
           >
             {isLaunchingDemo ? (
               <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
             ) : (
-              <Zap className="h-4 w-4 text-emerald-500 fill-current group-hover:scale-110 transition-transform" />
+              <Zap className="h-4 w-4 text-[#FF7057] fill-current group-hover:scale-110 transition-transform" />
             )}
             <span>
               {isLaunchingDemo
@@ -563,10 +611,56 @@ export const Landing: React.FC<LandingProps> = ({
             </span>
           </button>
         </div>
+
+        {/* Real-Time Benchmark Metrics Strip */}
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-3 text-xs font-mono">
+          <div
+            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all ${
+              isDark
+                ? 'border-[#262626] bg-[#080808] text-[#B3B3B3]'
+                : 'border-[#E5DED2] bg-[#FFFCF6] text-[#24231F] neu-card'
+            }`}
+          >
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className={isDark ? 'text-[#808080]' : 'text-[#6F6A61]'}>
+              WASM Cold Start:
+            </span>
+            <span className="font-semibold text-emerald-400">4.2ms</span>
+          </div>
+          <div
+            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all ${
+              isDark
+                ? 'border-[#262626] bg-[#080808] text-[#B3B3B3]'
+                : 'border-[#E5DED2] bg-[#FFFCF6] text-[#24231F] neu-card'
+            }`}
+          >
+            <span className="flex h-2 w-2 rounded-full bg-[#FF7057]" />
+            <span className={isDark ? 'text-[#808080]' : 'text-[#6F6A61]'}>
+              CRDT Convergence:
+            </span>
+            <span className="font-semibold text-[#FF7057]">Sub-15ms p99</span>
+          </div>
+          <div
+            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all ${
+              isDark
+                ? 'border-[#262626] bg-[#080808] text-[#B3B3B3]'
+                : 'border-[#E5DED2] bg-[#FFFCF6] text-[#24231F] neu-card'
+            }`}
+          >
+            <span className="flex h-2 w-2 rounded-full bg-cyan-400" />
+            <span className={isDark ? 'text-[#808080]' : 'text-[#6F6A61]'}>
+              Cloud Invoices:
+            </span>
+            <span className="font-semibold text-cyan-400">$0 / Month</span>
+          </div>
+        </div>
+
         {/* Unified Interactive Showcase IDE Container with Carousel Effect */}
         <div
           id="live-sandbox"
-          className="relative mx-auto mt-10 w-full max-w-5xl rounded-2xl border theme-border theme-bg-glass backdrop-blur-2xl theme-shadow overflow-hidden transition-all duration-300 text-left"
+          className={`relative mx-auto mt-10 w-full max-w-5xl rounded-2xl border theme-border overflow-hidden transition-all duration-300 text-left ${
+            isDark ? 'bg-[#080808]' : 'bg-[#FFF9F0] neu-card'
+          }`}
         >
           {/* Top Chrome / Window Controls & Carousel Tabs */}
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-b theme-border theme-bg-surface-2/60">
@@ -585,7 +679,7 @@ export const Landing: React.FC<LandingProps> = ({
                   onClick={() => setHeroActiveSlide('multiplayer')}
                   className={`inline-flex items-center gap-1.5 rounded-md px-2.5 sm:px-3 py-1 transition cursor-pointer text-[11px] sm:text-xs ${
                     heroActiveSlide === 'multiplayer'
-                      ? 'bg-teal-600 text-white shadow-xs font-semibold'
+                      ? 'bg-[#FF7057] text-white neu-button font-semibold'
                       : 'theme-text-secondary hover:theme-text-primary'
                   }`}
                 >
@@ -597,7 +691,7 @@ export const Landing: React.FC<LandingProps> = ({
                   onClick={() => setHeroActiveSlide('sandbox')}
                   className={`inline-flex items-center gap-1.5 rounded-md px-2.5 sm:px-3 py-1 transition cursor-pointer text-[11px] sm:text-xs ${
                     heroActiveSlide === 'sandbox'
-                      ? 'bg-teal-600 text-white shadow-xs font-semibold'
+                      ? 'bg-[#FF7057] text-white neu-button font-semibold'
                       : 'theme-text-secondary hover:theme-text-primary'
                   }`}
                 >
@@ -611,8 +705,8 @@ export const Landing: React.FC<LandingProps> = ({
             <div className="flex items-center gap-1.5 sm:gap-2">
               {heroActiveSlide === 'multiplayer' ? (
                 <div className="flex items-center gap-2">
-                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 font-mono text-[11px]">
-                    <Users className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FF7057]/10 border border-[#FF7057]/20 text-[#FF7057] font-mono text-[11px]">
+                    <Users className="w-3.5 h-3.5 text-[#FF7057]" />
                     <span>2 Active Peers</span>
                   </div>
                   <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[11px]">
@@ -633,8 +727,8 @@ export const Landing: React.FC<LandingProps> = ({
                           onClick={() => handleSelectPreset(preset)}
                           className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-mono transition cursor-pointer ${
                             isSelected
-                              ? 'border-teal-500 bg-teal-600 text-white shadow-xs'
-                              : 'theme-border theme-bg-surface-1 theme-text-secondary hover:border-teal-500/40'
+                              ? 'border-[#FF7057] bg-[#FF7057] text-white neu-button'
+                              : 'theme-border theme-bg-surface-1 theme-text-secondary hover:border-[#FF7057]/40'
                           }`}
                         >
                           <span>{idx + 1}. {preset.filename}</span>
@@ -650,7 +744,7 @@ export const Landing: React.FC<LandingProps> = ({
                       setShowAiDiffDrawer(false);
                     }}
                     title="Reset snippet"
-                    className="inline-flex items-center gap-1 rounded-md border theme-border theme-bg-surface-1 px-2 py-0.5 text-[11px] theme-text-secondary hover:theme-text-primary transition cursor-pointer"
+                    className="inline-flex items-center gap-1 rounded-md border theme-border theme-bg-surface-1 px-2 py-0.5 text-[11px] theme-text-secondary hover:theme-text-primary transition cursor-pointer neu-button"
                   >
                     <RotateCcw className="h-3 w-3" />
                   </button>
@@ -659,7 +753,7 @@ export const Landing: React.FC<LandingProps> = ({
                     type="button"
                     onClick={() => void handleRunSandbox(sandboxCode, activePreset.language)}
                     disabled={isExecutingSandbox}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-xs hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white neu-button hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer"
                   >
                     {isExecutingSandbox ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -700,17 +794,17 @@ export const Landing: React.FC<LandingProps> = ({
               <div className="md:col-span-7 p-5 bg-black/5 dark:bg-black/25 space-y-2.5 theme-text-primary">
                 <p className="theme-text-muted"># Instant local execution via WebAssembly</p>
                 <p>
-                  <span className="text-teal-600 dark:text-teal-400">import</span> <span className="text-amber-500 dark:text-amber-400">numpy</span> <span className="text-teal-600 dark:text-teal-400">as</span> np
+                  <span className="text-[#FF7057]">import</span> <span className="text-amber-500">numpy</span> <span className="text-[#FF7057]">as</span> np
                 </p>
                 <p>
                   dataset = np.random.randn(1000)
                 </p>
                 <p>
-                  result = &#123;<span className="text-emerald-600 dark:text-emerald-400">&quot;mean&quot;</span>: float(dataset.mean())&#125;
+                  result = &#123;<span className="text-emerald-500">&quot;mean&quot;</span>: float(dataset.mean())&#125;
                 </p>
                 <p className="flex items-center">
-                  <span>print(f<span className="text-emerald-600 dark:text-emerald-400">&quot;Calculated local variance: &#123;dataset.var():.4f&#125;&quot;</span>)</span>
-                  <span className="inline-block w-1.5 h-3.5 ml-1 bg-teal-500 animate-pulse" />
+                  <span>print(f<span className="text-emerald-500">&quot;Calculated local variance: &#123;dataset.var():.4f&#125;&quot;</span>)</span>
+                  <span className="inline-block w-1.5 h-3.5 ml-1 bg-[#FF7057] animate-pulse" />
                 </p>
                 <p className="theme-text-muted pt-2"># AI Diff Guard &amp; CRDT peer mesh synched</p>
               </div>
@@ -719,17 +813,17 @@ export const Landing: React.FC<LandingProps> = ({
               <div className="md:col-span-5 p-5 bg-black/10 dark:bg-black/50 border-t md:border-t-0 md:border-l theme-border flex flex-col justify-between">
                 <div className="space-y-1.5 font-mono">
                   <p className="theme-text-muted">[yjs] Peer mesh synched (room: nexathon-prod)</p>
-                  <p className="text-emerald-600 dark:text-emerald-400">&gt;&gt;&gt; Running in browser WebWorker thread...</p>
-                  <p className="text-teal-600 dark:text-teal-300">&#123;&quot;mean&quot;: 0.0314, &quot;status&quot;: &quot;executed_wasm&quot;&#125;</p>
+                  <p className="text-emerald-500">&gt;&gt;&gt; Running in browser WebWorker thread...</p>
+                  <p className="text-[#FF7057]">&#123;&quot;mean&quot;: 0.0314, &quot;status&quot;: &quot;executed_wasm&quot;&#125;</p>
                   <p className="theme-text-primary">Calculated local variance: 0.9982</p>
-                  <p className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 pt-2">
+                  <p className="text-emerald-500 flex items-center gap-1.5 pt-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     <span>AST state vector converged (0 conflicts)</span>
                   </p>
                 </div>
                 <div className="pt-4 border-t theme-border flex items-center justify-between text-[11px] theme-text-muted">
                   <span>Latency: &lt;1ms (Local Silicon)</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">$0 server cost</span>
+                  <span className="text-emerald-500 font-semibold">$0 server cost</span>
                 </div>
               </div>
             </div>
@@ -740,190 +834,93 @@ export const Landing: React.FC<LandingProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[360px] animate-in fade-in duration-200">
               {/* Left 7 Columns: Editable Code Buffer with Line Numbers */}
               <div
-                className={`lg:col-span-7 flex flex-col border-b lg:border-b-0 lg:border-r ${
-                  isDark
-                    ? 'border-white/10 bg-[#07080c] text-slate-100'
-                    : 'border-slate-200 bg-white text-slate-900'
+                className={`lg:col-span-7 flex flex-col border-b lg:border-b-0 lg:border-r theme-border ${
+                  isDark ? 'bg-[#000000] text-white' : 'bg-[#FFFCF6] text-[#24231F]'
                 }`}
               >
                 <div
-                  className={`flex items-center justify-between border-b px-4 py-1.5 text-[11px] font-mono ${
-                    isDark
-                      ? 'border-white/10 text-slate-400 bg-[#07080c]'
-                      : 'border-slate-200 text-slate-500 bg-slate-50/80'
-                  }`}
+                  className={`flex items-center justify-between border-b px-4 py-1.5 text-[11px] font-mono theme-border theme-bg-surface-2`}
                 >
-                  <span>
-                    Press <kbd className="rounded border px-1 border-white/20 bg-white/10">1</kbd>, <kbd className="rounded border px-1 border-white/20 bg-white/10">2</kbd>, <kbd className="rounded border px-1 border-white/20 bg-white/10">3</kbd> to switch • <strong className="text-teal-600 dark:text-teal-400">Ctrl+Enter</strong> to run
-                  </span>
-                  <span className="text-teal-600 dark:text-teal-400">{activePreset.runtimeLabel}</span>
+                  <div className="flex items-center gap-2">
+                    <FileCode className="h-3.5 w-3.5 text-[#FF7057]" />
+                    <span className="font-semibold">{activePreset.filename}</span>
+                    <span className="rounded bg-[#FF7057]/15 px-1.5 py-0.2 text-[10px] text-[#FF7057]">
+                      {activePreset.language}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 theme-text-muted">
+                    <span>{codeLineCount} lines</span>
+                    <span>{activePreset.runtimeLabel}</span>
+                  </div>
                 </div>
 
-                <div className="relative flex flex-1 font-mono text-xs leading-6 overflow-hidden">
-                  <div
-                    className={`select-none border-r px-3 py-3 text-right ${
-                      isDark
-                        ? 'border-white/5 bg-[#090a0f] text-slate-600'
-                        : 'border-slate-200 bg-slate-100/70 text-slate-400'
-                    }`}
-                    aria-hidden="true"
-                  >
-                    {Array.from({ length: Math.max(codeLineCount, 10) }).map((_, i) => (
-                      <div key={i}>{i + 1}</div>
-                    ))}
-                  </div>
-
+                <div className="relative flex-1 p-3 font-mono text-xs overflow-x-auto">
                   <textarea
                     value={sandboxCode}
                     onChange={(e) => setSandboxCode(e.target.value)}
                     spellCheck={false}
-                    aria-label="Interactive WASM Code Sandbox"
-                    className={`w-full flex-1 resize-none bg-transparent p-3 font-mono text-xs leading-6 focus:outline-none min-h-[220px] ${
-                      isDark
-                        ? 'text-slate-100 selection:bg-teal-500/30'
-                        : 'text-slate-900 selection:bg-teal-500/20'
-                    }`}
+                    className="w-full h-full min-h-[260px] bg-transparent resize-none font-mono text-xs leading-relaxed focus:outline-none theme-text-primary"
                   />
                 </div>
               </div>
 
-              {/* Right 5 Columns: Execution Telemetry & AI Diff Drawer */}
-              <div
-                className={`lg:col-span-5 flex flex-col justify-between p-4 font-mono text-xs ${
-                  isDark
-                    ? 'bg-[#0c0f17] text-slate-200'
-                    : 'bg-slate-50/90 text-slate-800 border-t lg:border-t-0 lg:border-l border-slate-200'
-                }`}
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b pb-2 font-sans border-white/10">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                      Live Execution Stream
+              {/* Right 5 Columns: Realtime Terminal Output & Execution Telemetry */}
+              <div className="lg:col-span-5 flex flex-col theme-bg-surface-2 p-4 justify-between font-mono text-xs">
+                <div>
+                  <div className="flex items-center justify-between border-b theme-border pb-2 mb-3">
+                    <span className="font-bold text-xs theme-text-primary flex items-center gap-1.5">
+                      <Terminal className="h-3.5 w-3.5 text-emerald-500" />
+                      Runtime Console Output
                     </span>
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium border-emerald-500/30 bg-emerald-950/60 text-emerald-300">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                        Exit {sandboxOutput.exitCode}
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono border-white/10 bg-[#141824] text-teal-300">
-                        <Clock className="h-3 w-3" />
-                        {sandboxOutput.durationMs}ms
-                      </span>
-                    </div>
+                    <span className="text-[10px] text-emerald-500 font-semibold">
+                      {sandboxOutput.durationMs}ms WASM
+                    </span>
                   </div>
 
-                  {/* Stdout */}
-                  {sandboxOutput.stdout && (
-                    <div className="rounded-xl border border-white/10 bg-[#07080c] p-3">
-                      <div className="mb-1 text-[10px] uppercase tracking-wider text-slate-500">stdout</div>
-                      <pre className="whitespace-pre-wrap break-words leading-relaxed font-mono text-emerald-400">
+                  <div className="rounded-xl border theme-border theme-bg-surface-1 p-3 min-h-[160px] max-h-[220px] overflow-y-auto space-y-1.5">
+                    {sandboxOutput.stdout && (
+                      <pre className="text-emerald-500 whitespace-pre-wrap font-mono text-[11px]">
                         {sandboxOutput.stdout}
                       </pre>
-                    </div>
-                  )}
-
-                  {/* Stderr */}
-                  {sandboxOutput.stderr && (
-                    <div className="rounded-xl border border-rose-500/30 bg-rose-950/20 p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500">stderr traceback</span>
-                        {activePreset.proposedAiFix && (
-                          <button
-                            type="button"
-                            onClick={() => setShowAiDiffDrawer((prev) => !prev)}
-                            className="inline-flex items-center gap-1 rounded bg-teal-600 hover:bg-teal-500 px-2 py-0.5 font-sans text-[10px] font-semibold text-white transition cursor-pointer shadow-xs"
-                          >
-                            <Bug className="h-3 w-3" />
-                            <span>Inspect AI Fix</span>
-                          </button>
-                        )}
-                      </div>
-                      <pre className="whitespace-pre-wrap break-words text-[11px] leading-relaxed font-mono text-rose-200">
+                    )}
+                    {sandboxOutput.stderr && (
+                      <pre className="text-rose-400 whitespace-pre-wrap font-mono text-[11px]">
                         {sandboxOutput.stderr}
                       </pre>
-                    </div>
-                  )}
-
-                  {/* AI Diff Drawer */}
-                  {showAiDiffDrawer && activePreset.proposedAiFix && (
-                    <div className="rounded-xl border border-teal-500/40 bg-teal-950/20 p-3 space-y-2 font-sans">
-                      <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-300">
-                          <Sparkles className="h-3.5 w-3.5 text-teal-400" />
-                          AI Diff Guard Diagnosis
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const fixed = activePreset.proposedAiFix!.fixedCode;
-                            setSandboxCode(fixed);
-                            setShowAiDiffDrawer(false);
-                            void handleRunSandbox(fixed, activePreset.language);
-                          }}
-                          className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white hover:bg-emerald-500 cursor-pointer"
-                        >
-                          <Check className="h-3 w-3" />
-                          <span>Apply Patch</span>
-                        </button>
-                      </div>
-                      <p className="text-[11px] text-slate-300">{activePreset.proposedAiFix.explanation}</p>
-                    </div>
-                  )}
+                    )}
+                    {!sandboxOutput.stdout && !sandboxOutput.stderr && (
+                      <span className="theme-text-muted text-[11px]">
+                        Waiting for snippet execution...
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-2.5 font-sans text-[11px] text-slate-400">
-                  <span>Worker Watchdog: 10s Timeout</span>
-                  <span className="font-mono text-teal-600 dark:text-teal-400">Pyodide 0.26 WASM</span>
-                </div>
+                {activePreset.proposedAiFix && (
+                  <div className="mt-3 pt-3 border-t theme-border flex items-center justify-between">
+                    <span className="text-[11px] theme-text-secondary">AST Fault Guard ready</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAiDiffDrawer(!showAiDiffDrawer)}
+                      className="px-2.5 py-1 rounded bg-[#FF7057] text-white text-[11px] font-semibold neu-button cursor-pointer"
+                    >
+                      {showAiDiffDrawer ? 'Hide AI Patch' : 'Inspect AI Patch'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
-
-          {/* Bottom Carousel Navigation Bar with Slide Switcher Prompt */}
-          <div className="flex items-center justify-between px-4 py-2 border-t theme-border theme-bg-surface-2/40 text-xs">
-            {/* Dots */}
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setHeroActiveSlide('multiplayer')}
-                className={`h-2 rounded-full transition-all cursor-pointer ${
-                  heroActiveSlide === 'multiplayer' ? 'w-6 bg-teal-500' : 'w-2 bg-slate-400/40 hover:bg-slate-400'
-                }`}
-                title="Slide 1: Collaborative CRDT Mesh"
-              />
-              <button
-                type="button"
-                onClick={() => setHeroActiveSlide('sandbox')}
-                className={`h-2 rounded-full transition-all cursor-pointer ${
-                  heroActiveSlide === 'sandbox' ? 'w-6 bg-teal-500' : 'w-2 bg-slate-400/40 hover:bg-slate-400'
-                }`}
-                title="Slide 2: Live In-Browser WASM Sandbox"
-              />
-            </div>
-
-            {/* Quick Slide Switch Link */}
-            <button
-              type="button"
-              onClick={() => setHeroActiveSlide((prev: 'multiplayer' | 'sandbox') => prev === 'multiplayer' ? 'sandbox' : 'multiplayer')}
-              className="inline-flex items-center gap-1.5 font-mono text-[11px] text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 transition cursor-pointer"
-            >
-              <span>
-                {heroActiveSlide === 'multiplayer'
-                  ? 'Switch to Slide 2: Run Live Code in Browser →'
-                  : '← Switch to Slide 1: Multiplayer CRDT Mesh'}
-              </span>
-            </button>
-          </div>
         </div>
       </section>
 
       {/* 3. BENTO GRID: FOUR ARCHITECTURAL PILLARS */}
       <section id="bento" className="relative z-10 mx-auto max-w-6xl px-6 pb-16">
         <div className="text-center max-w-2xl mx-auto mb-8">
-          <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400">
+          <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#FF7057]">
             Core Engineering
           </span>
-          <h2 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight theme-text-primary">
+          <h2 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight theme-text-primary font-heading">
             Engineered for Systems-Level Reliability
           </h2>
           <p className="mt-1.5 text-xs sm:text-sm theme-text-secondary">
@@ -933,27 +930,27 @@ export const Landing: React.FC<LandingProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Bento Card 1: CRDT */}
-          <div className="group rounded-2xl border theme-border theme-bg-surface-1 p-5 transition-all duration-300 hover:border-teal-500/50 hover:theme-shadow relative">
+          <div className="group rounded-2xl border theme-border theme-bg-surface-1 p-5 transition-all duration-300 hover:border-[#FF7057]/50 neu-card relative">
             <div className="flex items-center justify-between mb-3">
-              <span className="rounded bg-teal-500/15 px-2 py-0.5 text-[10px] font-mono font-semibold text-teal-600 dark:text-teal-400">
+              <span className="rounded bg-[#FF7057]/15 px-2 py-0.5 text-[10px] font-mono font-semibold text-[#FF7057]">
                 01 // CRDT
               </span>
-              <Users className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <Users className="h-4 w-4 text-[#FF7057]" />
             </div>
             <h3 className="text-sm font-bold theme-text-primary">
               Per-File Y.Doc Isolation
             </h3>
             <p className="mt-2 text-xs theme-text-secondary leading-relaxed">
-              Every file binds to an isolated Yjs document key (<code className="font-mono text-teal-600 dark:text-teal-400">${'{roomId}:${filePath}'}</code>). Teammates switch files freely with zero buffer collision.
+              Every file binds to an isolated Yjs document key (<code className="font-mono text-[#FF7057]">${'{roomId}:${filePath}'}</code>). Teammates switch files freely with zero buffer collision.
             </p>
-            <div className="mt-4 pt-2.5 border-t theme-border text-[11px] font-mono text-teal-600 dark:text-teal-400 flex items-center justify-between">
+            <div className="mt-4 pt-2.5 border-t theme-border text-[11px] font-mono text-[#FF7057] flex items-center justify-between">
               <span>Awareness Cursors</span>
               <span>Sub-15ms</span>
             </div>
           </div>
 
           {/* Bento Card 2: WASM */}
-          <div className="group rounded-2xl border theme-border theme-bg-surface-1 p-5 transition-all duration-300 hover:border-emerald-500/50 hover:theme-shadow relative">
+          <div className="group rounded-2xl border theme-border theme-bg-surface-1 p-5 transition-all duration-300 hover:border-emerald-500/50 neu-card relative">
             <div className="flex items-center justify-between mb-3">
               <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-mono font-semibold text-emerald-500">
                 02 // WASM
@@ -973,7 +970,7 @@ export const Landing: React.FC<LandingProps> = ({
           </div>
 
           {/* Bento Card 3: PTY */}
-          <div className="group rounded-2xl border theme-border theme-bg-surface-1 p-5 transition-all duration-300 hover:border-sky-500/50 hover:theme-shadow relative">
+          <div className="group rounded-2xl border theme-border theme-bg-surface-1 p-5 transition-all duration-300 hover:border-sky-500/50 neu-card relative">
             <div className="flex items-center justify-between mb-3">
               <span className="rounded bg-sky-500/20 px-2 py-0.5 text-[10px] font-mono font-semibold text-sky-500">
                 03 // PTY
@@ -993,12 +990,12 @@ export const Landing: React.FC<LandingProps> = ({
           </div>
 
           {/* Bento Card 4: AI Diff Guard */}
-          <div className="group rounded-2xl border theme-border theme-bg-surface-1 p-5 transition-all duration-300 hover:border-teal-500/50 hover:theme-shadow relative">
+          <div className="group rounded-2xl border theme-border theme-bg-surface-1 p-5 transition-all duration-300 hover:border-[#FF7057]/50 neu-card relative">
             <div className="flex items-center justify-between mb-3">
-              <span className="rounded bg-teal-500/15 px-2 py-0.5 text-[10px] font-mono font-semibold text-teal-600 dark:text-teal-400">
+              <span className="rounded bg-[#FF7057]/15 px-2 py-0.5 text-[10px] font-mono font-semibold text-[#FF7057]">
                 04 // AI GUARD
               </span>
-              <ShieldCheck className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <ShieldCheck className="h-4 w-4 text-[#FF7057]" />
             </div>
             <h3 className="text-sm font-bold theme-text-primary">
               Atomic CRDT Patching
@@ -1006,7 +1003,7 @@ export const Landing: React.FC<LandingProps> = ({
             <p className="mt-2 text-xs theme-text-secondary leading-relaxed">
               Pipes runtime traceback errors to AI diagnostics. Requires human confirmation in a side-by-side diff modal before committing changes.
             </p>
-            <div className="mt-4 pt-2.5 border-t theme-border text-[11px] font-mono text-teal-600 dark:text-teal-400 flex items-center justify-between">
+            <div className="mt-4 pt-2.5 border-t theme-border text-[11px] font-mono text-[#FF7057] flex items-center justify-between">
               <span>Guarded Mutations</span>
               <span>Zero-Hallucination</span>
             </div>
@@ -1018,14 +1015,14 @@ export const Landing: React.FC<LandingProps> = ({
       <footer className="relative z-10 border-t theme-border theme-bg-surface-1 py-10 px-6">
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs theme-text-muted">
           <div className="flex items-center gap-2.5">
-            <Code2 className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+            <Code2 className="h-4 w-4 text-[#FF7057]" />
             <span className="font-bold theme-text-primary">NexathonIDE</span>
             <span>• Distributed Collaborative IDE & Autonomous Debugger</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 font-mono text-[11px]">
             <span className="inline-flex items-center gap-1">
-              <Layers className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+              <Layers className="h-3.5 w-3.5 text-[#FF7057]" />
               React 19 + Monaco
             </span>
             <span className="inline-flex items-center gap-1">
@@ -1040,6 +1037,18 @@ export const Landing: React.FC<LandingProps> = ({
         </div>
       </footer>
 
+      {/* Floating Back to Top Button */}
+      {showBackToTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          aria-label="Back to top"
+          className="fixed bottom-6 right-6 z-40 flex h-10 w-10 items-center justify-center rounded-full border theme-border theme-bg-surface-1 theme-text-primary shadow-md hover:border-[#FF7057] hover:text-[#FF7057] hover:scale-105 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF7057]"
+        >
+          <ChevronUp className="h-5 w-5" />
+        </button>
+      )}
+
       {/* 8. FRICTIONLESS DEVELOPER IDENTITY MODAL */}
       {isModalOpen && (
         <div
@@ -1047,10 +1056,10 @@ export const Landing: React.FC<LandingProps> = ({
           role="dialog"
           aria-modal="true"
         >
-          <div className="relative w-full max-w-md rounded-2xl border theme-border-strong theme-bg-surface-1 p-6 theme-shadow">
+          <div className="relative w-full max-w-md rounded-2xl border theme-border theme-bg-surface-1 p-6 neu-card">
             <div className="flex items-center justify-between border-b theme-border pb-3.5 mb-5">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500/15 text-teal-600 dark:text-teal-400 ring-1 ring-teal-500/30">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FF7057]/15 text-[#FF7057] ring-1 ring-[#FF7057]/30">
                   <Command className="h-4 w-4" />
                 </div>
                 <div>
@@ -1065,7 +1074,7 @@ export const Landing: React.FC<LandingProps> = ({
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="rounded-lg p-1 theme-text-muted hover:theme-text-primary transition"
+                className="rounded-lg p-1 theme-text-muted hover:theme-text-primary transition cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1110,7 +1119,7 @@ export const Landing: React.FC<LandingProps> = ({
                   onChange={(e) => setHandleName(e.target.value)}
                   placeholder="e.g., John"
                   autoFocus
-                  className="w-full rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-sm theme-text-primary placeholder-slate-500 focus:border-teal-500 focus:outline-none"
+                  className="w-full rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-sm theme-text-primary placeholder:text-[var(--text-muted)] focus:border-[#FF7057] focus:outline-none"
                 />
               </div>
 
@@ -1126,7 +1135,7 @@ export const Landing: React.FC<LandingProps> = ({
                       onClick={() => setSelectedColor(c.hex)}
                       className={`h-6 w-6 rounded-full transition-transform cursor-pointer ${
                         selectedColor === c.hex
-                          ? 'scale-110 ring-2 ring-teal-500 ring-offset-2'
+                          ? 'scale-110 ring-2 ring-[#FF7057] ring-offset-2'
                           : 'opacity-75 hover:opacity-100'
                       }`}
                       style={{ backgroundColor: c.hex }}
@@ -1143,13 +1152,16 @@ export const Landing: React.FC<LandingProps> = ({
                     setIsModalOpen(false);
                     void handleGuestDemoClick();
                   }}
-                  className="flex-1 rounded-lg border theme-border theme-bg-surface-2 py-2 text-xs font-semibold theme-text-secondary hover:theme-text-primary transition cursor-pointer"
+                  className="flex-1 rounded-lg border theme-border theme-bg-surface-2 py-2 text-xs font-semibold theme-text-secondary hover:theme-text-primary transition cursor-pointer neu-button"
                 >
-                  ⚡ 1-Click Guest
+                  <span className="inline-flex items-center justify-center gap-1.5">
+                    <Zap className="h-3.5 w-3.5 text-[#FF7057] fill-current" />
+                    Instant Guest
+                  </span>
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 rounded-lg bg-teal-600 hover:bg-teal-500 py-2 text-xs font-semibold text-white shadow-xs transition cursor-pointer"
+                  className="flex-1 rounded-lg bg-[#FF7057] hover:bg-[#F26049] py-2 text-xs font-semibold text-white neu-button transition cursor-pointer"
                 >
                   Continue to Rooms →
                 </button>
@@ -1162,7 +1174,7 @@ export const Landing: React.FC<LandingProps> = ({
                     setIsModalOpen(false);
                     onNavigateToLogin();
                   }}
-                  className="text-xs text-teal-600 dark:text-teal-400 hover:underline transition cursor-pointer"
+                  className="text-xs text-[#FF7057] hover:underline transition cursor-pointer"
                 >
                   Or sign in with Supabase Email & Password →
                 </button>

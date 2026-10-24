@@ -55,20 +55,20 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
     const isDark = currentTheme !== 'light';
     return isDark
       ? {
-          background: '#11151B',
-          foreground: '#E6EDF3',
-          cursor: '#35B8A6',
-          selectionBackground: '#35B8A633',
-          black: '#11151B',
-          white: '#E6EDF3',
+          background: '#000000',
+          foreground: '#FFFFFF',
+          cursor: '#FF7057',
+          selectionBackground: '#FF705733',
+          black: '#000000',
+          white: '#FFFFFF',
         }
       : {
-          background: '#F8FAFC',
-          foreground: '#202A35',
-          cursor: '#168C7D',
-          selectionBackground: '#168C7D33',
-          black: '#202A35',
-          white: '#ffffff',
+          background: '#FFF9F0',
+          foreground: '#302820',
+          cursor: '#FF7057',
+          selectionBackground: '#FF705733',
+          black: '#302820',
+          white: '#FFF9F0',
         };
   }, []);
 
@@ -248,7 +248,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
     <div className="flex h-full flex-col theme-bg-root overflow-hidden transition-colors">
       <div className="flex items-center justify-between border-b theme-border theme-bg-surface-1 px-3.5 py-1.5">
         <div className="flex items-center gap-2 text-xs theme-text-primary">
-          <TerminalIcon className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+          <TerminalIcon className="h-3.5 w-3.5 text-[#FF7057]" />
           <span className="text-[11px] font-semibold uppercase tracking-wider">
             Cloud Node-PTY Terminal
           </span>

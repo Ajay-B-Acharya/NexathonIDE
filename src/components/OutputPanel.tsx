@@ -54,7 +54,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             <button
               type="button"
               onClick={() => onSendErrorToAI(result.stderr)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-teal-500/40 bg-teal-500/10 px-3 py-1 text-[11px] font-semibold text-teal-700 dark:text-teal-300 hover:bg-teal-500/20 transition cursor-pointer shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#FF7057]/40 bg-[#FF7057]/10 px-3 py-1 text-[11px] font-semibold text-[#FF7057] hover:bg-[#FF7057]/20 transition cursor-pointer neu-button"
             >
               <Zap className="h-3.5 w-3.5 text-amber-500" />
               <span>⚡ Send Error to AI Debugger</span>
@@ -64,7 +64,7 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
             type="button"
             onClick={onClearOutput}
             title="Clear Output"
-            className="rounded-md border theme-border theme-bg-surface-2 p-1 theme-text-secondary hover:theme-bg-elevated hover:theme-text-primary transition cursor-pointer shadow-xs"
+            className="rounded-md border theme-border theme-bg-surface-2 p-1 theme-text-secondary hover:theme-bg-elevated hover:theme-text-primary transition cursor-pointer neu-button"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -74,8 +74,8 @@ export const OutputPanel: React.FC<OutputPanelProps> = ({
       {/* Output Stream Content */}
       <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
         {isRunning && (
-          <div className="flex items-center gap-2.5 rounded-xl border border-teal-500/30 theme-bg-surface-2 p-3 text-teal-600 dark:text-teal-300 animate-shimmer">
-            <Play className="h-4 w-4 animate-pulse text-teal-600 dark:text-teal-400" />
+          <div className="flex items-center gap-2.5 rounded-xl border border-[#FF7057]/30 theme-bg-surface-2 p-3 text-[#FF7057] animate-shimmer">
+            <Play className="h-4 w-4 animate-pulse text-[#FF7057]" />
             <span>Executing code in isolated WebAssembly runtime...</span>
           </div>
         )}
