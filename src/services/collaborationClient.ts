@@ -117,7 +117,8 @@ class CollaborationManager {
     cursor?: { lineNumber: number; column: number } | null,
     isInactive?: boolean,
     isTyping?: boolean,
-    editingLine?: number | null
+    editingLine?: number | null,
+    editingRelativePos?: any
   ): void {
     provider.awareness.setLocalStateField('user', {
       id: user.id,
@@ -142,6 +143,9 @@ class CollaborationManager {
       } else {
         provider.awareness.setLocalStateField('editingTimestamp', null);
       }
+    }
+    if (editingRelativePos !== undefined) {
+      provider.awareness.setLocalStateField('editingRelativePos', editingRelativePos);
     }
     provider.awareness.setLocalStateField('lastActive', Date.now());
   }

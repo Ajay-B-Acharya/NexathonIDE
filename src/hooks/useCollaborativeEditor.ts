@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type * as Monaco from 'monaco-editor';
+import * as Y from 'yjs';
 import { MonacoBinding } from 'y-monaco';
 import { collaborationClient, FileCollaborationSession } from '../services/collaborationClient';
 import {
@@ -27,10 +28,11 @@ export interface UseCollaborativeEditorReturn {
   collaborators: CollaboratorPresence[];
   followState: FollowState | null;
   lineLockNotice: LineLockNotice | null;
+  lockedLines: Map<number, { userId: string; userName: string; userColor: string }>;
   startFollowing: (targetUserId: string, targetUserName: string, targetUserColor: string, targetFile?: string) => void;
   stopFollowing: () => void;
   reconcileSession: () => void;
-  applyContentToSharedDoc: (newFullContent: string) => void;
+  applyContentToSharedDoc: (newFullContent: string) => boolean;
 }
 
 /**
@@ -119,6 +121,7 @@ export function useCollaborativeEditor({
   const [collaborators, setCollaborators] = useState<CollaboratorPresence[]>([]);
   const [followState, setFollowState] = useState<FollowState | null>(null);
   const [lineLockNotice, setLineLockNotice] = useState<LineLockNotice | null>(null);
+  const [lockedLines, setLockedLines] = useState<Map<number, { userId: string; userName: string; userColor: string }>>(new Map());
 
   const bindingRef = useRef<MonacoBinding | null>(null);
   const sessionRef = useRef<FileCollaborationSession | null>(null);
@@ -263,18 +266,31 @@ export function useCollaborativeEditor({
           const targetNormFile = (targetActiveFile || '').replace(/^\/+/, '');
           if (clientId !== localClientId && targetNormFile === currentNormActive) {
             const isEditingActive = editingTimestamp > 0 && Date.now() - editingTimestamp < 4000;
-            const peerActiveLine =
+            let resolvedLine =
               editingLine && isEditingActive
                 ? editingLine
                 : isTyping && targetCursor?.lineNumber
                 ? targetCursor.lineNumber
                 : null;
 
-            if (peerActiveLine) {
+            // Resolve dynamic position through Yjs relative position to self-heal line shifts
+            if (state.editingRelativePos && model) {
+              try {
+                const abs = Y.createAbsolutePositionFromRelativePosition(
+                  state.editingRelativePos,
+                  session.ydoc
+                );
+                if (abs && abs.type === session.ytext) {
+                  resolvedLine = model.getPositionAt(abs.index).lineNumber;
+                }
+              } catch {}
+            }
+
+            if (resolvedLine) {
               const localEditing = localEditingStateRef.current;
               const isLocalContention =
                 localEditing &&
-                localEditing.line === peerActiveLine &&
+                localEditing.line === resolvedLine &&
                 Date.now() - localEditing.timestamp < 4000;
 
               if (isLocalContention) {
@@ -284,7 +300,7 @@ export function useCollaborativeEditor({
                   (editingTimestamp === localEditing.timestamp && clientId < localClientId)
                 ) {
                   // Peer was first: peer gets priority, local user yields
-                  newLockedMap.set(peerActiveLine, {
+                  newLockedMap.set(resolvedLine, {
                     userId: userObj.id,
                     userName: userObj.name,
                     userColor: userObj.color || '#FF7057',
@@ -293,7 +309,7 @@ export function useCollaborativeEditor({
                 // Else local user was first: local user keeps priority and is NOT locked
               } else {
                 // Local user is not currently editing this line: Peer owns the lock
-                newLockedMap.set(peerActiveLine, {
+                newLockedMap.set(resolvedLine, {
                   userId: userObj.id,
                   userName: userObj.name,
                   userColor: userObj.color || '#FF7057',
@@ -307,6 +323,7 @@ export function useCollaborativeEditor({
       setCollaborators(list);
       syncCollaboratorCursorStyles(list);
       lockedLinesMapRef.current = newLockedMap;
+      setLockedLines(newLockedMap);
 
       // Update line lock decorations in Monaco
       if (editorInstance && monacoInstance) {
@@ -405,6 +422,12 @@ export function useCollaborativeEditor({
           if (!localEditingStateRef.current || localEditingStateRef.current.line !== pos.lineNumber) {
             localEditingStateRef.current = { line: pos.lineNumber, timestamp: Date.now() };
           }
+          let relPos: any = null;
+          try {
+            const lineOffset = model.getOffsetAt({ lineNumber: pos.lineNumber, column: 1 });
+            relPos = Y.createRelativePositionFromTypeIndex(session.ytext, lineOffset);
+          } catch {}
+
           collaborationClient.updateLocalAwareness(
             session.provider,
             user,
@@ -412,7 +435,8 @@ export function useCollaborativeEditor({
             { lineNumber: pos.lineNumber, column: pos.column },
             false,
             true,
-            pos.lineNumber
+            pos.lineNumber,
+            relPos
           );
         }
 
@@ -616,12 +640,19 @@ export function useCollaborativeEditor({
 
   const applyContentToSharedDoc = useCallback((newFullContent: string) => {
     const session = sessionRef.current;
-    if (!session) return;
+    if (!session) return false;
+
+    // Check if any peer holds an active editing lock on any line in this file
+    if (lockedLinesMapRef.current.size > 0) {
+      console.warn('[CollaborativeEditor] Programmatic overwrite blocked: peer line lock active.');
+      return false;
+    }
 
     session.ydoc.transact(() => {
       session.ytext.delete(0, session.ytext.length);
       session.ytext.insert(0, newFullContent);
     });
+    return true;
   }, []);
 
   return {
@@ -630,6 +661,7 @@ export function useCollaborativeEditor({
     collaborators,
     followState,
     lineLockNotice,
+    lockedLines,
     startFollowing,
     stopFollowing,
     reconcileSession,

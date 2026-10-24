@@ -378,6 +378,7 @@ clearFileDraft(room.id, fileId);
     collaborators,
     followState,
     lineLockNotice,
+    lockedLines,
     startFollowing,
     stopFollowing,
     reconcileSession,
@@ -496,7 +497,16 @@ clearFileDraft(room.id, fileId);
           cleanPatchPath.endsWith(activeFile.path.replace(/^\/+/, '')));
 
       if (isActive) {
-        applyContentToSharedDoc(patch.patchedContent);
+        if (lockedLines.size > 0) {
+          const firstLock = Array.from(lockedLines.values())[0];
+          alert(`Cannot apply patch: Collaborator ${firstLock.userName} is actively editing a line in this file. Please wait until editing locks are released.`);
+          return;
+        }
+        const applied = applyContentToSharedDoc(patch.patchedContent);
+        if (!applied) {
+          alert('Cannot apply patch: Collaborator line locks prevent modifying this file at the moment.');
+          return;
+        }
       }
 
       const targetFile = files.find((f) => {
@@ -528,7 +538,7 @@ clearFileDraft(room.id, fileId);
         handleSelectFile(newFile);
       }
     },
-    [activeFile, files, room.id, applyContentToSharedDoc]
+    [activeFile, files, room.id, applyContentToSharedDoc, lockedLines]
   );
 
   const handleCreateFile = async (path: string, initialContent: string = '') => {
