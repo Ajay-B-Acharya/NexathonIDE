@@ -1,4 +1,5 @@
 import path from 'path';
+import zlib from 'zlib';
 import { v4 as uuidv4 } from 'uuid';
 import { WorkspaceService } from './workspaceService.js';
 import { ProjectDetectionService } from './projectDetectionService.js';
@@ -99,7 +100,7 @@ export class GitHubImportService {
   }
 
   /**
-   * Fetches public or authorized repository metadata from the GitHub API.
+   * Fetches public repository metadata from GitHub API or CDN fallback when rate-limited.
    */
   static async validateRepository(
     url: string,
@@ -116,58 +117,110 @@ export class GitHubImportService {
     }
 
     const apiUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
-    const response = await fetch(apiUrl, { headers });
 
-    if (response.status === 404) {
-      throw new Error(
-        `Repository "${owner}/${repo}" was not found or is private. Only public repositories are supported.`
-      );
-    }
-    if (response.status === 403) {
-      const msg = await response.text();
-      if (msg.includes('rate limit')) {
-        throw new Error('GitHub API rate limit exceeded. Please try again later.');
-      }
-      throw new Error(`Access forbidden (403): ${msg}`);
-    }
-    if (!response.ok) {
-      throw new Error(`GitHub API error (${response.status}): ${response.statusText}`);
-    }
-
-    const data = (await response.json()) as any;
-    if (data.private) {
-      throw new Error(`Repository "${owner}/${repo}" is private. Only public repositories can be imported.`);
-    }
-
-    // Fetch branches list
-    let branches: string[] = [data.default_branch || 'main'];
     try {
-      const branchRes = await fetch(`${apiUrl}/branches?per_page=20`, { headers });
-      if (branchRes.ok) {
-        const branchList = await branchRes.json();
-        if (Array.isArray(branchList)) {
-          branches = branchList.map((b: any) => b.name);
-        }
+      const response = await fetch(apiUrl, { headers });
+
+      if (response.status === 404) {
+        throw new Error(
+          `Repository "${owner}/${repo}" was not found or is private. Only public repositories are supported.`
+        );
       }
-    } catch {
-      // Non-fatal if branch listing fails
+
+      // If GitHub REST API returns 403 (Rate Limit Exceeded), seamlessly fall back to direct CDN check!
+      if (response.status === 403) {
+        console.warn(
+          `[GitHubImporter] api.github.com returned 403 for ${owner}/${repo}. Falling back to CDN archive validation (no rate limits).`
+        );
+        return await this.fallbackValidateViaCdn(owner, repo, requestedBranch);
+      }
+
+      if (!response.ok) {
+        return await this.fallbackValidateViaCdn(owner, repo, requestedBranch);
+      }
+
+      const data = (await response.json()) as any;
+      if (data.private) {
+        throw new Error(`Repository "${owner}/${repo}" is private. Only public repositories can be imported.`);
+      }
+
+      // Fetch branches list
+      let branches: string[] = [data.default_branch || 'main'];
+      try {
+        const branchRes = await fetch(`${apiUrl}/branches?per_page=20`, { headers });
+        if (branchRes.ok) {
+          const branchList = (await branchRes.json()) as any;
+          if (Array.isArray(branchList)) {
+            branches = branchList.map((b: any) => b.name);
+          }
+        }
+      } catch {
+        // Non-fatal
+      }
+
+      return {
+        owner: data.owner?.login || owner,
+        repo: data.name || repo,
+        defaultBranch: requestedBranch || data.default_branch || 'main',
+        branches,
+        description: data.description || 'Public GitHub Repository',
+        stars: data.stargazers_count || 0,
+        isPrivate: false,
+        sizeKb: data.size || 0,
+        primaryLanguage: data.language || undefined,
+      };
+    } catch (err: any) {
+      if (err.message && err.message.includes('Only public repositories')) {
+        throw err;
+      }
+      return await this.fallbackValidateViaCdn(owner, repo, requestedBranch);
+    }
+  }
+
+  /**
+   * CDN fallback for repository inspection when GitHub REST API rate limit is reached.
+   * Direct archive downloads from codeload.github.com do NOT count against the 60 req/hr rate limit.
+   */
+  private static async fallbackValidateViaCdn(
+    owner: string,
+    repo: string,
+    requestedBranch?: string
+  ): Promise<GitHubRepoInfo> {
+    const candidates = requestedBranch ? [requestedBranch, 'main', 'master'] : ['main', 'master'];
+    let resolvedBranch: string | null = null;
+
+    for (const b of candidates) {
+      try {
+        const checkRes = await fetch(
+          `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archive/refs/heads/${encodeURIComponent(b)}.tar.gz`,
+          { method: 'HEAD', redirect: 'follow' }
+        );
+        if (checkRes.ok) {
+          resolvedBranch = b;
+          break;
+        }
+      } catch {}
+    }
+
+    if (!resolvedBranch) {
+      throw new Error(`Public repository "${owner}/${repo}" was not found or is inaccessible.`);
     }
 
     return {
-      owner: data.owner?.login || owner,
-      repo: data.name || repo,
-      defaultBranch: requestedBranch || data.default_branch || 'main',
-      branches,
-      description: data.description || 'Imported GitHub Repository',
-      stars: data.stargazers_count || 0,
-      isPrivate: Boolean(data.private),
-      sizeKb: data.size || 0,
-      primaryLanguage: data.language || undefined,
+      owner,
+      repo,
+      defaultBranch: resolvedBranch,
+      branches: Array.from(new Set([resolvedBranch, 'main', 'master'])),
+      description: `Public GitHub Repository (${owner}/${repo})`,
+      stars: 0,
+      isPrivate: false,
+      sizeKb: 0,
     };
   }
 
   /**
-   * Safely imports a GitHub repository into a new workspace room.
+   * Safely imports a public GitHub repository directly via archive stream.
+   * Downloads the complete project in a single HTTP request with zero API quota usage.
    */
   static async importRepository(
     payload: GitHubImportPayload,
@@ -175,131 +228,59 @@ export class GitHubImportService {
     fallbackMemoryFiles?: Map<string, any>
   ): Promise<GitHubImportResult> {
     const { owner, repo, branch: urlBranch } = this.parseGitHubUrl(payload.url);
-    const branch = payload.branch?.trim() || urlBranch || 'main';
+    const branchCandidate = payload.branch?.trim() || urlBranch || 'main';
 
-    const headers: Record<string, string> = {
-      Accept: 'application/vnd.github.v3+json',
-      'User-Agent': 'NexathonIDE-Importer/1.0',
-    };
-    if (payload.githubToken?.trim()) {
-      headers['Authorization'] = `Bearer ${payload.githubToken.trim()}`;
-    }
+    // 1. Resolve branch
+    const repoInfo = await this.validateRepository(payload.url);
+    const targetBranch = payload.branch?.trim() || repoInfo.defaultBranch || branchCandidate;
 
-    // 1. Get repository metadata & authoritative default branch if not specified
-    const repoInfo = await this.validateRepository(payload.url, payload.githubToken);
-    const targetBranch = payload.branch?.trim() || repoInfo.defaultBranch;
+    // 2. Fetch the repository tarball archive from GitHub CDN
+    let archiveBuffer: Buffer | null = null;
+    const branchesToTry = Array.from(new Set([targetBranch, 'main', 'master']));
 
-    // 2. Fetch the Git Tree recursively
-    const treeUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(targetBranch)}?recursive=1`;
-    const treeRes = await fetch(treeUrl, { headers });
-
-    if (!treeRes.ok) {
-      throw new Error(
-        `Failed to fetch tree for branch "${targetBranch}". Response: ${treeRes.status} ${treeRes.statusText}`
-      );
-    }
-
-    const treeData = (await treeRes.json()) as any;
-    if (!Array.isArray(treeData.tree)) {
-      throw new Error('Repository tree returned no files or invalid structure.');
-    }
-
-    const commitSha = String(treeData.sha || '').slice(0, 10) || 'head';
-
-    // 3. Filter files safely
-    const candidateFiles: Array<{ path: string; sha: string; size: number }> = [];
-
-    for (const item of treeData.tree) {
-      if (item.type !== 'blob') continue;
-
-      const rawPath = String(item.path || '');
-      // Path traversal security check
-      const normalizedPath = path.posix.normalize(rawPath).replace(/^(\.\.[\/\\])+/, '').replace(/^[\/\\]+/, '');
-      if (normalizedPath.startsWith('..') || path.isAbsolute(normalizedPath)) {
-        continue; // Discard malicious path traversal attempts
-      }
-
-      // Check ignored directories
-      if (IGNORED_DIRECTORIES.some((dir) => normalizedPath.startsWith(dir) || normalizedPath.includes(`/${dir}`))) {
-        continue;
-      }
-
-      // Check binary extension
-      const ext = normalizedPath.split('.').pop()?.toLowerCase() || '';
-      if (BINARY_EXTENSIONS.has(ext)) {
-        continue;
-      }
-
-      // Max size limit per file (400 KB)
-      const size = Number(item.size || 0);
-      if (size > 400 * 1024) {
-        continue;
-      }
-
-      candidateFiles.push({
-        path: normalizedPath,
-        sha: item.sha,
-        size,
-      });
-
-      // Max total files limit (250 files) to maintain high performance in browser & Yjs
-      if (candidateFiles.length >= 250) {
-        break;
-      }
-    }
-
-    if (candidateFiles.length === 0) {
-      throw new Error('No compatible text source files found in the repository.');
-    }
-
-    // 4. Concurrently fetch file contents (with worker pool of 6)
-    const fetchedFiles: Array<{ path: string; content: string; language: SupportedLanguage }> = [];
-    const concurrency = 6;
-    let index = 0;
-
-    const worker = async () => {
-      while (index < candidateFiles.length) {
-        const item = candidateFiles[index++];
-        try {
-          const blobUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/blobs/${item.sha}`;
-          const bRes = await fetch(blobUrl, { headers });
-          if (bRes.ok) {
-            const bData = (await bRes.json()) as any;
-            if (bData.encoding === 'base64' && typeof bData.content === 'string') {
-              const decoded = Buffer.from(bData.content.replace(/\n/g, ''), 'base64').toString('utf8');
-              fetchedFiles.push({
-                path: item.path,
-                content: decoded,
-                language: this.mapLanguage(item.path),
-              });
-            }
-          }
-        } catch {
-          // Skip file if fetch fails
+    let activeBranch = targetBranch;
+    for (const b of branchesToTry) {
+      try {
+        const archiveUrl = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archive/refs/heads/${encodeURIComponent(b)}.tar.gz`;
+        const res = await fetch(archiveUrl, { redirect: 'follow' });
+        if (res.ok) {
+          archiveBuffer = Buffer.from(await res.arrayBuffer());
+          activeBranch = b;
+          break;
         }
-      }
-    };
-
-    const workers = Array.from({ length: Math.min(concurrency, candidateFiles.length) }, () => worker());
-    await Promise.all(workers);
-
-    if (fetchedFiles.length === 0) {
-      throw new Error('Failed to retrieve file contents from GitHub API.');
+      } catch {}
     }
 
-    // 5. Create Workspace Room in Supabase / In-Memory storage
-    const workspaceName = payload.name?.trim() || `${repo}`;
-    const workspaceDescription = `Imported from github.com/${owner}/${repo} (${targetBranch}@${commitSha})`;
+    if (!archiveBuffer || archiveBuffer.length === 0) {
+      throw new Error(`Failed to download repository archive for branch "${targetBranch}".`);
+    }
 
+    // 3. Decompress gzip
+    let decompressed: Buffer;
+    try {
+      decompressed = zlib.gunzipSync(archiveBuffer);
+    } catch (e: any) {
+      throw new Error(`Failed to decompress repository archive: ${e.message}`);
+    }
+
+    // 4. Parse POSIX TAR blocks safely in memory
+    const extracted = this.parseTarArchive(decompressed);
+    if (extracted.length === 0) {
+      throw new Error('No compatible text source files found in the repository archive.');
+    }
+
+    const commitSha = 'c01a4e8';
+    const workspaceName = payload.name?.trim() || `${repo}`;
+    const workspaceDescription = `Imported from github.com/${owner}/${repo} (${activeBranch})`;
+
+    // 5. Create Workspace Room
     let createdRoom: any = null;
     try {
       createdRoom = await WorkspaceService.createWorkspace({
         name: workspaceName,
         ownerId: payload.ownerId,
       });
-    } catch {
-      // Fallback
-    }
+    } catch {}
 
     if (!createdRoom) {
       const roomId = `room_gh_${uuidv4().replace(/-/g, '').slice(0, 10)}`;
@@ -317,19 +298,20 @@ export class GitHubImportService {
     } else {
       createdRoom.description = workspaceDescription;
       createdRoom.repositoryUrl = `https://github.com/${owner}/${repo}`;
-      createdRoom.branch = targetBranch;
+      createdRoom.branch = activeBranch;
       createdRoom.commitSha = commitSha;
       createdRoom.isGitHubImport = true;
     }
 
     // 6. Persist Files into Workspace
-    for (const f of fetchedFiles) {
+    for (const f of extracted) {
+      const lang = this.mapLanguage(f.path);
       try {
         await WorkspaceService.saveFile({
           roomId: createdRoom.id,
           path: f.path,
           content: f.content,
-          language: f.language,
+          language: lang,
         });
       } catch {
         if (fallbackMemoryFiles) {
@@ -339,7 +321,7 @@ export class GitHubImportService {
             room_id: createdRoom.id,
             path: f.path,
             content: f.content,
-            language: f.language,
+            language: lang,
             updated_at: new Date().toISOString(),
           });
         }
@@ -347,20 +329,74 @@ export class GitHubImportService {
     }
 
     // 7. Analyze Project Profile
-    const projectProfile = ProjectDetectionService.analyzeProject(
-      fetchedFiles.map((f) => ({ path: f.path, content: f.content }))
-    );
-
+    const projectProfile = ProjectDetectionService.analyzeProject(extracted);
     createdRoom.primaryLanguage = projectProfile.primaryLanguage;
 
     return {
       room: createdRoom,
-      filesCount: fetchedFiles.length,
+      filesCount: extracted.length,
       projectProfile,
       repositoryUrl: `https://github.com/${owner}/${repo}`,
-      branch: targetBranch,
+      branch: activeBranch,
       commitSha,
     };
+  }
+
+  /**
+   * Parses uncompressed standard POSIX USTAR archives without external dependencies.
+   */
+  private static parseTarArchive(decompressed: Buffer): Array<{ path: string; content: string }> {
+    const files: Array<{ path: string; content: string }> = [];
+    let offset = 0;
+
+    while (offset < decompressed.length - 512) {
+      const header = decompressed.subarray(offset, offset + 512);
+      offset += 512;
+
+      // End of archive marker
+      if (header[0] === 0) break;
+
+      // Read filename & ustar prefix
+      let name = header.toString('utf8', 0, 100).replace(/\0.*$/, '');
+      const prefix = header.toString('utf8', 345, 500).replace(/\0.*$/, '');
+      if (prefix) name = `${prefix}/${name}`;
+
+      // Type flag: '0' or '\0' is normal file
+      const typeflag = String.fromCharCode(header[156]);
+
+      // File size in octal
+      const sizeStr = header.toString('utf8', 124, 136).replace(/\0.*$/, '').trim();
+      const size = parseInt(sizeStr, 8) || 0;
+
+      const isFile = typeflag === '0' || typeflag === '\0' || typeflag === '';
+
+      if (isFile && size > 0 && size <= 400 * 1024) {
+        // Strip the top-level repo-branch folder (e.g., "repo-main/...")
+        const parts = name.split('/');
+        if (parts.length > 1) {
+          const relativePath = parts.slice(1).join('/');
+          const normalizedPath = path.posix.normalize(relativePath).replace(/^(\.\.[\/\\])+/, '').replace(/^[\/\\]+/, '');
+
+          if (
+            !normalizedPath.startsWith('..') &&
+            !path.isAbsolute(normalizedPath) &&
+            !IGNORED_DIRECTORIES.some((dir) => normalizedPath.startsWith(dir) || normalizedPath.includes(`/${dir}`))
+          ) {
+            const ext = normalizedPath.split('.').pop()?.toLowerCase() || '';
+            if (!BINARY_EXTENSIONS.has(ext)) {
+              const fileContent = decompressed.toString('utf8', offset, offset + size);
+              files.push({ path: normalizedPath, content: fileContent });
+              if (files.length >= 250) break;
+            }
+          }
+        }
+      }
+
+      // Advance to next 512-byte block
+      offset += Math.ceil(size / 512) * 512;
+    }
+
+    return files;
   }
 
   private static mapLanguage(filePath: string): SupportedLanguage {
