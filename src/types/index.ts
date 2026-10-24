@@ -107,23 +107,6 @@ export interface TerminalMessage {
   users?: Array<{ userId: string; username: string; color?: string }>;
 }
 
-export interface EditReservation {
-  id: string;
-  roomId: string;
-  fileId: string;
-  filePath: string;
-  ownerId: string;
-  ownerName: string;
-  ownerColor: string;
-  startLine: number;
-  endLine: number;
-  activeLine?: number;
-  createdAt: number;
-  expiresAt: number;
-  isAutomatic?: boolean;
-  taskDescription?: string;
-}
-
 export interface FollowState {
   targetUserId: string;
   targetUserName: string;
