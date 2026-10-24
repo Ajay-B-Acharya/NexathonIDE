@@ -9,6 +9,8 @@ import {
   Command,
   X,
   ChevronUp,
+  Users,
+  ShieldCheck,
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { AmbientCollaborationCanvas } from '../components/AmbientCollaborationCanvas';
@@ -62,7 +64,7 @@ export const Landing: React.FC<LandingProps> = ({
     const maxScroll = scrollHeight - clientHeight;
     const progress = maxScroll > 0 ? (scrollTop / maxScroll) * 100 : 0;
     setScrollProgress(progress);
-    setShowBackToTop(scrollTop > 400);
+    setShowBackToTop(scrollTop > 300);
   }, []);
 
   const scrollToTop = useCallback(() => {
@@ -127,7 +129,7 @@ export const Landing: React.FC<LandingProps> = ({
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className={`relative h-screen w-screen overflow-y-auto overflow-x-hidden theme-bg-root theme-text-primary select-none scroll-smooth flex flex-col justify-between ${
+      className={`relative min-h-screen w-screen overflow-y-auto overflow-x-hidden theme-bg-root theme-text-primary select-none scroll-smooth flex flex-col justify-between ${
         isDark ? 'dark' : 'light'
       }`}
       data-theme={theme}
@@ -172,6 +174,16 @@ export const Landing: React.FC<LandingProps> = ({
             </a>
           </div>
 
+          {/* Center: Navigation Link */}
+          <nav className="hidden sm:flex items-center">
+            <a
+              href="#about"
+              className="rounded-full px-4 py-1.5 text-xs font-semibold border theme-border theme-bg-surface-2 theme-text-secondary hover:theme-text-primary hover:border-[#FF7057]/40 transition-all"
+            >
+              About Us
+            </a>
+          </nav>
+
           {/* Right: Theme Toggle + Auth / Action CTAs */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
@@ -190,10 +202,10 @@ export const Landing: React.FC<LandingProps> = ({
         </div>
       </header>
 
-      {/* 2. CLEAN & RESPONSIVE HERO SECTION */}
-      <section className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 py-20 sm:py-28 md:py-36 text-center flex-1 flex flex-col items-center justify-center">
+      {/* 2. HERO SECTION */}
+      <section className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 pt-16 sm:pt-24 pb-12 sm:pb-16 text-center flex flex-col items-center justify-center">
         {/* Master Headline */}
-        <h1 className="mx-auto max-w-4xl text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight theme-text-primary leading-[1.14] sm:leading-[1.08] font-heading">
+        <h1 className="mx-auto max-w-4xl text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight theme-text-primary leading-[1.14] sm:leading-[1.08] font-heading">
           Distributed Real-Time Coding.{' '}
           <span className="block mt-2 text-[#FF7057]">
             <span className="font-serif italic font-normal">Zero Cold Starts.</span> Pure In-Browser WASM.
@@ -230,8 +242,95 @@ export const Landing: React.FC<LandingProps> = ({
         </div>
       </section>
 
-      {/* 3. SYSTEM TOPOLOGY BAR & FOOTER */}
-      <footer className="relative z-10 border-t theme-border theme-bg-surface-1 py-10 px-6 shrink-0">
+      {/* 3. ABOUT US SECTION */}
+      <section id="about" className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 py-10 sm:py-16 w-full">
+        <div className="rounded-2xl border theme-border theme-bg-surface-1 p-6 sm:p-10 md:p-12 neu-card backdrop-blur-md">
+          {/* Header Block */}
+          <div className="max-w-3xl">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#FF7057]">
+              ABOUT NEXATHONIDE
+            </span>
+            <h2 className="mt-2 text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight theme-text-primary font-heading leading-tight">
+              Building a Better Way to Code Together.
+            </h2>
+            <p className="mt-4 text-sm sm:text-base leading-relaxed theme-text-secondary">
+              NexathonIDE is a collaborative development environment designed to help developers work on code together in real time. By bringing shared editing, collaborative workflows, and code execution into one workspace, NexathonIDE aims to make teamwork more connected, efficient, and accessible.
+            </p>
+          </div>
+
+          {/* Three Concise Value Pillars */}
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 pt-8 border-t theme-border">
+            {/* Pillar 01 */}
+            <div className="flex flex-col justify-between rounded-xl border theme-border theme-bg-surface-2 p-5 sm:p-6 transition-colors">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-mono text-xs font-bold text-[#FF7057]">01</span>
+                  <Users className="h-4 w-4 text-[#FF7057] opacity-80" />
+                </div>
+                <h3 className="text-sm font-bold theme-text-primary">
+                  Real-Time Collaboration
+                </h3>
+                <p className="mt-2 text-xs sm:text-sm leading-relaxed theme-text-secondary">
+                  Enable developers to work together in a shared coding environment, with changes and collaborator activity reflected in real time.
+                </p>
+              </div>
+            </div>
+
+            {/* Pillar 02 */}
+            <div className="flex flex-col justify-between rounded-xl border theme-border theme-bg-surface-2 p-5 sm:p-6 transition-colors">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-mono text-xs font-bold text-[#FF7057]">02</span>
+                  <Code2 className="h-4 w-4 text-[#FF7057] opacity-80" />
+                </div>
+                <h3 className="text-sm font-bold theme-text-primary">
+                  Integrated Development
+                </h3>
+                <p className="mt-2 text-xs sm:text-sm leading-relaxed theme-text-secondary">
+                  Bring collaborative editing and supported code execution workflows together in one environment, reducing the need to switch between separate tools.
+                </p>
+              </div>
+            </div>
+
+            {/* Pillar 03 */}
+            <div className="flex flex-col justify-between rounded-xl border theme-border theme-bg-surface-2 p-5 sm:p-6 transition-colors">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-mono text-xs font-bold text-[#FF7057]">03</span>
+                  <ShieldCheck className="h-4 w-4 text-[#FF7057] opacity-80" />
+                </div>
+                <h3 className="text-sm font-bold theme-text-primary">
+                  Reliability by Design
+                </h3>
+                <p className="mt-2 text-xs sm:text-sm leading-relaxed theme-text-secondary">
+                  Focus on synchronization consistency, isolated workspaces, and predictable collaboration behavior as the foundation of the development experience.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Project Identity Element & Verified GitHub Link */}
+          <div className="mt-8 pt-6 border-t theme-border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs theme-text-secondary">
+            <span className="font-medium text-center sm:text-left">
+              Designed for developers. Built around collaboration.
+            </span>
+            <a
+              href="https://github.com/Ajay-B-Acharya/NexathonIDE"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold text-[#FF7057] hover:underline"
+            >
+              <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+              </svg>
+              <span>GitHub Repository</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. SYSTEM TOPOLOGY BAR & FOOTER */}
+      <footer className="relative z-10 border-t theme-border theme-bg-surface-1 py-10 px-6 shrink-0 mt-8">
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs theme-text-muted">
           <div className="flex items-center gap-2.5">
             <Code2 className="h-4 w-4 text-[#FF7057]" />
