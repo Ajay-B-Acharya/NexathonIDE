@@ -24,7 +24,6 @@ import {
   Check,
   AlertTriangle,
   Lock,
-  Flame,
   FileCode,
   ChevronLeft,
   ChevronRight,
@@ -44,7 +43,6 @@ import { ClickSpark } from '../components/react-bits/animations/ClickSpark';
 import { SpeedBenchmarkWidget } from '../components/SpeedBenchmarkWidget';
 import { TechStackMarquee } from '../components/TechStackMarquee';
 import { TrueFocus } from '../components/react-bits/text/TrueFocus';
-import { DifferentiatorHUD } from '../components/DifferentiatorHUD';
 import { FolderOpen } from 'lucide-react';
 import { getYjsWsUrl } from '../config/endpoints';
 
@@ -342,7 +340,7 @@ export const Landing: React.FC<LandingProps> = ({
     if (existingUser) {
       onResumeSession();
     } else {
-      setIsModalOpen(true);
+      onNavigateToLogin();
     }
   };
 
@@ -417,30 +415,18 @@ export const Landing: React.FC<LandingProps> = ({
               href="#live-sandbox"
               className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
             >
-              WASM Sandbox
-            </a>
-            <a
-              href="#comparison"
-              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
-            >
-              Docker vs WASM
+              Interactive Sandbox
             </a>
             <a
               href="#bento"
               className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
             >
-              Core Innovations
-            </a>
-            <a
-              href="#telemetry"
-              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all shadow-none hover:shadow-xs"
-            >
-              Cluster Telemetry
+              Core Architecture
             </a>
           </nav>
 
           {/* Right: Latency Meter + Theme Toggle + Auth / Action CTAs */}
-          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Interactive Cluster Latency Probe Pill */}
             <button
               type="button"
@@ -461,23 +447,13 @@ export const Landing: React.FC<LandingProps> = ({
 
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
 
-            {!existingUser && (
-              <button
-                type="button"
-                onClick={onNavigateToLogin}
-                className="hidden sm:inline-flex items-center rounded-xl border border-slate-200/90 dark:border-white/10 bg-white/80 hover:bg-white dark:bg-white/[0.04] dark:hover:bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white hover:border-teal-500/50 transition cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
-              >
-                Sign In
-              </button>
-            )}
-
             <button
               type="button"
               onClick={handlePrimaryCTA}
               className="group relative inline-flex items-center gap-2 rounded-xl bg-teal-600 hover:bg-teal-500 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap shrink-0"
             >
               <span>
-                {existingUser ? `Resume (${existingUser.name})` : 'Launch Cloud IDE'}
+                {existingUser ? `Resume (${existingUser.name})` : 'Sign In / Sign Up'}
               </span>
               <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
             </button>
@@ -503,28 +479,14 @@ export const Landing: React.FC<LandingProps> = ({
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="px-3 py-2 rounded-lg hover:bg-white/[0.06] theme-text-secondary hover:theme-text-primary transition"
               >
-                WASM Sandbox
-              </a>
-              <a
-                href="#comparison"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="px-3 py-2 rounded-lg hover:bg-white/[0.06] theme-text-secondary hover:theme-text-primary transition"
-              >
-                Docker vs WASM
+                Interactive Sandbox
               </a>
               <a
                 href="#bento"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="px-3 py-2 rounded-lg hover:bg-white/[0.06] theme-text-secondary hover:theme-text-primary transition"
               >
-                Core Innovations
-              </a>
-              <a
-                href="#telemetry"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="px-3 py-2 rounded-lg hover:bg-white/[0.06] theme-text-secondary hover:theme-text-primary transition"
-              >
-                Cluster Telemetry
+                Core Architecture
               </a>
             </nav>
             <div className="pt-2 border-t theme-border flex items-center justify-between">
@@ -536,82 +498,63 @@ export const Landing: React.FC<LandingProps> = ({
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 {lastRttMs}ms CRDT Ping
               </button>
-              {!existingUser && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    onNavigateToLogin();
-                  }}
-                  className="text-xs font-semibold theme-text-primary hover:text-teal-400"
-                >
-                  Sign In →
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  handlePrimaryCTA();
+                }}
+                className="text-xs font-semibold theme-text-primary hover:text-teal-400"
+              >
+                {existingUser ? `Resume (${existingUser.name}) →` : 'Sign In / Sign Up →'}
+              </button>
             </div>
           </div>
         )}
       </header>
 
-      {/* Signature Differentiators HUD: Hybrid Engine Clutch + X-Ray Telemetry + Figma Cursor Chat */}
-      <DifferentiatorHUD theme={theme} topOffsetClass="top-20" />
-
-      {/* 2. REFINED HERO SECTION */}
-      <section className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 pt-12 sm:pt-16 pb-8 text-center">
-        {/* Eyebrow Announcement Pill */}
-        <div className="inline-flex items-center gap-2 rounded-full border theme-border theme-bg-surface-2 px-4 py-1.5 text-xs font-medium theme-text-secondary shadow-xs mb-6 cursor-default">
-          <span className="relative flex h-2 w-2">
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-          </span>
-          <span className="font-semibold text-emerald-500">Nexathon 2.0 Engine</span>
-          <span className="opacity-40">•</span>
-          <span>Sub-15ms CRDT Synchronization & Pyodide WASM</span>
-          <Sparkles className="h-3.5 w-3.5 text-teal-500 ml-0.5" />
-        </div>
-
-        {/* Master Editorial Headline */}
-        <h1 className="mx-auto max-w-5xl text-4xl sm:text-6xl lg:text-[70px] font-extrabold tracking-tight sm:tracking-tighter theme-text-primary leading-[1.06]">
+      {/* 2. RECONSTRUCTED CLEAN & RESPONSIVE HERO SECTION */}
+      <section className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 pt-10 sm:pt-16 pb-6 text-center">
+        {/* Master Headline */}
+        <h1 className="mx-auto max-w-4xl text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight theme-text-primary leading-[1.14] sm:leading-[1.08]">
           Distributed Real-Time Coding.{' '}
-          <span className="block mt-1.5 sm:mt-2.5 text-teal-600 dark:text-teal-400">
+          <span className="block mt-2 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-300 bg-clip-text text-transparent">
             Zero Cold Starts. Pure In-Browser WASM.
           </span>
         </h1>
 
-        {/* Crafted Persuasive Subheadline */}
-        <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg lg:text-xl font-normal leading-relaxed theme-text-secondary text-balance">
-          Experience conflict-free peer collaboration with Yjs state vectors, instant in-browser Pyodide & QuickJS WebAssembly runtimes, and automated AI diff guards — with zero installation.
+        {/* Clean, Persuasive Subheadline */}
+        <p className="mx-auto mt-5 sm:mt-6 max-w-2xl text-sm sm:text-base md:text-lg font-normal leading-relaxed theme-text-secondary px-2">
+          Conflict-free collaborative editing with CRDTs, instant in-browser Python &amp; JavaScript WebAssembly runtimes, and autonomous AI code guard rails.
         </p>
 
-        {/* Primary & 1-Click Guest CTAs */}
-        <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
+        {/* Reconstructed Responsive Action CTAs */}
+        <div className="mt-8 sm:mt-9 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full max-w-md sm:max-w-none mx-auto px-4">
           <button
             type="button"
             onClick={handlePrimaryCTA}
-            className="group relative inline-flex items-center gap-3 rounded-2xl bg-teal-600 hover:bg-teal-500 px-7 py-3.5 text-sm font-semibold text-white shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+            className="w-full sm:w-auto group relative inline-flex items-center justify-center gap-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 hover:shadow-teal-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer min-h-[44px]"
           >
             <span>
-              {existingUser ? 'Resume Active Workspace' : 'Launch Full Cloud IDE'}
+              {existingUser ? `Resume Workspace (${existingUser.name})` : 'Sign In / Sign Up'}
             </span>
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            <kbd className="rounded-md border border-white/25 bg-black/25 px-2 py-0.5 text-[11px] font-mono text-teal-100 shadow-xs">
-              ⌘K
-            </kbd>
           </button>
 
           <button
             type="button"
             onClick={() => void handleGuestDemoClick()}
             disabled={isLaunchingDemo}
-            className={`group inline-flex items-center gap-2.5 rounded-2xl border px-6 py-3.5 text-sm font-semibold transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+            className={`w-full sm:w-auto group inline-flex items-center justify-center gap-2 rounded-xl border px-6 py-3.5 text-sm font-semibold transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] min-h-[44px] ${
               isDark
-                ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/40 hover:border-emerald-400/60 shadow-xs'
-                : 'border-emerald-600/30 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 shadow-xs'
+                ? 'border-emerald-500/30 bg-emerald-950/25 text-emerald-300 hover:bg-emerald-900/35 hover:border-emerald-400/50'
+                : 'border-emerald-600/30 bg-emerald-50/80 text-emerald-800 hover:bg-emerald-100'
             }`}
           >
             {isLaunchingDemo ? (
               <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
             ) : (
-              <Zap className="h-4 w-4 text-emerald-400 fill-current group-hover:scale-110 transition-transform" />
+              <Zap className="h-4 w-4 text-emerald-500 fill-current group-hover:scale-110 transition-transform" />
             )}
             <span>
               {isLaunchingDemo
@@ -619,62 +562,6 @@ export const Landing: React.FC<LandingProps> = ({
                 : 'Instant 1-Click Guest Sandbox'}
             </span>
           </button>
-        </div>
-
-        {/* Real-Time Benchmark Metrics Strip */}
-        <div className="mt-9 flex flex-wrap items-center justify-center gap-3 text-xs font-mono">
-          <div
-            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all hover:scale-[1.02] ${
-              isDark
-                ? 'border-white/10 bg-[#121624]/90 text-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.3)]'
-                : 'border-slate-200/90 bg-white/95 shadow-xs text-slate-800'
-            }`}
-          >
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
-              WASM Cold Start:
-            </span>
-            <span className="font-semibold text-emerald-400">4.2ms</span>
-          </div>
-          <div
-            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all hover:scale-[1.02] ${
-              isDark
-                ? 'border-white/10 bg-[#121624]/90 text-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.3)]'
-                : 'border-slate-200/90 bg-white/95 shadow-xs text-slate-800'
-            }`}
-          >
-            <span className="flex h-2 w-2 rounded-full bg-teal-500" />
-            <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
-              CRDT Convergence:
-            </span>
-            <span className="font-semibold text-teal-600 dark:text-teal-400">Sub-15ms p99</span>
-          </div>
-          <div
-            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all hover:scale-[1.02] ${
-              isDark
-                ? 'border-white/10 bg-[#121624]/90 text-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.3)]'
-                : 'border-slate-200/90 bg-white/95 shadow-xs text-slate-800'
-            }`}
-          >
-            <span className="flex h-2 w-2 rounded-full bg-teal-500" />
-            <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
-              Execution Privacy:
-            </span>
-            <span className="font-semibold text-teal-600 dark:text-teal-400">100% In-Browser</span>
-          </div>
-          <div
-            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 backdrop-blur-md transition-all hover:scale-[1.02] ${
-              isDark
-                ? 'border-white/10 bg-[#121624]/90 text-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.3)]'
-                : 'border-slate-200/90 bg-white/95 shadow-xs text-slate-800'
-            }`}
-          >
-            <span className="flex h-2 w-2 rounded-full bg-amber-400" />
-            <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
-              Cloud Compute:
-            </span>
-            <span className="font-semibold text-amber-400">$0 / Unlimited</span>
-          </div>
         </div>
         {/* Unified Interactive Showcase IDE Container with Carousel Effect */}
         <div
@@ -696,32 +583,32 @@ export const Landing: React.FC<LandingProps> = ({
                 <button
                   type="button"
                   onClick={() => setHeroActiveSlide('multiplayer')}
-                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition cursor-pointer ${
+                  className={`inline-flex items-center gap-1.5 rounded-md px-2.5 sm:px-3 py-1 transition cursor-pointer text-[11px] sm:text-xs ${
                     heroActiveSlide === 'multiplayer'
                       ? 'bg-teal-600 text-white shadow-xs font-semibold'
                       : 'theme-text-secondary hover:theme-text-primary'
                   }`}
                 >
-                  <Users className="h-3 w-3" />
-                  <span>1. Collaborative CRDT Mesh</span>
+                  <Users className="h-3 w-3 shrink-0" />
+                  <span><span className="hidden sm:inline">1. </span>CRDT Mesh</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setHeroActiveSlide('sandbox')}
-                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition cursor-pointer ${
+                  className={`inline-flex items-center gap-1.5 rounded-md px-2.5 sm:px-3 py-1 transition cursor-pointer text-[11px] sm:text-xs ${
                     heroActiveSlide === 'sandbox'
                       ? 'bg-teal-600 text-white shadow-xs font-semibold'
                       : 'theme-text-secondary hover:theme-text-primary'
                   }`}
                 >
-                  <Play className="h-3 w-3 fill-current" />
-                  <span>2. Live WASM Sandbox</span>
+                  <Play className="h-3 w-3 fill-current shrink-0" />
+                  <span><span className="hidden sm:inline">2. </span>WASM Sandbox</span>
                 </button>
               </div>
             </div>
 
             {/* Right: Slide-Specific Controls & Next/Prev Slide Arrows */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {heroActiveSlide === 'multiplayer' ? (
                 <div className="flex items-center gap-2">
                   <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 font-mono text-[11px]">
@@ -1030,86 +917,7 @@ export const Landing: React.FC<LandingProps> = ({
         </div>
       </section>
 
-      {/* 4. THE PARADIGM SHIFT: DOCKER VS CLIENT-SIDE WASM */}
-      <section id="comparison" className="relative z-10 mx-auto max-w-6xl px-6 pb-16">
-        <div className="text-center max-w-2xl mx-auto mb-8">
-          <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400">
-            Architectural Benchmark
-          </span>
-          <h2 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight theme-text-primary">
-            Why Client-Side WASM Beats Docker Containers
-          </h2>
-          <p className="mt-1.5 text-xs sm:text-sm theme-text-secondary">
-            Legacy cloud IDEs boot heavy remote VMs with painful cold-start lag. NexathonIDE executes code directly on your local silicon.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Legacy Cloud Containers */}
-          <div className="rounded-2xl border border-rose-500/25 bg-rose-500/5 p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-rose-500/20 pb-3">
-              <span className="font-mono text-xs font-bold uppercase text-rose-500 flex items-center gap-1.5">
-                <Flame className="h-3.5 w-3.5" />
-                Legacy Cloud IDEs (Gitpod / Codespaces)
-              </span>
-              <span className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-[10px] font-mono text-rose-400 font-semibold">
-                Remote Docker
-              </span>
-            </div>
-            <ul className="space-y-3 text-xs theme-text-secondary">
-              <li className="flex items-start gap-2.5">
-                <span className="text-rose-500 font-bold shrink-0">✕</span>
-                <span><strong>30s – 60s Container Cold Starts</strong>: Docker images must be pulled, built, and provisioned before typing a single character.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="text-rose-500 font-bold shrink-0">✕</span>
-                <span><strong>$15 – $40 / Month Cloud Compute</strong>: Idle server VM hours continuously burn hosting credits and budget.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="text-rose-500 font-bold shrink-0">✕</span>
-                <span><strong>High-Jitter Network Lag</strong>: Unstable Wi-Fi causes input stutter and disconnected SSH terminal sessions.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="text-rose-500 font-bold shrink-0">✕</span>
-                <span><strong>Git Merge Collisions</strong>: Simultaneous branch edits result in messy conflict markers.</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* NexathonIDE Next-Gen */}
-          <div className="rounded-2xl border border-emerald-500/35 bg-emerald-500/5 p-6 space-y-4 shadow-sm">
-            <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
-              <span className="font-mono text-xs font-bold uppercase text-emerald-500 flex items-center gap-1.5">
-                <Zap className="h-3.5 w-3.5 fill-current" />
-                NexathonIDE (Yjs CRDTs + In-Browser WASM)
-              </span>
-              <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-mono text-emerald-400 font-semibold">
-                Next-Gen Edge
-              </span>
-            </div>
-            <ul className="space-y-3 text-xs theme-text-primary">
-              <li className="flex items-start gap-2.5">
-                <span className="text-emerald-500 font-bold shrink-0">✓</span>
-                <span><strong>4.2ms Instant Client Boot</strong>: Pyodide WebAssembly and QuickJS Workers boot instantaneously on local CPU cores.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="text-emerald-500 font-bold shrink-0">✓</span>
-                <span><strong>$0 Unlimited Execution Cost</strong>: 100% in-browser compute means zero cloud server invoices and total code privacy.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="text-emerald-500 font-bold shrink-0">✓</span>
-                <span><strong>Sub-15ms Conflict-Free CRDTs</strong>: State vectors converge mathematically in real time without merge conflicts.</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="text-emerald-500 font-bold shrink-0">✓</span>
-                <span><strong>Atomic AI Diff Guard</strong>: Side-by-side AST diff review prevents destructive LLM code hallucinations.</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. BENTO GRID: FOUR ARCHITECTURAL PILLARS */}
+      {/* 3. BENTO GRID: FOUR ARCHITECTURAL PILLARS */}
       <section id="bento" className="relative z-10 mx-auto max-w-6xl px-6 pb-16">
         <div className="text-center max-w-2xl mx-auto mb-8">
           <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400">
@@ -1206,87 +1014,7 @@ export const Landing: React.FC<LandingProps> = ({
         </div>
       </section>
 
-      {/* 6. REAL-TIME SYSTEM LATENCY & ARCHITECTURE BENCHMARKS */}
-      <section
-        id="telemetry"
-        className="relative z-10 mx-auto max-w-6xl px-6 py-12 border-t theme-border"
-      >
-        <div className="rounded-2xl border theme-border theme-bg-surface-1 p-6 theme-shadow space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-emerald-500" />
-              <h3 className="text-sm font-bold theme-text-primary">
-                CRDT Frame Convergence & Network Telemetry
-              </h3>
-            </div>
-            <button
-              type="button"
-              onClick={runClusterLatencyProbe}
-              className="rounded-md border theme-border theme-bg-surface-2 px-3 py-1 text-[11px] font-mono theme-text-secondary hover:theme-text-primary transition cursor-pointer"
-            >
-              Re-Probe Cluster
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="rounded-xl border theme-border theme-bg-surface-2 p-3">
-              <div className="text-[10px] font-mono uppercase theme-text-muted">
-                WS Round-Trip
-              </div>
-              <div className="mt-1 text-lg font-bold font-mono text-emerald-500">
-                {lastRttMs}ms
-              </div>
-            </div>
-            <div className="rounded-xl border theme-border theme-bg-surface-2 p-3">
-              <div className="text-[10px] font-mono uppercase theme-text-muted">
-                CRDT State Vector
-              </div>
-              <div className="mt-1 text-lg font-bold font-mono text-teal-600 dark:text-teal-400">
-                42 Bytes
-              </div>
-            </div>
-            <div className="rounded-xl border theme-border theme-bg-surface-2 p-3">
-              <div className="text-[10px] font-mono uppercase theme-text-muted">
-                Worker Boot Time
-              </div>
-              <div className="mt-1 text-lg font-bold font-mono text-cyan-500">
-                &lt; 5.0ms
-              </div>
-            </div>
-            <div className="rounded-xl border theme-border theme-bg-surface-2 p-3">
-              <div className="text-[10px] font-mono uppercase theme-text-muted">
-                WASM Heap Isolation
-              </div>
-              <div className="mt-1 text-lg font-bold font-mono text-amber-500">
-                Active (32MB)
-              </div>
-            </div>
-          </div>
-
-          {/* 12-Bar Live RTT Histogram */}
-          <div>
-            <div className="flex items-center justify-between text-[11px] font-mono theme-text-muted mb-1.5">
-              <span>WebSocket Frame Convergence Histogram (ms)</span>
-              <span>p99 &lt; 20ms</span>
-            </div>
-            <div className="flex h-16 items-end gap-1.5 rounded-xl border theme-border theme-bg-surface-2 p-2.5">
-              {pingHistory.map((val, idx) => {
-                const heightPct = Math.min(100, Math.max(22, val * 4.5));
-                return (
-                  <div
-                    key={idx}
-                    className="flex-1 rounded-t bg-teal-500/80 transition-all duration-300"
-                    style={{ height: `${heightPct}%` }}
-                    title={`${val}ms`}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. SYSTEM TOPOLOGY BAR & FOOTER */}
+      {/* 4. SYSTEM TOPOLOGY BAR & FOOTER */}
       <footer className="relative z-10 border-t theme-border theme-bg-surface-1 py-10 px-6">
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs theme-text-muted">
           <div className="flex items-center gap-2.5">
