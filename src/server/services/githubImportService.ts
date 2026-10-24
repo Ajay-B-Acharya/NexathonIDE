@@ -120,13 +120,13 @@ export class GitHubImportService {
 
     if (response.status === 404) {
       throw new Error(
-        `Repository "${owner}/${repo}" was not found. If it is private, please provide a GitHub Personal Access Token.`
+        `Repository "${owner}/${repo}" was not found or is private. Only public repositories are supported.`
       );
     }
     if (response.status === 403) {
       const msg = await response.text();
       if (msg.includes('rate limit')) {
-        throw new Error('GitHub API rate limit exceeded. Please configure a GitHub token to proceed.');
+        throw new Error('GitHub API rate limit exceeded. Please try again later.');
       }
       throw new Error(`Access forbidden (403): ${msg}`);
     }
@@ -135,6 +135,9 @@ export class GitHubImportService {
     }
 
     const data = (await response.json()) as any;
+    if (data.private) {
+      throw new Error(`Repository "${owner}/${repo}" is private. Only public repositories can be imported.`);
+    }
 
     // Fetch branches list
     let branches: string[] = [data.default_branch || 'main'];

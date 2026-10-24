@@ -5,13 +5,9 @@ import {
   Check,
   AlertCircle,
   Loader2,
-  Lock,
   Globe,
   Star,
-  Layers,
   ArrowRight,
-  Shield,
-  FileCode,
 } from 'lucide-react';
 import { GithubIcon } from './icons/GithubIcon';
 import { workspaceApi } from '../services/workspaceApi';
@@ -33,8 +29,6 @@ export const GitHubImportModal: React.FC<GitHubImportModalProps> = ({
   onImportSuccess,
 }) => {
   const [repoUrl, setRepoUrl] = useState('');
-  const [githubToken, setGithubToken] = useState('');
-  const [showTokenInput, setShowTokenInput] = useState(false);
   const [step, setStep] = useState<ImportStep>('input');
   const [isValidating, setIsValidating] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -50,14 +44,17 @@ export const GitHubImportModal: React.FC<GitHubImportModalProps> = ({
   const handleValidate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!repoUrl.trim()) {
-      setError('Please enter a GitHub repository URL.');
+      setError('Please enter a public GitHub repository URL.');
       return;
     }
 
     setIsValidating(true);
     setError(null);
     try {
-      const info = await workspaceApi.validateGitHubRepo(repoUrl.trim(), githubToken.trim() || undefined);
+      const info = await workspaceApi.validateGitHubRepo(repoUrl.trim());
+      if (info.isPrivate) {
+        throw new Error('This repository is private. Only public repositories can be imported.');
+      }
       setRepoInfo(info);
       setSelectedBranch(info.defaultBranch);
       setCustomName(info.repo);
@@ -78,24 +75,23 @@ export const GitHubImportModal: React.FC<GitHubImportModalProps> = ({
     setProgressStatus('Fetching repository file tree...');
 
     try {
-      setTimeout(() => setProgressStatus('Downloading source blobs & manifests...'), 800);
-      setTimeout(() => setProgressStatus('Analyzing project architecture & languages...'), 1800);
-      setTimeout(() => setProgressStatus('Provisioning collaborative CRDT workspace...'), 2600);
+      setTimeout(() => setProgressStatus('Downloading source files & manifests...'), 700);
+      setTimeout(() => setProgressStatus('Analyzing project architecture & languages...'), 1600);
+      setTimeout(() => setProgressStatus('Provisioning collaborative CRDT workspace...'), 2400);
 
       const result = await workspaceApi.importGitHubRepo({
         url: repoUrl.trim(),
         branch: selectedBranch,
         ownerId: userId,
         name: customName.trim() || repoInfo.repo,
-        githubToken: githubToken.trim() || undefined,
       });
 
       setStep('complete');
       setTimeout(() => {
         onImportSuccess(result);
-      }, 700);
+      }, 600);
     } catch (err: any) {
-      setError(err.message || 'Import failed. Please check repository permissions or size.');
+      setError(err.message || 'Import failed. Please check repository availability or size.');
       setStep('validated');
     } finally {
       setIsImporting(false);
@@ -119,9 +115,9 @@ export const GitHubImportModal: React.FC<GitHubImportModalProps> = ({
               <GithubIcon className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold theme-text-primary">Import from GitHub</h2>
+              <h2 className="text-base font-bold theme-text-primary">Import Public GitHub Repository</h2>
               <p className="text-xs theme-text-secondary">
-                Clone and provision any public or private repository into a real-time collaborative workspace.
+                Clone and provision any public repository directly into your real-time collaborative workspace.
               </p>
             </div>
           </div>
@@ -148,7 +144,7 @@ export const GitHubImportModal: React.FC<GitHubImportModalProps> = ({
             <form onSubmit={handleValidate} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold theme-text-primary mb-1.5">
-                  GitHub Repository URL
+                  Public GitHub Repository URL
                 </label>
                 <div className="relative">
                   <input
@@ -162,39 +158,8 @@ export const GitHubImportModal: React.FC<GitHubImportModalProps> = ({
                   />
                 </div>
                 <p className="mt-1.5 text-[11px] theme-text-secondary">
-                  Examples: <span className="font-mono text-[10px]">facebook/react</span> or <span className="font-mono text-[10px]">https://github.com/fastapi/fastapi</span>
+                  Examples: <span className="font-mono text-[10px]">facebook/react</span> or <span className="font-mono text-[10px]">https://github.com/pallets/flask</span>
                 </p>
-              </div>
-
-              {/* Private Repo Token Toggle */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setShowTokenInput((prev) => !prev)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--accent-primary)] hover:underline cursor-pointer"
-                >
-                  <Lock className="h-3 w-3" />
-                  <span>{showTokenInput ? 'Hide GitHub Token' : 'Import Private Repository (Add Personal Token)'}</span>
-                </button>
-
-                {showTokenInput && (
-                  <div className="mt-2.5 p-3 rounded-xl border theme-border theme-bg-surface-2 space-y-2">
-                    <label className="block text-[11px] font-semibold theme-text-primary">
-                      GitHub Personal Access Token (PAT)
-                    </label>
-                    <input
-                      type="password"
-                      value={githubToken}
-                      onChange={(e) => setGithubToken(e.target.value)}
-                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                      className="w-full rounded-lg border theme-border theme-bg-surface-1 px-3 py-1.5 text-xs font-mono theme-text-primary focus:outline-none focus:border-[#FF7057]"
-                    />
-                    <div className="flex items-center gap-1.5 text-[10px] theme-text-secondary">
-                      <Shield className="h-3 w-3 text-emerald-500" />
-                      <span>Tokens are encrypted in transit and never stored in room shared state.</span>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="flex justify-end gap-2.5 pt-2">
@@ -236,20 +201,13 @@ export const GitHubImportModal: React.FC<GitHubImportModalProps> = ({
                       <span className="font-bold text-sm theme-text-primary truncate">
                         {repoInfo.owner} / {repoInfo.repo}
                       </span>
-                      {repoInfo.isPrivate ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-semibold">
-                          <Lock className="h-2.5 w-2.5" />
-                          Private
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold">
-                          <Globe className="h-2.5 w-2.5" />
-                          Public
-                        </span>
-                      )}
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold">
+                        <Globe className="h-2.5 w-2.5" />
+                        Public
+                      </span>
                     </div>
                     <p className="text-xs theme-text-secondary line-clamp-2 mt-1">
-                      {repoInfo.description || 'No description provided.'}
+                      {repoInfo.description || 'Public GitHub repository'}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 text-xs theme-text-secondary shrink-0 pl-2">
