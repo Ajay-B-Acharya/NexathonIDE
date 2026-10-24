@@ -85,7 +85,7 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
               <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-(--bg-root)">
                 <span
                   className={`h-1.5 w-1.5 rounded-full ${
-                    isFollowed ? 'bg-teal-400' : 'bg-emerald-500'
+                    isFollowed ? 'bg-[#FF7057]' : 'bg-emerald-500'
                   }`}
                 />
               </span>
@@ -121,8 +121,8 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
               }}
               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] transition ${
                 isFollowed
-                  ? 'border-teal-500/50 bg-teal-950/40 text-teal-200'
-                  : 'theme-border theme-bg-surface-2 theme-text-secondary hover:border-teal-500/30'
+                  ? 'border-[#FF7057]/50 bg-[#FF7057]/15 text-[#FF7057]'
+                  : 'theme-border theme-bg-surface-2 theme-text-secondary hover:border-[#FF7057]/30'
               } ${isMe ? 'cursor-default' : 'cursor-pointer'}`}
               title={isMe ? 'You' : isFollowed ? 'Stop Following' : `Follow ${collab.user.name}`}
             >
@@ -136,7 +136,7 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
                 {collab.user.name}
               </span>
               {fileName && (
-                <span className="rounded bg-indigo-500/10 border border-indigo-500/30 px-1 py-0.2 text-[9.5px] font-mono text-indigo-400 max-w-[65px] truncate">
+                <span className="rounded bg-[#FF7057]/10 border border-[#FF7057]/30 px-1 py-0.2 text-[9.5px] font-mono text-[#FF7057] max-w-[65px] truncate">
                   {fileName}
                 </span>
               )}
@@ -147,7 +147,7 @@ export const Collaborators: React.FC<CollaboratorsProps> = ({
               )}
               {!isMe && (
                 isFollowed ? (
-                  <EyeOff className="h-3 w-3 text-teal-400" />
+                  <EyeOff className="h-3 w-3 text-[#FF7057]" />
                 ) : (
                   <Eye className="h-3 w-3 theme-text-secondary opacity-60 group-hover:opacity-100" />
                 )

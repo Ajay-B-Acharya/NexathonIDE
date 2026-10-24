@@ -48,44 +48,44 @@ export const AmbientCollaborationCanvas: React.FC<AmbientCollaborationCanvasProp
     let height = window.innerHeight;
 
     const updateDimensions = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       width = window.innerWidth;
       height = window.innerHeight;
+      const dpr = window.devicePixelRatio || 1;
       canvas.width = width * dpr;
       canvas.height = height * dpr;
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.scale(dpr, dpr);
     };
 
     updateDimensions();
 
     const PALETTE_DARK = [
-      '#35B8A6', // Restrained Teal
-      '#06b6d4', // Cyan
-      '#3FBF86', // Emerald
-      '#788797', // Slate
-      '#38bdf8', // Sky
+      '#FF7057', // Primary Accent
+      '#FFFFFF', // Primary text
+      '#B3B3B3', // Secondary text
+      '#808080', // Muted text
+      '#F26049', // Pressed Accent
     ];
 
     const PALETTE_LIGHT = [
-      '#168C7D', // Primary Accent Teal
-      '#0284c7', // Sky Blue
-      '#218653', // Emerald
-      '#526171', // Slate
-      '#0D9488', // Teal
+      '#FF7057', // Primary Accent
+      '#302820', // Primary text dark brown
+      '#756858', // Secondary text
+      '#8A7D6D', // Muted text
+      '#E9DECE', // Warm Border
     ];
 
-    const nodeCount = Math.floor(Math.min(65, Math.max(32, (width * height) / 24000)));
+    const nodeCount = Math.floor(Math.min(60, Math.max(28, (width * height) / 26000)));
 
     const nodes: PeerNode[] = Array.from({ length: nodeCount }, () => {
       const paletteIdx = Math.floor(Math.random() * PALETTE_DARK.length);
       return {
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.45,
-        vy: (Math.random() - 0.5) * 0.45,
-        radius: 1.4 + Math.random() * 1.5,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        radius: 1.2 + Math.random() * 1.4,
         pulsePhase: Math.random() * Math.PI * 2,
         pulseSpeed: 0.015 + Math.random() * 0.02,
         colorDark: PALETTE_DARK[paletteIdx],
@@ -107,19 +107,19 @@ export const AmbientCollaborationCanvas: React.FC<AmbientCollaborationCanvasProp
     };
 
     window.addEventListener('resize', updateDimensions);
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseleave', handleMouseLeave);
 
     const maxDistance = 140;
     const maxDistanceSq = maxDistance * maxDistance;
-    const mouseRadius = 190;
+    const mouseRadius = 180;
     const mouseRadiusSq = mouseRadius * mouseRadius;
 
     const render = (timestamp: number) => {
       ctx.clearRect(0, 0, width, height);
       const isDark = theme === 'dark';
 
-      // 1. Move & Wrap Nodes across the screen (Active in BOTH Day & Night modes)
+      // 1. Move & Wrap Nodes
       for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
         n.x += n.vx;
@@ -133,7 +133,7 @@ export const AmbientCollaborationCanvas: React.FC<AmbientCollaborationCanvasProp
         n.pulsePhase += n.pulseSpeed;
       }
 
-      // 2. Draw Dynamic Inter-Node Vector Edges (Delicate silk lines in Light, glowing in Dark)
+      // 2. Draw Dynamic Inter-Node Vector Edges
       for (let i = 0; i < nodes.length; i++) {
         const a = nodes[i];
         for (let j = i + 1; j < nodes.length; j++) {
@@ -145,19 +145,19 @@ export const AmbientCollaborationCanvas: React.FC<AmbientCollaborationCanvasProp
           if (distSq < maxDistanceSq) {
             const dist = Math.sqrt(distSq);
             const intensity = (1 - dist / maxDistance);
-            const alpha = intensity * (isDark ? 0.16 : 0.09);
+            const alpha = intensity * (isDark ? 0.22 : 0.15);
 
-            ctx.lineWidth = isDark ? 1 : 0.8;
+            ctx.lineWidth = isDark ? 0.8 : 0.8;
             ctx.strokeStyle = isDark
-              ? `rgba(99, 102, 241, ${alpha})`
-              : `rgba(79, 70, 229, ${alpha})`;
+              ? `rgba(36, 36, 36, ${alpha})`
+              : `rgba(233, 222, 206, ${alpha * 2})`;
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
             ctx.stroke();
 
-            // Spawn in-flight CRDT sync packets along active paths
-            if (timestamp - lastPacketSpawn > 160 && packets.length < 20 && Math.random() < 0.04) {
+            // Spawn in-flight CRDT sync packets
+            if (timestamp - lastPacketSpawn > 180 && packets.length < 18 && Math.random() < 0.04) {
               packets.push({
                 fromX: a.x,
                 fromY: a.y,
@@ -173,7 +173,7 @@ export const AmbientCollaborationCanvas: React.FC<AmbientCollaborationCanvasProp
         }
       }
 
-      // 3. Connect Mouse as the Local Broker Node
+      // 3. Connect Mouse as Local Broker Node
       if (mouseRef.current.active) {
         const mx = mouseRef.current.x;
         const my = mouseRef.current.y;
@@ -187,37 +187,25 @@ export const AmbientCollaborationCanvas: React.FC<AmbientCollaborationCanvasProp
           if (distSq < mouseRadiusSq) {
             const dist = Math.sqrt(distSq);
             const intensity = 1 - dist / mouseRadius;
-            const alpha = intensity * (isDark ? 0.35 : 0.22);
+            const alpha = intensity * (isDark ? 0.35 : 0.25);
 
             ctx.lineWidth = 1;
             ctx.strokeStyle = isDark
-              ? `rgba(6, 182, 212, ${alpha})`
-              : `rgba(2, 132, 199, ${alpha})`;
+              ? `rgba(255, 112, 87, ${alpha * 0.6})`
+              : `rgba(255, 112, 87, ${alpha * 0.5})`;
             ctx.beginPath();
             ctx.moveTo(n.x, n.y);
             ctx.lineTo(mx, my);
             ctx.stroke();
 
-            // Gentle organic pull toward mouse
             n.vx += (dx / dist) * 0.01;
             n.vy += (dy / dist) * 0.01;
           }
         }
-
-        // Soft radiant halo around mouse
-        const halo = ctx.createRadialGradient(mx, my, 0, mx, my, 90);
-        halo.addColorStop(
-          0,
-          isDark ? 'rgba(99, 102, 241, 0.14)' : 'rgba(99, 102, 241, 0.08)'
-        );
-        halo.addColorStop(1, 'transparent');
-        ctx.fillStyle = halo;
-        ctx.beginPath();
-        ctx.arc(mx, my, 90, 0, Math.PI * 2);
-        ctx.fill();
       }
 
-      // 4. In-Flight Moving CRDT Sync Packets (Active in BOTH modes)
+      // 4. In-Flight Moving CRDT Sync Packets (Zero glow in dark mode)
+      ctx.shadowBlur = 0;
       for (let i = packets.length - 1; i >= 0; i--) {
         const p = packets[i];
         p.progress += p.speed;
@@ -231,30 +219,30 @@ export const AmbientCollaborationCanvas: React.FC<AmbientCollaborationCanvasProp
         const currY = p.fromY + (p.toY - p.fromY) * p.progress;
 
         ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = isDark ? 8 : 4;
         ctx.beginPath();
-        ctx.arc(currX, currY, isDark ? 1.8 : 1.5, 0, Math.PI * 2);
+        ctx.arc(currX, currY, isDark ? 1.5 : 1.4, 0, Math.PI * 2);
         ctx.fill();
-        ctx.shadowBlur = 0;
       }
 
-      // 5. Draw Glowing Peer Nodes with Pulsing Radii
+      // 5. Draw Clean Flat Peer Nodes
       for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
-        const pulse = Math.sin(n.pulsePhase) * 0.5;
-        const currentRadius = Math.max(1.1, n.radius + pulse);
+        const pulse = Math.sin(n.pulsePhase) * 0.4;
+        const currentRadius = Math.max(1.0, n.radius + pulse);
         const color = isDark ? n.colorDark : n.colorLight;
 
-        // Outer soft glow halo
-        ctx.fillStyle = color;
-        ctx.globalAlpha = isDark ? 0.35 : 0.18;
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, currentRadius * 2.2, 0, Math.PI * 2);
-        ctx.fill();
+        // In Dark mode: flat, no outer glowing halo. In Light mode: subtle warm tone
+        if (!isDark) {
+          ctx.fillStyle = color;
+          ctx.globalAlpha = 0.15;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, currentRadius * 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
 
-        // Inner solid core
-        ctx.globalAlpha = isDark ? 0.9 : 0.65;
+        // Solid core
+        ctx.fillStyle = color;
+        ctx.globalAlpha = isDark ? 0.85 : 0.75;
         ctx.beginPath();
         ctx.arc(n.x, n.y, currentRadius, 0, Math.PI * 2);
         ctx.fill();

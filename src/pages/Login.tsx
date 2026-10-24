@@ -210,8 +210,8 @@ export const Login: React.FC<LoginProps> = ({
 
   return (
     <div
-      className={`min-h-screen w-full grid grid-cols-1 lg:grid-cols-12 overflow-hidden font-sans select-none transition-colors duration-300 relative ${
-        isDark ? 'dark bg-[#06080e] text-slate-100' : 'light bg-[#f8fafc] text-slate-900'
+      className={`min-h-screen w-full grid grid-cols-1 lg:grid-cols-12 overflow-hidden font-sans select-none transition-colors duration-300 relative theme-bg-root theme-text-primary ${
+        isDark ? 'dark' : 'light'
       }`}
       data-theme={theme}
     >
@@ -226,7 +226,7 @@ export const Login: React.FC<LoginProps> = ({
           <Squares
             direction="diagonal"
             speed={0.4}
-            borderColor={isDark ? '#1e293b' : '#cbd5e1'}
+            borderColor={isDark ? '#242424' : '#E9DECE'}
             hoverFillColor={`${selectedColor.hex}25`}
           />
         </div>
@@ -238,19 +238,19 @@ export const Login: React.FC<LoginProps> = ({
               <button
                 type="button"
                 onClick={onBackToLanding}
-                className="flex items-center justify-center h-8 w-8 rounded-lg border theme-border theme-bg-surface-2 hover:border-indigo-500/50 transition cursor-pointer"
+                className="flex items-center justify-center h-8 w-8 rounded-lg border theme-border theme-bg-surface-2 hover:border-[#FF7057] transition cursor-pointer"
                 title="Return to Landing Page"
               >
                 <ArrowLeft className="h-4 w-4 theme-text-secondary" />
               </button>
             )}
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-[0_0_16px_rgba(99,102,241,0.4)]">
+              <div className="w-8 h-8 rounded-lg bg-[#FF7057] flex items-center justify-center text-white">
                 <Terminal className="w-4 h-4" />
               </div>
-              <span className="font-mono font-bold tracking-tight text-slate-900 dark:text-slate-100 text-sm">
-                NEXATHON<span className="text-indigo-600 dark:text-indigo-400">.IDE</span>
-                <span className="text-slate-600 dark:text-slate-400 text-xs font-semibold ml-2">// AUTH_GATE</span>
+              <span className="font-mono font-bold tracking-tight theme-text-primary text-sm">
+                NEXATHON<span className="text-[#FF7057]">.IDE</span>
+                <span className="theme-text-muted text-xs font-semibold ml-2">// AUTH_GATE</span>
               </span>
             </div>
           </div>
@@ -265,25 +265,25 @@ export const Login: React.FC<LoginProps> = ({
 
         {/* Center: Live Multiplayer Code Editor & Cursor Sandbox */}
         <div className="relative z-10 my-auto max-w-xl w-full">
-          <div className="text-xs font-mono uppercase tracking-widest text-indigo-700 dark:text-indigo-400 font-bold mb-3 flex items-center gap-2">
+          <div className="text-xs font-mono uppercase tracking-widest text-[#FF7057] font-bold mb-3 flex items-center gap-2">
             <Sparkles className="w-3.5 h-3.5" />
             <span>01 // LIVE MULTIPLAYER PRESENCE PREVIEW</span>
           </div>
 
           <div
-            className={`p-6 rounded-2xl border backdrop-blur-xl shadow-2xl space-y-4 font-mono text-xs transition-all duration-300 ${
-              isDark ? 'bg-[#090d16]/95 border-white/10' : 'bg-white/95 border-slate-300 shadow-xl'
+            className={`p-6 rounded-2xl border theme-border font-mono text-xs transition-all duration-300 ${
+              isDark ? 'bg-[#000000]' : 'bg-[#FFF9F0] neu-card'
             }`}
           >
             {/* Window title bar */}
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+            <div className="flex items-center justify-between border-b theme-border pb-3">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
-                <span className="ml-2 font-mono text-[11px] font-bold text-slate-900 dark:text-slate-100">session_preview.py</span>
+                <span className="ml-2 font-mono text-[11px] font-bold theme-text-primary">session_preview.py</span>
               </div>
-              <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 font-semibold">CRDT Peer Awareness</span>
+              <span className="text-[10px] font-mono theme-text-muted font-semibold">CRDT Peer Awareness</span>
             </div>
 
             {/* Simulated Code Lines */}
@@ -339,7 +339,7 @@ export const Login: React.FC<LoginProps> = ({
           </div>
           <div>
             <div className="text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">SHELL DAEMON</div>
-            <div className="text-indigo-700 dark:text-indigo-400 font-extrabold mt-0.5">Node-PTY xterm (:3001)</div>
+            <div className="text-[#FF7057] font-extrabold mt-0.5">Node-PTY xterm (:3001)</div>
           </div>
         </div>
       </div>
@@ -350,13 +350,13 @@ export const Login: React.FC<LoginProps> = ({
       <div className="lg:col-span-5 flex flex-col justify-center p-6 sm:p-12 relative theme-bg-root overflow-y-auto">
         <SpotlightCard
           spotlightColor={`${selectedColor.hex}22`}
-          className={`w-full max-w-md mx-auto p-6 sm:p-8 rounded-2xl border theme-border theme-shadow backdrop-blur-2xl transition-all duration-300 ${
-            isDark ? 'bg-[#0c1018]/90' : 'bg-white/95'
+          className={`w-full max-w-md mx-auto p-6 sm:p-8 rounded-2xl border theme-border transition-all duration-300 ${
+            isDark ? 'bg-[#000000]' : 'bg-[#FFF9F0] neu-card'
           }`}
         >
           {/* Card Top Strip: Gateway Badge + Theme Toggle */}
           <div className="flex items-center justify-between mb-6">
-            <span className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 font-bold">
+            <span className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-0.5 rounded border theme-border theme-bg-surface-2 text-[#FF7057] font-bold">
               SSH_GATEWAY // v2.4
             </span>
             {onToggleTheme && (
@@ -366,7 +366,7 @@ export const Login: React.FC<LoginProps> = ({
 
           {/* Decrypted Headline */}
           <div className="mb-6">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 font-mono">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight theme-text-primary font-mono">
               <DecryptedText
                 text="INITIALIZE_SESSION"
                 animateOn="view"
@@ -374,13 +374,13 @@ export const Login: React.FC<LoginProps> = ({
                 maxIterations={10}
               />
             </h1>
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 font-medium">
+            <p className="text-xs theme-text-secondary mt-1.5 font-medium">
               Configure your multiplayer CRDT identity or connect with a persistent account.
             </p>
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="flex rounded-xl p-1 border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/5 mb-6">
+          <div className="flex rounded-xl p-1 border theme-border theme-bg-surface-2 mb-6">
             <button
               type="button"
               onClick={() => {
@@ -390,8 +390,8 @@ export const Login: React.FC<LoginProps> = ({
               }}
               className={`flex-1 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
                 authMode === 'crdt-handle'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-[#FF7057] text-white'
+                  : 'theme-text-secondary hover:theme-text-primary'
               }`}
             >
               1-Click Handle
@@ -405,8 +405,8 @@ export const Login: React.FC<LoginProps> = ({
               }}
               className={`flex-1 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
                 authMode !== 'crdt-handle'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-[#FF7057] text-white'
+                  : 'theme-text-secondary hover:theme-text-primary'
               }`}
             >
               Supabase Auth
@@ -438,7 +438,7 @@ export const Login: React.FC<LoginProps> = ({
                 <button
                   type="button"
                   onClick={onGuestDemo}
-                  className="w-full py-2.5 px-4 rounded-xl border theme-border theme-bg-surface-2 hover:border-indigo-500/50 font-mono text-xs font-bold flex items-center justify-center gap-2.5 transition-all shadow-xs cursor-pointer theme-text-primary"
+                  className="w-full py-2.5 px-4 rounded-xl border theme-border theme-bg-surface-2 hover:border-[#FF7057]/50 font-mono text-xs font-bold flex items-center justify-center gap-2.5 transition-all neu-button cursor-pointer theme-text-primary"
                 >
                   <Zap className="w-4 h-4 text-emerald-500 fill-current" />
                   INSTANT 1-CLICK GUEST DEMO
@@ -459,7 +459,7 @@ export const Login: React.FC<LoginProps> = ({
                   <label className="block font-mono text-[11px] uppercase text-slate-800 dark:text-slate-200 mb-2 font-bold tracking-wide">
                     01 // DEVELOPER_HANDLE
                   </label>
-                  <div className="flex items-center rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/15 focus-within:border-indigo-600 focus-within:ring-1 focus-within:ring-indigo-600 px-3.5 py-2.5 font-mono text-xs transition-colors shadow-xs">
+                  <div className="flex items-center rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/15 focus-within:border-[#FF7057] focus-within:ring-1 focus-within:ring-[#FF7057] px-3.5 py-2.5 font-mono text-xs transition-colors neu-input">
                     <span className="text-slate-600 dark:text-slate-400 font-bold select-none">nexathon://@</span>
                     <input
                       type="text"
@@ -487,8 +487,8 @@ export const Login: React.FC<LoginProps> = ({
                           onClick={() => setSelectedColor(color)}
                           className={`py-2 px-2 rounded-lg border font-mono text-[10px] flex items-center justify-center gap-1.5 transition-all cursor-pointer font-bold ${
                             isSelected
-                              ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-950 dark:text-white shadow-sm ring-1 ring-indigo-500'
-                              : 'border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:border-indigo-500/50'
+                              ? 'border-[#FF7057] bg-[#FF7057]/15 text-[#FF7057]'
+                              : 'border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:border-[#FF7057]/50'
                           }`}
                         >
                           <span
@@ -534,7 +534,7 @@ export const Login: React.FC<LoginProps> = ({
                     onClick={() => setAuthMode('signin')}
                     className={`pb-2 px-3 text-xs font-mono font-semibold transition border-b-2 cursor-pointer ${
                       authMode === 'signin'
-                        ? 'border-indigo-500 text-indigo-500'
+                        ? 'border-[#FF7057] text-[#FF7057]'
                         : 'border-transparent theme-text-secondary hover:theme-text-primary'
                     }`}
                   >
@@ -545,7 +545,7 @@ export const Login: React.FC<LoginProps> = ({
                     onClick={() => setAuthMode('signup')}
                     className={`pb-2 px-3 text-xs font-mono font-semibold transition border-b-2 cursor-pointer ${
                       authMode === 'signup'
-                        ? 'border-indigo-500 text-indigo-500'
+                        ? 'border-[#FF7057] text-[#FF7057]'
                         : 'border-transparent theme-text-secondary hover:theme-text-primary'
                     }`}
                   >
@@ -561,7 +561,7 @@ export const Login: React.FC<LoginProps> = ({
                     <label className="block font-mono text-[11px] uppercase theme-text-secondary mb-1.5 font-medium">
                       Email Address
                     </label>
-                    <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-indigo-500 px-3.5 py-2 text-xs">
+                    <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-[#FF7057] px-3.5 py-2 text-xs neu-input">
                       <Mail className="w-4 h-4 theme-text-muted mr-2 shrink-0" />
                       <input
                         type="email"
@@ -583,13 +583,13 @@ export const Login: React.FC<LoginProps> = ({
                         <button
                           type="button"
                           onClick={() => setAuthMode('forgot')}
-                          className="text-[10px] font-mono text-indigo-500 hover:underline cursor-pointer"
+                          className="text-[10px] font-mono text-[#FF7057] hover:underline cursor-pointer"
                         >
                           Forgot Password?
                         </button>
                       )}
                     </div>
-                    <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-indigo-500 px-3.5 py-2 text-xs">
+                    <div className="flex items-center rounded-xl theme-bg-surface-1 border theme-border focus-within:border-[#FF7057] px-3.5 py-2 text-xs neu-input">
                       <Lock className="w-4 h-4 theme-text-muted mr-2 shrink-0" />
                       <input
                         type={showPassword ? 'text' : 'password'}
@@ -612,7 +612,7 @@ export const Login: React.FC<LoginProps> = ({
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
+                    className="w-full py-2.5 rounded-xl bg-[#FF7057] hover:bg-[#F26049] text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
                   >
                     {isLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -639,20 +639,20 @@ export const Login: React.FC<LoginProps> = ({
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@company.com"
-                      className="w-full rounded-xl theme-bg-surface-1 border theme-border px-3.5 py-2 text-xs theme-text-primary font-mono focus:border-indigo-500 focus:outline-none"
+                      className="w-full rounded-xl theme-bg-surface-1 border theme-border px-3.5 py-2 text-xs theme-text-primary font-mono focus:border-[#FF7057] focus:outline-none"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
+                    className="w-full py-2.5 rounded-xl bg-[#FF7057] hover:bg-[#F26049] text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
                   >
                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'SEND RECOVERY LINK'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setAuthMode('signin')}
-                    className="w-full text-center text-xs font-mono text-indigo-500 hover:underline cursor-pointer"
+                    className="w-full text-center text-xs font-mono text-[#FF7057] hover:underline cursor-pointer"
                   >
                     Back to Sign In
                   </button>
@@ -672,7 +672,7 @@ export const Login: React.FC<LoginProps> = ({
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="At least 6 characters"
-                      className="w-full rounded-xl theme-bg-surface-1 border theme-border px-3.5 py-2 text-xs theme-text-primary font-mono focus:border-indigo-500 focus:outline-none"
+                      className="w-full rounded-xl theme-bg-surface-1 border theme-border px-3.5 py-2 text-xs theme-text-primary font-mono focus:border-[#FF7057] focus:outline-none"
                     />
                   </div>
                   <div>
@@ -685,13 +685,13 @@ export const Login: React.FC<LoginProps> = ({
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Re-enter password"
-                      className="w-full rounded-xl theme-bg-surface-1 border theme-border px-3.5 py-2 text-xs theme-text-primary font-mono focus:border-indigo-500 focus:outline-none"
+                      className="w-full rounded-xl theme-bg-surface-1 border theme-border px-3.5 py-2 text-xs theme-text-primary font-mono focus:border-[#FF7057] focus:outline-none"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-60"
+                    className="w-full py-2.5 rounded-xl bg-[#FF7057] hover:bg-[#F26049] text-white font-mono text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer neu-button disabled:opacity-60"
                   >
                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'UPDATE PASSWORD & LAUNCH'}
                   </button>

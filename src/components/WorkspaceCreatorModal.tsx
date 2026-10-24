@@ -52,7 +52,7 @@ const RUNTIMES = [
     desc: 'Interactive POSIX shell daemon streaming over full-duplex WebSockets.',
     badge: 'Node-PTY POSIX',
     icon: Terminal,
-    accent: 'text-indigo-400',
+    accent: 'text-[#FF7057]',
   },
 ];
 
@@ -108,13 +108,13 @@ export const WorkspaceCreatorModal: React.FC<WorkspaceCreatorModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 select-none">
       <SpotlightCard
-        spotlightColor="rgba(99, 102, 241, 0.2)"
-        className="w-full max-w-xl rounded-2xl border theme-border theme-bg-surface-1 p-6 theme-shadow shadow-2xl relative overflow-hidden"
+        spotlightColor="rgba(255, 112, 87, 0.15)"
+        className="w-full max-w-xl rounded-2xl border theme-border theme-bg-surface-1 p-6 neu-card relative overflow-hidden"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b theme-border pb-4 mb-5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-xs">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FF7057] text-white neu-button">
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
@@ -146,7 +146,7 @@ export const WorkspaceCreatorModal: React.FC<WorkspaceCreatorModalProps> = ({
               <div
                 className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-mono font-bold transition-colors ${
                   step === item.num
-                    ? 'bg-indigo-600 text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]'
+                    ? 'bg-[#FF7057] text-white neu-button'
                     : step > item.num
                     ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30'
                     : 'theme-bg-surface-2 theme-text-secondary border theme-border'
@@ -183,7 +183,7 @@ export const WorkspaceCreatorModal: React.FC<WorkspaceCreatorModalProps> = ({
                     onClick={() => setSelectedRuntime(rt.id)}
                     className={`flex items-start gap-3 rounded-xl border p-3.5 transition cursor-pointer ${
                       isSelected
-                        ? 'border-indigo-500 bg-indigo-500/10 shadow-xs'
+                        ? 'border-[#FF7057] bg-[#FF7057]/10'
                         : 'theme-border theme-bg-surface-2 hover:theme-bg-surface-1'
                     }`}
                   >
@@ -193,7 +193,7 @@ export const WorkspaceCreatorModal: React.FC<WorkspaceCreatorModalProps> = ({
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold theme-text-primary">{rt.name}</span>
-                        <span className="rounded font-mono text-[10px] bg-indigo-500/15 border border-indigo-500/20 px-1.5 py-0.2 text-indigo-400">
+                        <span className="rounded font-mono text-[10px] bg-[#FF7057]/15 border border-[#FF7057]/20 px-1.5 py-0.2 text-[#FF7057]">
                           {rt.badge}
                         </span>
                       </div>
@@ -210,7 +210,7 @@ export const WorkspaceCreatorModal: React.FC<WorkspaceCreatorModalProps> = ({
             <div className="space-y-6 min-h-[260px] py-2">
               <div className="rounded-xl border theme-border theme-bg-surface-2 p-3.5 space-y-1">
                 <span className="text-xs font-bold theme-text-primary flex items-center gap-1.5">
-                  <Sliders className="h-3.5 w-3.5 text-indigo-400" />
+                  <Sliders className="h-3.5 w-3.5 text-[#FF7057]" />
                   Tactile Elastic Resource Allocation
                 </span>
                 <p className="text-[11px] theme-text-secondary">
@@ -258,7 +258,7 @@ export const WorkspaceCreatorModal: React.FC<WorkspaceCreatorModalProps> = ({
                   value={roomName}
                   onChange={(e) => setRoomName(e.target.value)}
                   placeholder="e.g. Distributed Consensus Lab"
-                  className="w-full rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-xs theme-text-primary placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-xs theme-text-primary placeholder:text-muted focus:border-[#FF7057] focus:outline-none"
                 />
               </div>
 
@@ -271,14 +271,14 @@ export const WorkspaceCreatorModal: React.FC<WorkspaceCreatorModalProps> = ({
                   value={roomDesc}
                   onChange={(e) => setRoomDesc(e.target.value)}
                   placeholder="Multiplayer CRDT algorithm with zero conflict state vectors"
-                  className="w-full rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-xs theme-text-primary placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border theme-border theme-bg-surface-2 px-3 py-2 text-xs theme-text-primary placeholder:text-muted focus:border-[#FF7057] focus:outline-none"
                 />
               </div>
 
               {/* Private / Public Toggle */}
               <div
                 onClick={() => setIsPrivate((p) => !p)}
-                className="flex items-center justify-between rounded-xl border theme-border theme-bg-surface-2 p-3 cursor-pointer hover:border-indigo-500/40 transition"
+                className="flex items-center justify-between rounded-xl border theme-border theme-bg-surface-2 p-3 cursor-pointer hover:border-[#FF7057]/40 transition"
               >
                 <div className="flex items-center gap-2.5">
                   {isPrivate ? (
@@ -318,7 +318,7 @@ export const WorkspaceCreatorModal: React.FC<WorkspaceCreatorModalProps> = ({
               <button
                 type="button"
                 onClick={handleBack}
-                className="inline-flex items-center gap-1.5 rounded-lg border theme-border theme-bg-surface-2 px-3.5 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-lg border theme-border theme-bg-surface-2 px-3.5 py-1.5 text-xs font-medium theme-text-secondary hover:theme-text-primary transition cursor-pointer neu-button"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 <span>Back</span>
@@ -331,7 +331,7 @@ export const WorkspaceCreatorModal: React.FC<WorkspaceCreatorModalProps> = ({
               <button
                 type="button"
                 onClick={handleNext}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#FF7057] hover:bg-[#F26049] px-4 py-1.5 text-xs font-semibold text-white transition cursor-pointer neu-button"
               >
                 <span>Continue</span>
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -340,7 +340,7 @@ export const WorkspaceCreatorModal: React.FC<WorkspaceCreatorModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-1.5 text-xs font-semibold text-white hover:from-emerald-500 hover:to-teal-500 transition cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.4)] disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#FF7057] hover:bg-[#F26049] px-5 py-1.5 text-xs font-semibold text-white transition cursor-pointer neu-button disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />

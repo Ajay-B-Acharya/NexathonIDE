@@ -159,14 +159,14 @@ export const DifferentiatorHUD: React.FC<DifferentiatorHUDProps> = ({
             : 'translate-y-0 opacity-100 pointer-events-auto scale-100'
         } ${
           isDark
-            ? 'border-white/15 bg-[#090d16]/92 text-slate-100 backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.8)]'
-            : 'border-slate-300 bg-white/95 text-slate-900 backdrop-blur-2xl shadow-[0_12px_36px_rgba(15,23,42,0.14)]'
+            ? 'border-[#242424] bg-[#000000] text-white'
+            : 'border-[#E9DECE] bg-[#FFF9F0] text-[#302820] neu-card'
         }`}
       >
         {/* Hybrid Engine Clutch Switcher (WASM Edge <-> Cloud PTY) */}
         <div
           className={`flex items-center rounded-xl p-0.5 border ${
-            isDark ? 'bg-black/60 border-white/10' : 'bg-slate-100 border-slate-300'
+            isDark ? 'bg-[#0A0A0A] border-[#242424]' : 'bg-[#F1E8DA] border-[#E9DECE]'
           }`}
           title="Hybrid Engine Clutch: Switch instant local WebAssembly execution with cloud Linux PTY container"
         >
@@ -175,8 +175,8 @@ export const DifferentiatorHUD: React.FC<DifferentiatorHUDProps> = ({
             onClick={() => handleSelectEngine('wasm')}
             className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer font-bold ${
               activeEngineMode === 'wasm'
-                ? 'bg-cyan-400 text-slate-950 shadow-[0_0_15px_rgba(0,240,255,0.4)]'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-[#FF7057] text-white'
+                : 'theme-text-secondary hover:theme-text-primary'
             }`}
           >
             <Cpu className="w-3.5 h-3.5" />
@@ -187,8 +187,8 @@ export const DifferentiatorHUD: React.FC<DifferentiatorHUDProps> = ({
             onClick={() => handleSelectEngine('pty')}
             className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer font-bold ${
               activeEngineMode === 'pty'
-                ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-[#FF7057] text-white'
+                : 'theme-text-secondary hover:theme-text-primary'
             }`}
           >
             <Terminal className="w-3.5 h-3.5" />
@@ -196,19 +196,19 @@ export const DifferentiatorHUD: React.FC<DifferentiatorHUDProps> = ({
           </button>
         </div>
 
-        <div className={`h-4 w-px mx-1 ${isDark ? 'bg-white/15' : 'bg-slate-300'}`} />
+        <div className={`h-4 w-px mx-1 ${isDark ? 'bg-[#242424]' : 'bg-[#E9DECE]'}`} />
 
-        {/* Architecture X-Ray HUD Toggle (Judge & Dev Magnet) */}
+        {/* Architecture X-Ray HUD Toggle */}
         <button
           type="button"
           onClick={() => setXRayMode(!xRayMode)}
           title="Toggle Technical Architecture X-Ray HUD (Shortcut: Cmd+X / Ctrl+X)"
           className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer font-bold ${
             xRayMode
-              ? 'border-rose-500 bg-rose-500/15 text-rose-700 dark:text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.35)]'
+              ? 'border-[#FF7057] bg-[#FF7057]/15 text-[#FF7057]'
               : isDark
-              ? 'border-transparent hover:bg-white/5 text-slate-300'
-              : 'border-transparent hover:bg-slate-100 text-slate-700 font-bold'
+              ? 'border-transparent hover:bg-[#111111] text-[#B3B3B3]'
+              : 'border-transparent hover:bg-[#F1E8DA] text-[#302820] font-bold'
           }`}
         >
           <Eye className="w-3.5 h-3.5" />
@@ -219,8 +219,8 @@ export const DifferentiatorHUD: React.FC<DifferentiatorHUDProps> = ({
         </button>
 
         {/* Spatial Cursor Chat Hint */}
-        <span className="hidden lg:flex items-center gap-1 px-2.5 py-1 text-[11px] text-slate-600 dark:text-slate-400 font-semibold">
-          Press <kbd className="px-1.5 py-0.5 rounded border border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-white/10 font-bold text-slate-900 dark:text-white">/</kbd> to Chat
+        <span className="hidden lg:flex items-center gap-1 px-2.5 py-1 text-[11px] theme-text-muted font-semibold">
+          Press <kbd className="px-1.5 py-0.5 rounded border theme-border theme-bg-surface-2 font-bold theme-text-primary">/</kbd> to Chat
         </span>
       </div>
 
@@ -234,7 +234,7 @@ export const DifferentiatorHUD: React.FC<DifferentiatorHUDProps> = ({
         >
           <form
             onSubmit={handleSendChat}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl rounded-tl-xs bg-cyan-400 text-slate-950 shadow-[0_10px_35px_rgba(0,240,255,0.45)] font-mono text-xs font-bold min-w-[240px]"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl rounded-tl-xs bg-[#FF7057] text-white border border-[#F26049] neu-button font-mono text-xs font-bold min-w-[240px]"
           >
             <MessageSquare className="w-3.5 h-3.5 shrink-0" />
             <input
@@ -243,7 +243,7 @@ export const DifferentiatorHUD: React.FC<DifferentiatorHUDProps> = ({
               value={chatMessage}
               onChange={(e) => setChatMessage(e.target.value)}
               placeholder="Broadcast to Yjs peers... (Enter ↵)"
-              className="bg-transparent placeholder-slate-900/60 text-slate-950 focus:outline-none w-full font-bold"
+              className="bg-transparent placeholder-white/70 text-white focus:outline-none w-full font-bold"
             />
             <button
               type="button"
@@ -262,8 +262,8 @@ export const DifferentiatorHUD: React.FC<DifferentiatorHUDProps> = ({
           className="fixed z-50 pointer-events-none transition-all duration-300 animate-in fade-in zoom-in-95"
           style={{ left: activeBubble.x + 16, top: activeBubble.y + 16 }}
         >
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl rounded-tl-xs bg-cyan-400 text-slate-950 shadow-[0_8px_25px_rgba(0,240,255,0.35)] font-mono text-xs font-bold">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl rounded-tl-xs bg-[#FF7057] text-white border border-[#F26049] neu-button font-mono text-xs font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
             <span>{activeBubble.text}</span>
           </div>
         </div>
@@ -291,49 +291,49 @@ export const DifferentiatorHUD: React.FC<DifferentiatorHUDProps> = ({
               <button
                 type="button"
                 onClick={() => setMinimizedCRDT(false)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border shadow-lg cursor-pointer transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border cursor-pointer transition-all ${
                   isDark
-                    ? 'border-rose-500/60 bg-[#06080e]/95 text-rose-300 hover:border-rose-400'
-                    : 'border-rose-400 bg-white/95 text-rose-800 hover:border-rose-600 shadow-md'
+                    ? 'border-[#242424] bg-[#000000] text-white'
+                    : 'border-[#E9DECE] bg-[#FFF9F0] text-[#302820] neu-button'
                 }`}
                 title="Expand Yjs CRDT Telemetry"
               >
-                <Radio className="w-3.5 h-3.5 text-rose-500 animate-ping" />
+                <Radio className="w-3.5 h-3.5 text-[#FF7057] animate-ping" />
                 <span className="font-bold">CRDT: 1.4KB</span>
                 <ChevronUp className="w-3 h-3 rotate-180 opacity-70" />
               </button>
             ) : (
               <div
-                className={`p-4 rounded-2xl border backdrop-blur-xl space-y-1.5 min-w-[270px] max-w-[310px] transition-all ${
+                className={`p-4 rounded-2xl border space-y-1.5 min-w-[270px] max-w-[310px] transition-all ${
                   isDark
-                    ? 'border-rose-500/50 bg-[#06080e]/95 text-rose-300 shadow-[0_0_35px_rgba(244,63,94,0.25)]'
-                    : 'border-rose-400 bg-white/95 text-slate-800 shadow-[0_10px_30px_rgba(244,63,94,0.18)]'
+                    ? 'border-[#242424] bg-[#000000] text-white'
+                    : 'border-[#E9DECE] bg-[#FFF9F0] text-[#302820] neu-card'
                 }`}
               >
-                <div className="flex items-center justify-between gap-3 font-bold text-rose-700 dark:text-rose-400 border-b border-rose-500/20 pb-1.5">
+                <div className="flex items-center justify-between gap-3 font-bold text-[#FF7057] border-b theme-border pb-1.5">
                   <span className="flex items-center gap-2">
                     <Radio className="w-3.5 h-3.5 animate-ping" />
                     [X-RAY] YJS_CRDT_PROVIDER
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-rose-500/10 font-bold">v13.6</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded theme-bg-surface-2 font-bold">v13.6</span>
                     <button
                       type="button"
                       onClick={() => setMinimizedCRDT(true)}
-                      className="p-0.5 hover:bg-rose-500/20 rounded cursor-pointer text-rose-600 dark:text-rose-400"
+                      className="p-0.5 hover:theme-bg-surface-2 rounded cursor-pointer text-[#FF7057]"
                       title="Minimize card"
                     >
                       <Minus className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
-                <div className="text-slate-700 dark:text-slate-300 font-medium">
-                  Binary State Vector: <strong className="text-slate-950 dark:text-white font-bold">1,482 bytes</strong>
+                <div className="theme-text-secondary font-medium">
+                  Binary State Vector: <strong className="theme-text-primary font-bold">1,482 bytes</strong>
                 </div>
-                <div className="text-slate-700 dark:text-slate-300 font-medium">
-                  Conflict Resolution: <strong className="text-slate-950 dark:text-white font-bold">Sub-ms Lamport Merges</strong>
+                <div className="theme-text-secondary font-medium">
+                  Conflict Resolution: <strong className="theme-text-primary font-bold">Sub-ms Lamport Merges</strong>
                 </div>
-                <div className="text-[10px] text-slate-500 dark:text-rose-400/80 font-medium">
+                <div className="text-[10px] theme-text-muted font-medium">
                   Awareness Protocol: WebRTC + WebSocket :1234
                 </div>
               </div>
@@ -342,63 +342,62 @@ export const DifferentiatorHUD: React.FC<DifferentiatorHUDProps> = ({
 
           {/* --------------------------------------------------------- */}
           {/* BANNER 2: Mid-Left WASM Heap Inspector */}
-          {/* Pops OUT and becomes completely invisible when scrolling down */}
           {/* --------------------------------------------------------- */}
           <div
             className={`absolute top-72 lg:top-76 left-3 lg:left-6 xl:left-8 pointer-events-auto origin-top-left transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isScrolledDown
                 ? 'translate-y-20 -translate-x-12 opacity-0 pointer-events-none scale-90'
-                : 'translate-y-0 translate-x-0 opacity-100 pointer-events-auto scale-100 shadow-2xl'
+                : 'translate-y-0 translate-x-0 opacity-100 pointer-events-auto scale-100'
             }`}
           >
             {minimizedWASM ? (
               <button
                 type="button"
                 onClick={() => setMinimizedWASM(false)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border shadow-lg cursor-pointer transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border cursor-pointer transition-all ${
                   isDark
-                    ? 'border-cyan-400/60 bg-[#06080e]/95 text-cyan-300 hover:border-cyan-300'
-                    : 'border-cyan-500 bg-white/95 text-teal-800 hover:border-cyan-600 shadow-md'
+                    ? 'border-[#242424] bg-[#000000] text-white'
+                    : 'border-[#E9DECE] bg-[#FFF9F0] text-[#302820] neu-button'
                 }`}
                 title="Expand Pyodide WASM Telemetry"
               >
-                <Cpu className="w-3.5 h-3.5 text-cyan-500" />
+                <Cpu className="w-3.5 h-3.5 text-[#FF7057]" />
                 <span className="font-bold">WASM: 42.4MB</span>
                 <ChevronUp className="w-3 h-3 rotate-180 opacity-70" />
               </button>
             ) : (
               <div
-                className={`p-4 rounded-2xl border backdrop-blur-xl space-y-1.5 min-w-[270px] max-w-[310px] transition-all ${
+                className={`p-4 rounded-2xl border space-y-1.5 min-w-[270px] max-w-[310px] transition-all ${
                   isDark
-                    ? 'border-cyan-400/50 bg-[#06080e]/95 text-cyan-300 shadow-[0_0_35px_rgba(0,240,255,0.25)]'
-                    : 'border-cyan-400 bg-white/95 text-slate-800 shadow-[0_10px_30px_rgba(0,240,255,0.18)]'
+                    ? 'border-[#242424] bg-[#000000] text-white'
+                    : 'border-[#E9DECE] bg-[#FFF9F0] text-[#302820] neu-card'
                 }`}
               >
-                <div className="flex items-center justify-between gap-3 font-bold text-teal-700 dark:text-cyan-400 border-b border-cyan-400/20 pb-1.5">
+                <div className="flex items-center justify-between gap-3 font-bold text-[#FF7057] border-b theme-border pb-1.5">
                   <span className="flex items-center gap-2">
                     <Cpu className="w-3.5 h-3.5" />
                     [X-RAY] PYODIDE_WASM_SANDBOX
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-400/10 font-bold">0.26.2</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded theme-bg-surface-2 font-bold">0.26.2</span>
                     <button
                       type="button"
                       onClick={() => setMinimizedWASM(true)}
-                      className="p-0.5 hover:bg-cyan-500/20 rounded cursor-pointer text-teal-700 dark:text-cyan-400"
+                      className="p-0.5 hover:theme-bg-surface-2 rounded cursor-pointer text-[#FF7057]"
                       title="Minimize card"
                     >
                       <Minus className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
-                <div className="text-slate-700 dark:text-slate-300 font-medium">
-                  Linear Memory Heap: <strong className="text-slate-950 dark:text-white font-bold">42.4 MB</strong> (Worker)
+                <div className="theme-text-secondary font-medium">
+                  Linear Memory Heap: <strong className="theme-text-primary font-bold">42.4 MB</strong> (Worker)
                 </div>
-                <div className="text-slate-700 dark:text-slate-300 font-medium">
-                  Cold-Start Latency: <strong className="text-slate-950 dark:text-white font-bold">0.04s</strong> (Zero VM boot)
+                <div className="theme-text-secondary font-medium">
+                  Cold-Start Latency: <strong className="theme-text-primary font-bold">0.04s</strong> (Zero VM boot)
                 </div>
-                <div className="text-[10px] text-slate-500 dark:text-cyan-400/80 font-medium">
-                  Server Compute Cost: <strong className="text-emerald-700 dark:text-emerald-400 font-bold">$0.00 / execution</strong>
+                <div className="text-[10px] theme-text-muted font-medium">
+                  Server Compute Cost: <strong className="theme-text-primary font-bold">$0.00 / execution</strong>
                 </div>
               </div>
             )}
@@ -406,63 +405,62 @@ export const DifferentiatorHUD: React.FC<DifferentiatorHUDProps> = ({
 
           {/* --------------------------------------------------------- */}
           {/* BANNER 3: Top-Right Node-PTY & AI Doctor Inspector */}
-          {/* Pops OUT and becomes completely invisible when scrolling down */}
           {/* --------------------------------------------------------- */}
           <div
             className={`absolute top-24 right-3 lg:right-6 xl:right-8 pointer-events-auto origin-top-right transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isScrolledDown
                 ? '-translate-y-20 translate-x-12 opacity-0 pointer-events-none scale-90'
-                : 'translate-y-0 translate-x-0 opacity-100 pointer-events-auto scale-100 shadow-2xl'
+                : 'translate-y-0 translate-x-0 opacity-100 pointer-events-auto scale-100'
             }`}
           >
             {minimizedPTY ? (
               <button
                 type="button"
                 onClick={() => setMinimizedPTY(false)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border shadow-lg cursor-pointer transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border cursor-pointer transition-all ${
                   isDark
-                    ? 'border-emerald-400/60 bg-[#06080e]/95 text-emerald-300 hover:border-emerald-300'
-                    : 'border-emerald-500 bg-white/95 text-emerald-800 hover:border-emerald-600 shadow-md'
+                    ? 'border-[#242424] bg-[#000000] text-white'
+                    : 'border-[#E9DECE] bg-[#FFF9F0] text-[#302820] neu-button'
                 }`}
                 title="Expand Node-PTY Telemetry"
               >
-                <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                <Sparkles className="w-3.5 h-3.5 text-[#FF7057]" />
                 <span className="font-bold">PTY: PID #4821</span>
                 <ChevronUp className="w-3 h-3 rotate-180 opacity-70" />
               </button>
             ) : (
               <div
-                className={`p-4 rounded-2xl border backdrop-blur-xl space-y-1.5 min-w-[270px] max-w-[310px] transition-all ${
+                className={`p-4 rounded-2xl border space-y-1.5 min-w-[270px] max-w-[310px] transition-all ${
                   isDark
-                    ? 'border-emerald-400/50 bg-[#06080e]/95 text-emerald-300 shadow-[0_0_35px_rgba(16,185,129,0.25)]'
-                    : 'border-emerald-400 bg-white/95 text-slate-800 shadow-[0_10px_30px_rgba(16,185,129,0.18)]'
+                    ? 'border-[#242424] bg-[#000000] text-white'
+                    : 'border-[#E9DECE] bg-[#FFF9F0] text-[#302820] neu-card'
                 }`}
               >
-                <div className="flex items-center justify-between gap-3 font-bold text-emerald-700 dark:text-emerald-400 border-b border-emerald-400/20 pb-1.5">
+                <div className="flex items-center justify-between gap-3 font-bold text-[#FF7057] border-b theme-border pb-1.5">
                   <span className="flex items-center gap-2">
                     <Sparkles className="w-3.5 h-3.5" />
                     [X-RAY] PTY_DAEMON + AST_DOCTOR
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-400/10 font-bold">Active</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded theme-bg-surface-2 font-bold">Active</span>
                     <button
                       type="button"
                       onClick={() => setMinimizedPTY(true)}
-                      className="p-0.5 hover:bg-emerald-500/20 rounded cursor-pointer text-emerald-700 dark:text-emerald-400"
+                      className="p-0.5 hover:theme-bg-surface-2 rounded cursor-pointer text-[#FF7057]"
                       title="Minimize card"
                     >
                       <Minus className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
-                <div className="text-slate-700 dark:text-slate-300 font-medium">
-                  Cloud Shell: <strong className="text-slate-950 dark:text-white font-bold">node-pty PID #4821</strong>
+                <div className="theme-text-secondary font-medium">
+                  Cloud Shell: <strong className="theme-text-primary font-bold">node-pty PID #4821</strong>
                 </div>
-                <div className="text-slate-700 dark:text-slate-300 font-medium">
-                  AI Hook: <strong className="text-slate-950 dark:text-white font-bold">STDERR AST Interceptor</strong>
+                <div className="theme-text-secondary font-medium">
+                  AI Hook: <strong className="theme-text-primary font-bold">STDERR AST Interceptor</strong>
                 </div>
-                <div className="text-[10px] text-slate-500 dark:text-emerald-400/80 font-medium">
-                  Diff Guard: <strong className="text-indigo-700 dark:text-indigo-400 font-bold">Automatic Patch Generation</strong>
+                <div className="text-[10px] theme-text-muted font-medium">
+                  Diff Guard: <strong className="theme-text-primary font-bold">Automatic Patch Generation</strong>
                 </div>
               </div>
             )}
