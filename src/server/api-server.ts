@@ -13,6 +13,9 @@ import type { AIDebugRequest, AIDebugResponse } from './types.js';
 import { createTerminalRouter, setupTerminalServer } from './terminal/terminalServer.js';
 import { sessionManager } from './terminal/sessionManager.js';
 import { startServer as startYjsServer, wss as yjsWss } from './yjs-server.js';
+import { createAIAgentRouter } from './ai-agent-routes.js';
+import { GitHubImportService } from './services/githubImportService.js';
+import { ProjectDetectionService } from './services/projectDetectionService.js';
 
 try {
   process.loadEnvFile();
@@ -29,6 +32,8 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 app.use(cors());
 app.use(express.json());
 app.use('/api/terminal', createTerminalRouter());
+app.use('/api/ai/agent', createAIAgentRouter());
+app.use('/ai/agent', createAIAgentRouter());
 
 // AI Provider Setup: Groq (ultra-fast inference via OpenAI-compatible endpoint)
 const groqApiKey = process.env.GROQ_API_KEY;
@@ -709,6 +714,125 @@ const handleDeleteFile = async (req: Request, res: Response) => {
 
 app.delete('/api/rooms/:roomId/files/:filePath', handleDeleteFile);
 app.delete('/rooms/:roomId/files/:filePath', handleDeleteFile);
+
+// ============================================================================
+// GitHub Import & Multi-Language Repository APIs
+// ============================================================================
+
+app.post(['/api/github/validate', '/github/validate'], async (req: Request, res: Response) => {
+  try {
+    const { url, githubToken } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+    const info = await GitHubImportService.validateRepository(url, githubToken);
+    res.json(info);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Validation failed' });
+  }
+});
+
+app.post(['/api/github/import', '/github/import'], async (req: Request, res: Response) => {
+  try {
+    const { url, branch, ownerId, name, githubToken } = req.body;
+    if (!url) return res.status(400).json({ error: 'Repository URL is required' });
+    const result = await GitHubImportService.importRepository(
+      { url, branch, ownerId: ownerId || 'default', name, githubToken },
+      memoryRooms,
+      memoryFiles
+    );
+    res.status(201).json(result);
+  } catch (err: any) {
+    console.error('GitHub import failed:', err);
+    res.status(400).json({ error: err.message || 'Repository import failed' });
+  }
+});
+
+app.get(['/api/workspaces/:roomId/profile', '/workspaces/:roomId/profile'], async (req: Request, res: Response) => {
+  try {
+    const roomId = String(req.params.roomId);
+    let files: Array<{ path: string; content?: string }> = [];
+    if (supabaseConnected && isValidUUID(roomId)) {
+      try {
+        const dbFiles = await WorkspaceService.listFiles(roomId);
+        if (Array.isArray(dbFiles)) {
+          files = dbFiles.map((f: any) => ({ path: f.path, content: f.content }));
+        }
+      } catch {}
+    }
+    if (files.length === 0) {
+      files = Array.from(memoryFiles.values())
+        .filter((f) => f.room_id === roomId || f.roomId === roomId)
+        .map((f) => ({ path: f.path, content: f.content }));
+    }
+    const profile = ProjectDetectionService.analyzeProject(files);
+    res.json(profile);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to detect project profile' });
+  }
+});
+
+const memoryGitCommits = new Map<string, Array<{ sha: string; message: string; author: string; timestamp: string }>>();
+
+app.get(['/api/workspaces/:roomId/git', '/workspaces/:roomId/git'], async (req: Request, res: Response) => {
+  try {
+    const roomId = String(req.params.roomId);
+    let room: any = null;
+    if (supabaseConnected && isValidUUID(roomId)) {
+      try {
+        room = await WorkspaceService.getRoom(roomId);
+      } catch {}
+    }
+    if (!room) {
+      room = memoryRooms.get(roomId);
+    }
+
+    const commits = memoryGitCommits.get(roomId) || [
+      {
+        sha: room?.commit_sha || room?.commitSha || 'c01a4e8',
+        message: room?.isGitHubImport || room?.repository_url ? 'Initial GitHub import' : 'Initial workspace commit',
+        author: 'developer',
+        timestamp: room?.created_at || room?.createdAt || new Date().toISOString(),
+      },
+    ];
+
+    res.json({
+      branch: room?.branch || 'main',
+      commitSha: room?.commit_sha || room?.commitSha || 'c01a4e8',
+      repositoryUrl: room?.repository_url || room?.repositoryUrl || undefined,
+      branches: [room?.branch || 'main'],
+      modifiedFiles: [],
+      untrackedFiles: [],
+      isClean: true,
+      commits,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post(['/api/workspaces/:roomId/git/commit', '/workspaces/:roomId/git/commit'], async (req: Request, res: Response) => {
+  try {
+    const roomId = String(req.params.roomId);
+    const { message, author } = req.body;
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Commit message is required' });
+    }
+    const sha = Math.random().toString(36).substring(2, 9);
+    const newCommit = {
+      sha,
+      message: message.trim(),
+      author: author || 'Collaborator',
+      timestamp: new Date().toISOString(),
+    };
+
+    const existing = memoryGitCommits.get(roomId) || [];
+    existing.unshift(newCommit);
+    memoryGitCommits.set(roomId, existing);
+
+    res.status(201).json({ success: true, commit: newCommit });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // AI Debugger (Groq ultra-fast LPU inference)
 const handleAIDebug = async (req: Request, res: Response) => {

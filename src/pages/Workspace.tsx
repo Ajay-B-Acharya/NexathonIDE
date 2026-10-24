@@ -8,6 +8,7 @@ import { EditorPane } from '../components/EditorPane';
 import { OutputPanel } from '../components/OutputPanel';
 import { TerminalPanel } from '../components/TerminalPanel';
 import { AIDebuggerPanel } from '../components/AIDebuggerPanel';
+import { AIAgentSidebar } from '../components/AIAgentSidebar';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { FileConflictModal } from '../components/FileConflictModal';
 import { ConnectionDiagnosticsModal } from '../components/ConnectionDiagnosticsModal';
@@ -27,6 +28,8 @@ import {
 import {
   BottomTabType,
   ExecutionResult,
+  ProposedPatch,
+  ProjectProfile,
   SupportedLanguage,
   UserProfile,
   WorkspaceFile,
@@ -62,6 +65,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [isExplorerOpen, setIsExplorerOpen] = useState(() => initialSavedUI?.isExplorerOpen ?? true);
   const [isBottomDrawerOpen, setIsBottomDrawerOpen] = useState(() => initialSavedUI?.isBottomDrawerOpen ?? true);
   const [activeBottomTab, setActiveBottomTab] = useState<BottomTabType>(() => initialSavedUI?.activeBottomTab ?? 'output');
+  const [isAgentSidebarOpen, setIsAgentSidebarOpen] = useState(() => initialSavedUI?.isAgentSidebarOpen ?? false);
 
   const [isRunning, setIsRunning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -72,6 +76,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const [folderPendingDelete, setFolderPendingDelete] = useState<string | null>(null);
   const [emptyFolders, setEmptyFolders] = useState<Set<string>>(new Set());
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
+  const [projectProfile, setProjectProfile] = useState<ProjectProfile | null>(null);
 
   // Smart conflict resolution dialog state for concurrent creations
   const [conflictModalState, setConflictModalState] = useState<{
@@ -108,6 +113,14 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     invert: true,
   });
 
+  const agentSidebarResize = useResizablePanel({
+    initialSize: 380,
+    minSize: 280,
+    maxSize: 620,
+    direction: 'horizontal',
+    invert: true,
+  });
+
   const activeFile = files.find((f) => f.id === activeFileId) || null;
   const openFiles = openFileIds
     .map((id) => files.find((f) => f.id === id))
@@ -121,8 +134,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       activeBottomTab,
       isBottomDrawerOpen,
       isExplorerOpen,
+      isAgentSidebarOpen,
     });
-  }, [room.id, openFileIds, activeFileId, activeBottomTab, isBottomDrawerOpen, isExplorerOpen]);
+  }, [room.id, openFileIds, activeFileId, activeBottomTab, isBottomDrawerOpen, isExplorerOpen, isAgentSidebarOpen]);
 
   // Load files on room initial mount
   useEffect(() => {
@@ -173,6 +187,14 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             setActiveFileId(filesWithDrafts[0].id);
           }
         }
+
+        // Fetch language-agnostic project profile
+        void workspaceApi
+          .getProjectProfile(room.id)
+          .then((prof) => {
+            if (isMounted) setProjectProfile(prof);
+          })
+          .catch(() => {});
       } catch (err) {
         console.error('Failed to load workspace files:', err);
       }
@@ -460,6 +482,51 @@ clearFileDraft(room.id, fileId);
       );
     }
   };
+
+  const handleApplyAgentPatch = useCallback(
+    async (patch: ProposedPatch) => {
+      const cleanPatchPath = patch.filePath.replace(/^\/+/, '');
+      const isActive =
+        activeFile &&
+        (activeFile.path.replace(/^\/+/, '') === cleanPatchPath ||
+          activeFile.name === patch.filePath ||
+          cleanPatchPath.endsWith(activeFile.path.replace(/^\/+/, '')));
+
+      if (isActive) {
+        applyContentToSharedDoc(patch.patchedContent);
+      }
+
+      const targetFile = files.find((f) => {
+        const cleanPath = f.path.replace(/^\/+/, '');
+        return cleanPath === cleanPatchPath || f.name === patch.filePath || cleanPatchPath.endsWith(cleanPath);
+      });
+
+      if (targetFile) {
+        clearFileDraft(room.id, targetFile.id);
+        latestContentRef.current[targetFile.id] = patch.patchedContent;
+        setDbContentSnapshot((prev) => ({ ...prev, [targetFile.id]: patch.patchedContent }));
+        setFiles((prev) =>
+          prev.map((f) => (f.id === targetFile.id ? { ...f, content: patch.patchedContent } : f))
+        );
+
+        await workspaceApi.updateFile(room.id, targetFile.id, {
+          content: patch.patchedContent,
+          path: targetFile.path,
+          name: targetFile.name,
+          language: targetFile.language,
+        });
+      } else {
+        const newFile = await workspaceApi.createFile(room.id, {
+          path: patch.filePath,
+          content: patch.patchedContent,
+          language: detectLanguageFromPath(patch.filePath),
+        });
+        setFiles((prev) => [...prev, newFile]);
+        handleSelectFile(newFile);
+      }
+    },
+    [activeFile, files, room.id, applyContentToSharedDoc]
+  );
 
   const handleCreateFile = async (path: string, initialContent: string = '') => {
     const cleanPath = path.trim().replace(/^\/+/, '').replace(/\/+$/, '');
@@ -868,6 +935,11 @@ clearFileDraft(room.id, fileId);
           setIsBottomDrawerOpen(true);
           setActiveBottomTab('ai-debugger');
         }}
+        isAgentSidebarOpen={isAgentSidebarOpen}
+        onToggleAgentSidebar={() => setIsAgentSidebarOpen((prev) => !prev)}
+        branch={room.branch}
+        repositoryUrl={room.repositoryUrl}
+        primaryLanguage={projectProfile?.primaryLanguage || room.primaryLanguage}
         onSwitchWorkspace={onSwitchWorkspace}
         onLogout={onLogout}
         onOpenDiagnostics={() => setIsDiagnosticsOpen(true)}
@@ -1046,6 +1118,59 @@ clearFileDraft(room.id, fileId);
             </div>
           )}
         </div>
+
+        {isAgentSidebarOpen && (
+          <>
+            <div
+              onMouseDown={agentSidebarResize.startResize}
+              className={`w-1 cursor-col-resize theme-bg-surface-2 hover:bg-[#FF7057] transition-colors shrink-0 ${
+                agentSidebarResize.isDragging ? 'bg-[#FF7057]' : ''
+              }`}
+              title="Drag to resize AI Agent sidebar"
+            />
+            <div
+              style={{ width: `${agentSidebarResize.size}px` }}
+              className="h-full shrink-0 overflow-hidden border-l theme-border"
+            >
+              <AIAgentSidebar
+                roomId={room.id}
+                roomName={room.name}
+                user={user}
+                activeFile={activeFile}
+                files={files}
+                selectedCode={
+                  editorInstance?.getModel()?.getValueInRange(editorInstance.getSelection()!) ||
+                  undefined
+                }
+                selectedRange={
+                  editorInstance?.getSelection()
+                    ? {
+                        startLine: editorInstance.getSelection()!.startLineNumber,
+                        endLine: editorInstance.getSelection()!.endLineNumber,
+                      }
+                    : undefined
+                }
+                recentError={
+                  executionResult?.stderr || executionResult?.error || undefined
+                }
+                projectProfile={projectProfile || undefined}
+                isOpen={isAgentSidebarOpen}
+                onClose={() => setIsAgentSidebarOpen(false)}
+                onApplyPatch={handleApplyAgentPatch}
+                onOpenFileInEditor={(filePath) => {
+                  const cleanTarget = filePath.replace(/^\/+/, '');
+                  const target = files.find(
+                    (f) =>
+                      f.path.replace(/^\/+/, '') === cleanTarget ||
+                      f.name === filePath ||
+                      cleanTarget.endsWith(f.path.replace(/^\/+/, ''))
+                  );
+                  if (target) handleSelectFile(target);
+                }}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {filePendingDelete && (
