@@ -17,7 +17,6 @@ export interface Room {
 const rooms = new Map<string, Room>();
 
 const saveDebounceTimers = new Map<string, NodeJS.Timeout>();
-const resPruneTimers = new Map<string, NodeJS.Timeout>();
 
 async function tryLoadPersistedDoc(roomName: string, doc: Y.Doc) {
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roomName);
@@ -121,18 +120,6 @@ export function getOrCreateRoom(roomName: string, gc: boolean = true): Room {
     broadcastAwarenessUpdate(room!, changedClients, origin);
   });
 
-  // Wire reservation auto-expiry cleanup on the collaboration server
-  const reservationsMap = doc.getMap('edit_reservations');
-  const resPruneTimer = setInterval(() => {
-    const now = Date.now();
-    reservationsMap.forEach((res: any, key: string) => {
-      if (res && res.expiresAt && res.expiresAt <= now) {
-        reservationsMap.delete(key);
-      }
-    });
-  }, 15000);
-  resPruneTimers.set(roomName, resPruneTimer);
-
   rooms.set(roomName, room);
   console.log(`[RoomManager] Initialized room "${roomName}".`);
   return room;
@@ -153,12 +140,6 @@ export function getRoomCount(): number {
 export function removeRoom(roomName: string): boolean {
   const room = rooms.get(roomName);
   if (!room) return false;
-
-  const timer = resPruneTimers.get(roomName);
-  if (timer) {
-    clearInterval(timer);
-    resPruneTimers.delete(roomName);
-  }
 
   for (const client of room.clients) {
     try {
