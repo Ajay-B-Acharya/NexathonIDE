@@ -28,7 +28,6 @@ import { UserProfile, WorkspaceRoom } from '../types';
 import { ThemeMode, ThemeToggle } from '../components/ThemeToggle';
 import { SpotlightCard } from '../components/react-bits/cards/SpotlightCard';
 import { Folder } from '../components/react-bits/cards/Folder';
-import { CountUp } from '../components/react-bits/text/CountUp';
 import { DecryptedText } from '../components/react-bits/text/DecryptedText';
 import { FloatingCommandDock } from '../components/FloatingCommandDock';
 import { WorkspaceCreatorModal } from '../components/WorkspaceCreatorModal';
@@ -337,30 +336,6 @@ export const WorkspaceSelection: React.FC<WorkspaceSelectionProps> = ({
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
-          </div>
-        </div>
-
-        {/* Architectural Hairline Metric Ribbon */}
-        <div className="border-t theme-border mx-auto max-w-7xl grid grid-cols-2 sm:grid-cols-4 divide-x theme-border font-mono">
-          <div className="px-6 py-2.5 flex items-center justify-between">
-            <span className="text-[11px] theme-text-muted uppercase">WASM_CACHE</span>
-            <span className="text-xs sm:text-sm font-bold text-cyan-500 dark:text-cyan-400">
-              <CountUp from={0} to={38.4} duration={0.9} /> MB
-            </span>
-          </div>
-          <div className="px-6 py-2.5 flex items-center justify-between">
-            <span className="text-[11px] theme-text-muted uppercase">ACTIVE_PEERS</span>
-            <span className="text-xs sm:text-sm font-bold text-emerald-500 dark:text-emerald-400">
-              <CountUp from={0} to={6} duration={0.9} /> ONLINE
-            </span>
-          </div>
-          <div className="px-6 py-2.5 flex items-center justify-between">
-            <span className="text-[11px] theme-text-muted uppercase">PTY_DAEMON</span>
-            <span className="text-xs sm:text-sm font-bold text-indigo-500 dark:text-indigo-400">PORT :3001</span>
-          </div>
-          <div className="px-6 py-2.5 flex items-center justify-between">
-            <span className="text-[11px] theme-text-muted uppercase">AI_DIAGNOSTICS</span>
-            <span className="text-xs sm:text-sm font-bold text-amber-500">GPT-4o READY</span>
           </div>
         </div>
       </header>
