@@ -196,16 +196,17 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   } | null>(null);
   const [creationName, setCreationName] = useState('');
 
-  // Editing (rename) state
+  // Editing (rename) state: node identifier and current input value in separate states
   const [editingNode, setEditingNode] = useState<{
     type: 'file' | 'folder';
     idOrPath: string;
-    value: string;
   } | null>(null);
+  const [renameValue, setRenameValue] = useState('');
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const creationInputRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const isSubmittingRef = useRef(false);
 
   const tree = useMemo(() => buildFileTree(files, emptyFolders), [files, emptyFolders]);
 
@@ -214,14 +215,45 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       creationInputRef.current?.focus();
       creationInputRef.current?.select();
     }
-  }, [creationState]);
+  }, [creationState?.type, creationState?.parentPath]);
 
   useEffect(() => {
     if (editingNode) {
       renameInputRef.current?.focus();
-      renameInputRef.current?.select();
+      // Select base filename without extension for files; select full name for folders or extensionless files
+      const val = renameValue;
+      const lastDot = val.lastIndexOf('.');
+      if (editingNode.type === 'file' && lastDot > 0) {
+        renameInputRef.current?.setSelectionRange(0, lastDot);
+      } else {
+        renameInputRef.current?.select();
+      }
     }
-  }, [editingNode]);
+  }, [editingNode?.idOrPath, editingNode?.type]);
+
+  // Global F2 shortcut to rename active file or selected folder
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        if (editingNode || creationState) return;
+        if (activeFileId) {
+          const file = files.find((f) => f.id === activeFileId);
+          if (file) {
+            e.preventDefault();
+            setEditingNode({ type: 'file', idOrPath: file.id });
+            setRenameValue(file.name);
+          }
+        } else if (selectedFolderPath) {
+          e.preventDefault();
+          const folderName = selectedFolderPath.split('/').pop() || selectedFolderPath;
+          setEditingNode({ type: 'folder', idOrPath: selectedFolderPath });
+          setRenameValue(folderName);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [editingNode, creationState, activeFileId, selectedFolderPath, files]);
 
   const toggleFolder = (folderPath: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -245,7 +277,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
 
   const handleCreationSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!creationState) return;
+    if (!creationState || isSubmittingRef.current) return;
 
     const trimmed = creationName.trim().replace(/^\/+/, '').replace(/\/+$/, '');
     if (!trimmed) {
@@ -258,6 +290,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       ? `${creationState.parentPath}/${trimmed}`
       : trimmed;
 
+    isSubmittingRef.current = true;
     try {
       setErrorMsg(null);
       if (creationState.type === 'file') {
@@ -292,25 +325,31 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         setCreationName('');
         setErrorMsg(null);
       } else {
+        // Keep entered filename available so user can correct the problem without starting over
         setErrorMsg(err instanceof Error ? err.message : `Failed to create ${creationState.type}`);
       }
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 
-  const handleRenameSubmit = async () => {
-    if (!editingNode) return;
-    const trimmed = editingNode.value.trim().replace(/^\/+/, '').replace(/\/+$/, '');
+  const handleRenameSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!editingNode || isSubmittingRef.current) return;
+    const trimmed = renameValue.trim().replace(/^\/+/, '').replace(/\/+$/, '');
 
     if (!trimmed) {
       setEditingNode(null);
+      setRenameValue('');
       return;
     }
 
+    isSubmittingRef.current = true;
     try {
       setErrorMsg(null);
       if (editingNode.type === 'file') {
         const file = files.find((f) => f.id === editingNode.idOrPath);
-        if (file && trimmed !== file.path) {
+        if (file && trimmed !== file.name && trimmed !== file.path) {
           // If user typed only a file name, preserve directory path
           let newFullPath = trimmed;
           if (!trimmed.includes('/') && file.path.includes('/')) {
@@ -331,8 +370,17 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         }
       }
       setEditingNode(null);
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to rename');
+      setRenameValue('');
+    } catch (err: any) {
+      if (err instanceof FileConflictError || err?.status === 409 || err?.message?.includes('CONFLICT')) {
+        setEditingNode(null);
+        setRenameValue('');
+        setErrorMsg(null);
+      } else {
+        setErrorMsg(err instanceof Error ? err.message : 'Failed to rename');
+      }
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 
@@ -350,9 +398,11 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
 
     return (
       <form
+        key="inline-creation-form"
         onSubmit={(e) => void handleCreationSubmit(e)}
         style={{ paddingLeft: `${depth * 14 + 10}px` }}
         className="flex items-center gap-1.5 py-1 pr-2 theme-bg-surface-2 animate-fadeIn border-l-2 border-[#FF7057]"
+        onClick={(e) => e.stopPropagation()}
       >
         <span className="shrink-0">
           {isFolder ? (
@@ -367,26 +417,34 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           value={creationName}
           onChange={(e) => setCreationName(e.target.value)}
           placeholder={isFolder ? 'folder_name' : 'file_name.ts'}
+          onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') void handleCreationSubmit();
-            if (e.key === 'Escape') {
+            e.stopPropagation();
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void handleCreationSubmit();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
               setCreationState(null);
               setCreationName('');
             }
           }}
-          onBlur={() => {
-            // If empty, dismiss on blur; if text typed, submit
+          onBlur={(e) => {
+            const currentTarget = e.currentTarget.form;
+            if (currentTarget && e.relatedTarget && currentTarget.contains(e.relatedTarget as Node)) {
+              return;
+            }
+            // Dismiss if empty without creating unintended files
             if (!creationName.trim()) {
               setCreationState(null);
               setCreationName('');
-            } else {
-              void handleCreationSubmit();
             }
           }}
           className="w-full rounded border border-[#FF7057] theme-bg-surface-1 px-1.5 py-0.5 text-xs theme-text-primary focus:outline-none"
         />
         <button
           type="submit"
+          onMouseDown={(e) => e.preventDefault()}
           className="p-0.5 text-emerald-500 hover:text-emerald-400 cursor-pointer"
           title="Confirm"
         >
@@ -394,7 +452,9 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         </button>
         <button
           type="button"
-          onClick={() => {
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => {
+            e.stopPropagation();
             setCreationState(null);
             setCreationName('');
           }}
@@ -425,27 +485,45 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
 
             if (isEditing) {
               return (
-                <div
+                <form
                   key={`edit-folder-${node.path}`}
+                  onSubmit={(e) => void handleRenameSubmit(e)}
                   style={{ paddingLeft: `${depth * 14 + 10}px` }}
                   className="flex items-center gap-1.5 py-1 pr-2 theme-bg-surface-2"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <FolderOpen className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400" />
                   <input
                     ref={renameInputRef}
                     type="text"
-                    value={editingNode.value}
-                    onChange={(e) => setEditingNode({ ...editingNode, value: e.target.value })}
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') void handleRenameSubmit();
-                      if (e.key === 'Escape') setEditingNode(null);
+                      e.stopPropagation();
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void handleRenameSubmit();
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        setEditingNode(null);
+                        setRenameValue('');
+                      }
                     }}
-                    onBlur={() => void handleRenameSubmit()}
+                    onBlur={(e) => {
+                      const currentTarget = e.currentTarget.form;
+                      if (currentTarget && e.relatedTarget && currentTarget.contains(e.relatedTarget as Node)) {
+                        return;
+                      }
+                      // Preserve original name on blur without accidental renaming
+                      setEditingNode(null);
+                      setRenameValue('');
+                    }}
                     className="w-full rounded border border-[#FF7057] theme-bg-surface-1 px-1.5 py-0.5 text-xs theme-text-primary focus:outline-none"
                   />
                   <button
-                    type="button"
-                    onClick={() => void handleRenameSubmit()}
+                    type="submit"
+                    onMouseDown={(e) => e.preventDefault()}
                     className="p-0.5 text-emerald-500 hover:text-emerald-400 cursor-pointer"
                     title="Confirm Rename"
                   >
@@ -453,13 +531,18 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setEditingNode(null)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingNode(null);
+                      setRenameValue('');
+                    }}
                     className="p-0.5 theme-text-secondary hover:theme-text-primary cursor-pointer"
                     title="Cancel"
                   >
                     <X className="h-3 w-3" />
                   </button>
-                </div>
+                </form>
               );
             }
 
@@ -485,11 +568,24 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                     ) : (
                       <Folder className="h-4 w-4 shrink-0 text-amber-500/80 dark:text-amber-400/80" />
                     )}
-                    <span className="truncate font-medium">{node.name}</span>
+                    <span
+                      className="truncate font-medium"
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        setEditingNode({
+                          type: 'folder',
+                          idOrPath: node.path,
+                        });
+                        setRenameValue(node.name);
+                      }}
+                      title="Double-click to rename"
+                    >
+                      {node.name}
+                    </span>
                   </div>
 
                   {/* VS Code Hover Actions on Folder */}
-                  <div className="hidden group-hover:flex items-center gap-0.5 shrink-0 pl-1">
+                  <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0 pl-1 transition-opacity">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -520,8 +616,8 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                           setEditingNode({
                             type: 'folder',
                             idOrPath: node.path,
-                            value: node.name,
                           });
+                          setRenameValue(node.name);
                         }}
                         title={`Rename folder ${node.name}`}
                         className="rounded p-0.5 theme-text-secondary hover:theme-bg-surface-1 hover:theme-text-primary transition"
@@ -576,27 +672,45 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
 
           if (isEditing) {
             return (
-              <div
+              <form
                 key={`edit-file-${file.id}`}
+                onSubmit={(e) => void handleRenameSubmit(e)}
                 style={{ paddingLeft: `${depth * 14 + 14}px` }}
                 className="flex items-center gap-1.5 py-1 pr-2 theme-bg-surface-2"
+                onClick={(e) => e.stopPropagation()}
               >
-                {getExtensionBadge(file.name)}
+                {getExtensionBadge(renameValue || file.name)}
                 <input
                   ref={renameInputRef}
                   type="text"
-                  value={editingNode.value}
-                  onChange={(e) => setEditingNode({ ...editingNode, value: e.target.value })}
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') void handleRenameSubmit();
-                    if (e.key === 'Escape') setEditingNode(null);
+                    e.stopPropagation();
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleRenameSubmit();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      setEditingNode(null);
+                      setRenameValue('');
+                    }
                   }}
-                  onBlur={() => void handleRenameSubmit()}
+                  onBlur={(e) => {
+                    const currentTarget = e.currentTarget.form;
+                    if (currentTarget && e.relatedTarget && currentTarget.contains(e.relatedTarget as Node)) {
+                      return;
+                    }
+                    // Preserve original name on blur without accidental renaming
+                    setEditingNode(null);
+                    setRenameValue('');
+                  }}
                   className="w-full rounded border border-[#FF7057] theme-bg-surface-1 px-1.5 py-0.5 text-xs theme-text-primary focus:outline-none"
                 />
                 <button
-                  type="button"
-                  onClick={() => void handleRenameSubmit()}
+                  type="submit"
+                  onMouseDown={(e) => e.preventDefault()}
                   className="p-0.5 text-emerald-500 hover:text-emerald-400 cursor-pointer"
                   title="Confirm Rename"
                 >
@@ -604,13 +718,18 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setEditingNode(null)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingNode(null);
+                    setRenameValue('');
+                  }}
                   className="p-0.5 theme-text-secondary hover:theme-text-primary cursor-pointer"
                   title="Cancel"
                 >
                   <X className="h-3 w-3" />
                 </button>
-              </div>
+              </form>
             );
           }
 
@@ -635,7 +754,20 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             >
               <div className="flex items-center gap-2 min-w-0">
                 {getExtensionBadge(node.name)}
-                <span className="truncate">{node.name}</span>
+                <span
+                  className="truncate"
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    setEditingNode({
+                      type: 'file',
+                      idOrPath: file.id,
+                    });
+                    setRenameValue(file.name);
+                  }}
+                  title="Double-click to rename"
+                >
+                  {node.name}
+                </span>
               </div>
 
               <div className="flex items-center gap-1">
@@ -646,7 +778,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                   />
                 )}
                 {/* VS Code Hover Actions on File */}
-                <div className="hidden group-hover:flex items-center gap-0.5 shrink-0 pl-1">
+                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0 pl-1 transition-opacity">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -654,8 +786,8 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                       setEditingNode({
                         type: 'file',
                         idOrPath: file.id,
-                        value: file.name,
                       });
+                      setRenameValue(file.name);
                     }}
                     title="Rename File"
                     className="rounded p-0.5 theme-text-secondary hover:theme-bg-surface-1 hover:theme-text-primary transition"

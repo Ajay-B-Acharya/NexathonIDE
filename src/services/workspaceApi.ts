@@ -37,12 +37,13 @@ export class FileConflictError extends Error {
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const { headers: customHeaders, ...restOptions } = options || {};
   const response = await fetch(url, {
+    ...restOptions,
     headers: {
       'Content-Type': 'application/json',
-      ...(options?.headers || {}),
+      ...((customHeaders as Record<string, string>) || {}),
     },
-    ...options,
   });
 
   if (!response.ok) {
